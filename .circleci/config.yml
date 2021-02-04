@@ -114,7 +114,7 @@ workflows:
                 - hotfix/*
   DEPLOY:
     jobs:
-      - BUILD:
+      - NPM_PUBLISH:
           filters:
             branches:
               only: main
