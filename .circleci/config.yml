@@ -18,7 +18,7 @@ version: 2.1
 executors:
   emscripten-porter:
     docker:
-      - image: trzeci/emscripten:1.39.18-upstream
+      - image: emscripten/emsdk:1.39.5
         environment:
           # Enable colors in term
           TERM: xterm
@@ -112,6 +112,7 @@ jobs:
                 usermod --uid $USER_UID --gid $USER_GID $USERNAME
                 chown -R $USER_UID:$USER_GID /home/$USERNAME;
             fi
+            
             # Clean up
             apt-get autoremove -y
             apt-get clean -y

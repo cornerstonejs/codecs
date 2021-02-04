@@ -10,12 +10,19 @@ mkdir -p build
 # (cd build && cmake -DCMAKE_BUILD_TYPE=Debug ..) &&
 # (cd build && make VERBOSE=1 -j 8) &&
 # (build/extern/openjpeg/bin/cpptest)
+
 # ~ Build WASM/JS
-(cd build && emcmake cmake ..) || echo 0 &&
-(cd build && emcmake cmake ..) &&
-(cd build && emmake make VERBOSE=1 -j 16) &&
-cp ./build/extern/openjpeg/bin/openjpegjs.js ./dist && 
-cp ./build/extern/openjpeg/bin/openjpegjs.js.mem ./dist &&
-cp ./build/extern/openjpeg/bin/openjpegwasm.js ./dist &&
-cp ./build/extern/openjpeg/bin/openjpegwasm.wasm ./dist &&
+# (cd build && emcmake cmake ..) || echo 0 &&
+# (cd build && emcmake cmake ..) &&
+# (cd build && emmake make VERBOSE=1 -j 16) &&
+# cp ./build/extern/openjpeg/bin/openjpegjs.js ./dist && 
+# cp ./build/extern/openjpeg/bin/openjpegjs.js.mem ./dist &&
+# cp ./build/extern/openjpeg/bin/openjpegwasm.js ./dist &&
+# cp ./build/extern/openjpeg/bin/openjpegwasm.wasm ./dist &&
+# (cd test/node; npm run test)
+
+(cd build && emconfigure cmake ..)
+(cd build && emmake make VERBOSE=1 -j 16)
+cp ./build/src/openjpeg.js ./dist
+cp ./build/src/openjpeg.wasm ./dist
 (cd test/node; npm run test)
