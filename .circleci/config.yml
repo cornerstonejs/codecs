@@ -119,12 +119,12 @@ jobs:
       - checkout
       - run: git submodule update --init
       # - run: bash build-native.sh
-      - run: cd packages/openjpegjs/ && bash build.sh
+      - run: cd packages/openjpeg/ && bash build.sh
       - store_artifacts:
-          path: ~/repo/packages/openjpegjs/dist
+          path: ~/repo/packages/openjpeg/dist
           destination: /
       - store_artifacts:
-          path: ~/repo/packages/openjpegjs/build/CMakeFiles
+          path: ~/repo/packages/openjpeg/build/CMakeFiles
           destination: /CMakefiles/
 
   NPM_PUBLISH:
