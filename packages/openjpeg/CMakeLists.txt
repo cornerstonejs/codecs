@@ -30,8 +30,8 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/openjpeg/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
-#option(OJPH_DISABLE_INTEL_SIMD "Disables the use of SIMD instructions and associated files" ON)
-option(BUILD_SHARED_LIBS "" OFF)
+option(OJPH_DISABLE_INTEL_SIMD "Disables the use of SIMD instructions and associated files" ON)
+option(BUILD_SHARED_LIBS "" ON)
 option(BUILD_STATIC_LIBS "" ON)
 
 # add the external library

@@ -3,6 +3,7 @@
 set +e
 mkdir -p build
 #(cd build && emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..) &&
+
 # This worked in: trzeci/emscripten:1.39.4-fastcomp
 # but not w/ newer versions of emscripten
 # (cd build && emconfigure cmake ..) &&
@@ -23,6 +24,6 @@ mkdir -p build
 
 (cd build && emconfigure cmake ..)
 (cd build && emmake make VERBOSE=1 -j 16)
-cp ./build/src/openjpeg.js ./dist
-cp ./build/src/openjpeg.wasm ./dist
-(cd test/node; npm run test)
+cp ./build/src/openjpegjs.js ./dist
+cp ./build/src/openjpegjs.wasm ./dist
+# (cd test/node; npm run test)
