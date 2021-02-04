@@ -65,7 +65,7 @@ jobs:
       # - codecov/upload:
       #     file: '/home/circleci/repo/coverage/reports'
 
-NPM_PUBLISH:
+  NPM_PUBLISH:
     <<: *defaults
     steps:
       - run: yarn -v
