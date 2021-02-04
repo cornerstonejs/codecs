@@ -1,9 +1,9 @@
 version: 2.1
 
 ## https://github.com/cypress-io/circleci-orb
-orbs:
-  codecov: codecov/codecov@1.0.5
-  cypress: cypress-io/cypress@1.26.0
+# orbs:
+#   codecov: codecov/codecov@1.0.5
+#   cypress: cypress-io/cypress@1.26.0
 executors:
   # Custom executor to override Cypress config
   deploy-to-prod-executor:
@@ -29,7 +29,7 @@ defaults: &defaults
   
 jobs:
 
-UNIT_TESTS:
+  UNIT_TESTS:
     <<: *defaults
     steps:
       - run: yarn -v
@@ -62,8 +62,8 @@ UNIT_TESTS:
             echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
             cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
             echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
-      - codecov/upload:
-          file: '/home/circleci/repo/coverage/reports'
+      # - codecov/upload:
+      #     file: '/home/circleci/repo/coverage/reports'
 
 NPM_PUBLISH:
     <<: *defaults
