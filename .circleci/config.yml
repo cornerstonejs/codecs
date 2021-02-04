@@ -76,18 +76,18 @@ jobs:
           paths:
             - ~/.cache ## Cache yarn and Cypress
           key: yarn-packages-{{ checksum "yarn.lock" }}
-      - run:
-          name: 'JavaScript Test Suite'
-          command: yarn run test:unit:ci
-      - run:
-          name: 'Combine report output'
-          command: |
-            coverateDir="/home/circleci/repo/coverage"
-            touch "${coverateDir}/reports"
-            cat "${coverateDir}/clover.xml" >> "${coverateDir}/reports"
-            echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
-            cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
-            echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
+      # - run:
+      #     name: 'JavaScript Test Suite'
+      #     command: yarn run test:unit:ci
+      # - run:
+      #     name: 'Combine report output'
+      #     command: |
+      #       coverateDir="/home/circleci/repo/coverage"
+      #       touch "${coverateDir}/reports"
+      #       cat "${coverateDir}/clover.xml" >> "${coverateDir}/reports"
+      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
+      #       cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
+      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
       # - codecov/upload:
       #     file: '/home/circleci/repo/coverage/reports'
 
