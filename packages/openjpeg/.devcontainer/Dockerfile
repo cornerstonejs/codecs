@@ -1,18 +1,4 @@
-#-------------------------------------------------------------------------------------------------------------
-# Copyright (c) Microsoft Corporation. All rights reserved.
-# Licensed under the MIT License. See https://go.microsoft.com/fwlink/?linkid=2090316 for license information.
-#-------------------------------------------------------------------------------------------------------------
-
-#FROM mcr.microsoft.com/vscode/devcontainers/base:0-debian-9
-# :latest
-# -upstream (emscripten, clang 10)
-# -fastcomp (legacy emscripten, clang 6)
-# -ubuntu 
-FROM trzeci/emscripten:1.39.18-upstream
-# 1.39.16 --> ~ May 20th (GitHub)
-# 1.39.4 --> ~ May 20th (Docker Hub)
-# https://github.com/trzecieu/emscripten-docker/issues/68
-# In may, `:latest` pointed to fastcomp
+FROM emscripten/emsdk:1.39.5
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
