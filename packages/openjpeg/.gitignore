@@ -1,0 +1,7 @@
+build/*
+build-native/*
+dist/*
+test/fixtures/MG1.JLS
+test/fixtures/artificial*
+OpenJPH
+node_modules/*

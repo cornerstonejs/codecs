@@ -1,0 +1,3 @@
+[submodule "extern/openjpeg"]
+	path = extern/openjpeg
+	url = ../../???/openjpeg.git
