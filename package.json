@@ -3,5 +3,9 @@
   "private": true,
   "devDependencies": {
     "lerna": "^3.22.1"
+  },
+  "scripts": {
+    "build:ci": "lerna run build:ci --parallel --stream",
+    "test:unit:ci": "lerna run test:unit:ci --parallel --stream"
   }
 }
