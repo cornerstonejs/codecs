@@ -17,6 +17,7 @@ if(GIT_FOUND AND EXISTS "${PROJECT_SOURCE_DIR}/.git")
     option(GIT_SUBMODULE "Check submodules during build" ON)
     if(GIT_SUBMODULE)
         message(STATUS "Submodule update")
+        #execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive
         execute_process(COMMAND ${GIT_EXECUTABLE} submodule update --init --recursive --remote
                         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
                         RESULT_VARIABLE GIT_SUBMOD_RESULT)
@@ -30,11 +31,8 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/openjpeg/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
-#
-SET_PROPERTY(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS TRUE)
-
-option(OJPH_DISABLE_INTEL_SIMD "Disables the use of SIMD instructions and associated files" ON)
-option(BUILD_SHARED_LIBS "" ON)
+#option(OJPH_DISABLE_INTEL_SIMD "Disables the use of SIMD instructions and associated files" ON)
+option(BUILD_SHARED_LIBS "" OFF)
 option(BUILD_STATIC_LIBS "" ON)
 
 # add the external library
