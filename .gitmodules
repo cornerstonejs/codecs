@@ -4,3 +4,6 @@
 [submodule "packages/charls-js/extern/charls"]
 	path = packages/charls-js/extern/charls
 	url = https://github.com/PrecisionMetrics/charls.git
+[submodule "packages/libjpeg-turbojs/extern/libjpeg-turbo"]
+	path = packages/libjpeg-turbojs/extern/libjpeg-turbo
+	url = https://github.com/PrecisionMetrics/libjpeg-turbo.git
