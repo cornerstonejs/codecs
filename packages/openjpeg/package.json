@@ -10,8 +10,9 @@
       "test": "test"
     },
     "scripts": {
-      "test": "echo \"Error: no test specified\" && exit 1",
-      "build": "webpack --config ./.webpack/webpack.config.js",
+      "test": "node test/node/index.js",
+      "build": "",
+      "build:ui": "webpack --config ./.webpack/webpack.config.js",
       "start": "cross-env NODE_ENV=development webpack-dev-server --config ./.webpack/webpack.config.js"
     },
     "repository": {
