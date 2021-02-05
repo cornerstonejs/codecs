@@ -17,13 +17,13 @@ This library is a JavaScript port made possible by [emscripten](https://emscript
 Using npm:
 
 ```bash
-$ npm install @voxelmed/openjpegjs
+$ npm install @cornerstonejs/openjpegjs
 ```
 
 Using yarn:
 
 ```bash
-$ yarn add @voxelmed/openjpegjs
+$ yarn add @cornerstonejs/openjpegjs
 ```
 
 Using unpkg CDN:
