@@ -159,12 +159,12 @@ jobs:
       - checkout
       - run: git submodule update --init
       # - run: bash build-native.sh
-      - run: cd packages/charls-js/ && bash build.sh
+      - run: cd packages/libjpeg-turbojs/ && bash build.sh
       - store_artifacts:
-          path: packages/charls-js/dist
+          path: packages/libjpeg-turbojs/dist
           destination: /
       - store_artifacts:
-          path: packages/charls-js/build/CMakeFiles
+          path: packages/libjpeg-turbojs/build/CMakeFiles
           destination: /CMakefiles/
 
   NPM_PUBLISH:
