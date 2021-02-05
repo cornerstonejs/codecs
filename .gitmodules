@@ -1,3 +1,6 @@
 [submodule "packages/openjpegjs/extern/openjpeg"]
 	path = packages/openjpegjs/extern/openjpeg
 	url = https://github.com/PrecisionMetrics/openjpeg.git
+[submodule "packages/charls-js/extern/charls"]
+	path = packages/charls-js/extern/charls
+	url = https://github.com/PrecisionMetrics/charls.git
