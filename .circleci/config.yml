@@ -1,10 +1,36 @@
+# Points to latest release
+# https://github.com/emscripten-core/emscripten/releases
+# https://hub.docker.com/r/trzeci/emscripten/tags?page=1
+# trzeci/emscripten:latest --> trzeci/emscripten:1.39.18-upstream
+#
+# Deprecated, in favor of:
+# https://hub.docker.com/repository/r/emscripten/emsdk
+# https://hub.docker.com/r/emscripten/emsdk
 version: 2.1
 
+# 
 ## https://github.com/cypress-io/circleci-orb
 # orbs:
 #   codecov: codecov/codecov@1.0.5
 #   cypress: cypress-io/cypress@1.26.0
+
+#https://circleci.com/docs/2.0/configuration-reference/#docker--machine--macos--windows-executor
 executors:
+  emscripten-porter:
+    docker:
+      - image: emscripten/emsdk:1.39.5
+        environment:
+          # Enable colors in term
+          TERM: xterm
+          # Avoid warnings by switching to noninteractive
+          DEBIAN_FRONTEND: noninteractive
+          # This Dockerfile's base image has a non-root user with sudo access. Use the "remoteUser"
+          # property in devcontainer.json to use it. On Linux, the container user's GID/UIDs
+          # will be updated to match your local UID/GID (when using the dockerFile property).
+          # See https://aka.ms/vscode-remote/containers/non-root-user for details.
+          USERNAME: vscode
+          USER_UID: 1000
+          USER_GID: 1000 # $USER_UID
   # Custom executor to override Cypress config
   deploy-to-prod-executor:
     docker:
@@ -50,22 +76,60 @@ jobs:
           paths:
             - ~/.cache ## Cache yarn and Cypress
           key: yarn-packages-{{ checksum "yarn.lock" }}
-      - run:
-          name: 'JavaScript Test Suite'
-          command: yarn run test:unit:ci
-      - run:
-          name: 'Combine report output'
-          command: |
-            coverateDir="/home/circleci/repo/coverage"
-            touch "${coverateDir}/reports"
-            cat "${coverateDir}/clover.xml" >> "${coverateDir}/reports"
-            echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
-            cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
-            echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
+      # - run:
+      #     name: 'JavaScript Test Suite'
+      #     command: yarn run test:unit:ci
+      # - run:
+      #     name: 'Combine report output'
+      #     command: |
+      #       coverateDir="/home/circleci/repo/coverage"
+      #       touch "${coverateDir}/reports"
+      #       cat "${coverateDir}/clover.xml" >> "${coverateDir}/reports"
+      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
+      #       cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
+      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
       # - codecov/upload:
       #     file: '/home/circleci/repo/coverage/reports'
 
-NPM_PUBLISH:
+  EMSCRIPTEN_BUILD:
+    executor: emscripten-porter
+    steps:
+      - run:
+          name: Configure apt and install packages
+          command: |
+            apt-get update
+            
+            # Install C++ tools
+            apt-get -y install build-essential cppcheck valgrind kcachegrind
+            # apt-get -y install zlib1g-dev liblcms2-dev libtiff-dev libpng-dev libz-dev
+            
+            # version 3.17 of cmake
+            wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
+            
+            # [Optional] Update UID/GID if needed
+            if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
+                groupmod --gid $USER_GID $USERNAME
+                usermod --uid $USER_UID --gid $USER_GID $USERNAME
+                chown -R $USER_UID:$USER_GID /home/$USERNAME;
+            fi
+            
+            # Clean up
+            apt-get autoremove -y
+            apt-get clean -y
+            rm -rf /var/lib/apt/lists/*
+      - run: gcc --version
+      - checkout
+      - run: git submodule update --init
+      # - run: bash build-native.sh
+      - run: cd packages/openjpegjs/ && bash build.sh
+      - store_artifacts:
+          path: packages/openjpegjs/dist
+          destination: /
+      - store_artifacts:
+          path: packages/openjpegjs/build/CMakeFiles
+          destination: /CMakefiles/
+
+  NPM_PUBLISH:
     <<: *defaults
     steps:
       - run: yarn -v
@@ -112,6 +176,14 @@ workflows:
                 - main
                 - feat/*
                 - hotfix/*
+      - EMSCRIPTEN_BUILD:
+          filters:
+            branches:
+              ignore:
+                - main
+                - feat/*
+                - hotfix/*
+
   DEPLOY:
     jobs:
       - NPM_PUBLISH:

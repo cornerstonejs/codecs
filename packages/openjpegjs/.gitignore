@@ -1,0 +1,12 @@
+build/*
+build-native/*
+dist/*
+packages/**/!build/.gitpreserve
+packages/**/!build-native/.gitpreserve
+!dist/.gitpreserve
+
+# TEST
+test/fixtures/MG1.JLS
+test/fixtures/artificial*
+OpenJPH
+node_modules/*

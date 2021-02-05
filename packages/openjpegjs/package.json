@@ -1,0 +1,46 @@
+{
+    "name": "@cornerstonejs/codec-openjpegjs",
+    "version": "0.0.1",
+    "description": "JS/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg)",
+    "main": "dist/openjpegjs.js",
+    "publishConfig": {
+      "access": "public"
+    },
+    "directories": {
+      "test": "test"
+    },
+    "scripts": {
+      "test": "node test/node/index.js",
+      "build": "",
+      "build:ui": "webpack --config ./.webpack/webpack.config.js",
+      "start": "cross-env NODE_ENV=development webpack-dev-server --config ./.webpack/webpack.config.js"
+    },
+    "repository": {
+      "type": "git",
+      "url": "https://localhost"
+    },
+    "author": "",
+    "license": "MIT",
+    "bugs": {
+      "url": "https://localhost"
+    },
+    "homepage": "https://localhost",
+    "files": [
+      "package.json",
+      "README.md",
+      "dist/"
+    ],
+    "devDependencies": {
+      "@babel/core": "^7.11.4",
+      "@babel/preset-env": "^7.11.0",
+      "@babel/preset-react": "^7.10.4",
+      "babel-loader": "^8.1.0",
+      "clean-webpack-plugin": "^3.0.0",
+      "cross-env": "^7.0.2",
+      "html-loader": "^1.3.0",
+      "html-webpack-plugin": "^4.3.0",
+      "webpack": "^4.44.1",
+      "webpack-cli": "^3.3.12",
+      "webpack-dev-server": "^3.11.0"
+    }
+  }
