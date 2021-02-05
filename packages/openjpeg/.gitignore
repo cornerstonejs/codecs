@@ -1,6 +1,11 @@
 build/*
 build-native/*
 dist/*
+!build/.gitpreserve
+!build-native/.gitpreserve
+!dist/.gitpreserve
+
+# TEST
 test/fixtures/MG1.JLS
 test/fixtures/artificial*
 OpenJPH
