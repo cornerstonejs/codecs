@@ -1,13 +1,13 @@
 // Copyright (c) Chris Hafey.
 // SPDX-License-Identifier: MIT
-
-let openjpegjs = require('../../dist/openjpegjs.js');
-let openjpegwasm = require('../../dist/openjpegwasm.js');
-
+const path = require('path')
 const fs = require('fs')
 
+let openjpegjs = require('./../../dist/openjpegjs.js');
+let openjpegwasm = require('./../../dist/openjpegwasm.js');
+
 function decode(openjpeg, encodedImagePath, iterations = 1) {
-  encodedBitStream = fs.readFileSync(encodedImagePath);
+  encodedBitStream = fs.readFileSync(path.resolve(__dirname, encodedImagePath));
   const numBytes = 500;
   encodedBitStream = encodedBitStream.slice(0, encodedBitStream.length - numBytes);
   console.log('encodedBitStream.length=', encodedBitStream.length);
@@ -67,7 +67,7 @@ function encode(openjpeg, pathToUncompressedImageFrame, imageFrame, pathToJ2CFil
 function main(openjpeg) {
   //decode('../fixtures/j2k/CT1-0decomp.j2k');
   //decode('../fixtures/j2k/NM1.j2k');
-  decode(openjpeg, '../fixtures/j2k/CT1.j2k', 1);
+  decode(openjpeg, './../fixtures/j2k/CT1.j2k', 1);
   //decode('../fixtures/j2k/image.j2k');
   //decode('../../extern/OpenJPH/subprojects/js/html/test.j2c');
 
