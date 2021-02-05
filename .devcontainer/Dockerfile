@@ -19,7 +19,7 @@ RUN apt-get update \
     # version 3.17 of cmake
     && wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
     # sudo
-    # && apt-get -y install sudo \
+    && apt-get -y install sudo \
     #
     # [Optional] Update UID/GID if needed
     && if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then \

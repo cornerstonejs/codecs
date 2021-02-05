@@ -101,7 +101,7 @@ jobs:
             
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
-            # apt-get -y install zlib1g-dev liblcms2-dev  libtiff-dev libpng-dev libz-dev
+            # apt-get -y install zlib1g-dev liblcms2-dev libtiff-dev libpng-dev libz-dev
             
             # version 3.17 of cmake
             wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
@@ -117,6 +117,7 @@ jobs:
             apt-get autoremove -y
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
+      - run: gcc --version
       - checkout
       - run: git submodule update --init
       # - run: bash build-native.sh
