@@ -1,0 +1,29 @@
+{
+  "name": "charls",
+  "version": "1.0.0",
+  "description": "WASM Build of CharLS",
+  "main": "dist/charlsjs.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chafey/charls-js.git"
+  },
+  "keywords": [
+    "JPEG",
+    "JPEGLS",
+    "CharLS",
+    "JPEG-LS",
+    "DICOM"
+  ],
+  "author": "Chris Hafey <chafey@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chafey/charls-js/issues"
+  },
+  "homepage": "https://github.com/chafey/charls-js#readme"
+}
