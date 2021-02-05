@@ -123,10 +123,10 @@ jobs:
       # - run: bash build-native.sh
       - run: cd packages/openjpegjs/ && bash build.sh
       - store_artifacts:
-          path: ~/repo/packages/openjpegjs/dist
+          path: packages/openjpegjs/dist
           destination: /
       - store_artifacts:
-          path: ~/repo/packages/openjpegjs/build/CMakeFiles
+          path: packages/openjpegjs/build/CMakeFiles
           destination: /CMakefiles/
 
   NPM_PUBLISH:

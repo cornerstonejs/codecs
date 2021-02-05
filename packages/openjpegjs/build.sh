@@ -18,6 +18,7 @@ cp ./build/extern/openjpeg/bin/openjpegjs.js.mem ./dist &&
 cp ./build/extern/openjpeg/bin/openjpegwasm.js ./dist &&
 cp ./build/extern/openjpeg/bin/openjpegwasm.wasm ./dist
 
-dir
+echo "~~~ BUILD:"
 (cd build && dir)
+echo "~~~ DIST:"
 (cd dist && dir)
