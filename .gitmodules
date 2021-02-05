@@ -1,3 +1,0 @@
-[submodule "packages/openjpeg/extern/openjpeg"]
-	path = packages/openjpeg/extern/openjpeg
-	url = https://github.com/PrecisionMetrics/openjpeg.git
