@@ -129,6 +129,44 @@ jobs:
           path: packages/openjpegjs/build/CMakeFiles
           destination: /CMakefiles/
 
+  EMSCRIPTEN_BUILD_2:
+    executor: emscripten-porter
+    steps:
+      - run:
+          name: Configure apt and install packages
+          command: |
+            apt-get update
+            
+            # Install C++ tools
+            apt-get -y install build-essential cppcheck valgrind kcachegrind
+            # apt-get -y install zlib1g-dev liblcms2-dev libtiff-dev libpng-dev libz-dev
+            
+            # version 3.17 of cmake
+            wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
+            
+            # [Optional] Update UID/GID if needed
+            if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
+                groupmod --gid $USER_GID $USERNAME
+                usermod --uid $USER_UID --gid $USER_GID $USERNAME
+                chown -R $USER_UID:$USER_GID /home/$USERNAME;
+            fi
+            
+            # Clean up
+            apt-get autoremove -y
+            apt-get clean -y
+            rm -rf /var/lib/apt/lists/*
+      - run: gcc --version
+      - checkout
+      - run: git submodule update --init
+      # - run: bash build-native.sh
+      - run: cd packages/charls-js/ && bash build.sh
+      - store_artifacts:
+          path: packages/charls-js/dist
+          destination: /
+      - store_artifacts:
+          path: packages/charls-js/build/CMakeFiles
+          destination: /CMakefiles/
+
   NPM_PUBLISH:
     <<: *defaults
     steps:
@@ -169,14 +207,15 @@ workflows:
 
   PR_CHECKS:
     jobs:
-      - UNIT_TESTS:
-          filters:
-            branches:
-              ignore:
-                - main
-                - feat/*
-                - hotfix/*
-      - EMSCRIPTEN_BUILD:
+      # - UNIT_TESTS:
+      #     filters:
+      #       branches:
+      #         ignore:
+      #           - main
+      #           - feat/*
+      #           - hotfix/*
+      #- EMSCRIPTEN_BUILD:
+      - EMSCRIPTEN_BUILD_2:
           filters:
             branches:
               ignore:
