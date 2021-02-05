@@ -17,3 +17,7 @@ cp ./build/extern/openjpeg/bin/openjpegjs.js ./dist &&
 cp ./build/extern/openjpeg/bin/openjpegjs.js.mem ./dist &&
 cp ./build/extern/openjpeg/bin/openjpegwasm.js ./dist &&
 cp ./build/extern/openjpeg/bin/openjpegwasm.wasm ./dist
+
+dir
+(cd build && dir)
+(cd dist && dir)
