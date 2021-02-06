@@ -188,7 +188,7 @@ jobs:
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 
             apt-get update
-            apt install yarn
+            apt install yarn -y
       - run: node -v
       - run: yarn -v
       - checkout:
