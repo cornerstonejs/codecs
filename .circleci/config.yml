@@ -32,50 +32,50 @@ executors:
           USER_UID: 1000
           USER_GID: 1000 # $USER_UID
   # Custom executor to override Cypress config
-  deploy-to-prod-executor:
-    docker:
-      - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
-        environment:
-          CYPRESS_BASE_URL: https://ohif-staging.netlify.com/
-  chrome-and-pacs:
-    docker:
-      # Primary container image where all steps run.
-      - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
-      - image: 'ohif/viewer-testdata:0.1-test'
+  # deploy-to-prod-executor:
+  #   docker:
+  #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
+  #       environment:
+  #         CYPRESS_BASE_URL: https://ohif-staging.netlify.com/
+  # chrome-and-pacs:
+  #   docker:
+  #     # Primary container image where all steps run.
+  #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
+  #     - image: 'ohif/viewer-testdata:0.1-test'
       
       
-defaults: &defaults
-  docker:
-    - image: circleci/node:14.15.0
-      environment:
-        TERM: xterm # Enable colors in term
-        QUICK_BUILD: true
-  working_directory: ~/repo
+# defaults: &defaults
+#   docker:
+#     - image: circleci/node:14.15.0
+#       environment:
+#         TERM: xterm # Enable colors in term
+#         QUICK_BUILD: true
+#   working_directory: ~/repo
   
   
 jobs:
 
-  UNIT_TESTS:
-    <<: *defaults
-    steps:
-      - run: yarn -v
-      - checkout:
-          post:
-            - git fetch --all
-      - restore_cache:
-          name: Restore Yarn and Cypress Package Cache
-          keys:
-            # when lock file changes, use increasingly general patterns to restore cache
-            - yarn-packages-{{ checksum "yarn.lock" }}
-            - yarn-packages-
-      - run:
-          name: Install Dependencies
-          command: yarn install --frozen-lockfile
-      - save_cache:
-          name: Save Yarn Package Cache
-          paths:
-            - ~/.cache ## Cache yarn and Cypress
-          key: yarn-packages-{{ checksum "yarn.lock" }}
+  # UNIT_TESTS:
+  #   <<: *defaults
+  #   steps:
+  #     - run: yarn -v
+  #     - checkout:
+  #         post:
+  #           - git fetch --all
+  #     - restore_cache:
+  #         name: Restore Yarn and Cypress Package Cache
+  #         keys:
+  #           # when lock file changes, use increasingly general patterns to restore cache
+  #           - yarn-packages-{{ checksum "yarn.lock" }}
+  #           - yarn-packages-
+  #     - run:
+  #         name: Install Dependencies
+  #         command: yarn install --frozen-lockfile
+  #     - save_cache:
+  #         name: Save Yarn Package Cache
+  #         paths:
+  #           - ~/.cache ## Cache yarn and Cypress
+  #         key: yarn-packages-{{ checksum "yarn.lock" }}
       # - run:
       #     name: 'JavaScript Test Suite'
       #     command: yarn run test:unit:ci
@@ -93,6 +93,7 @@ jobs:
 
   EMSCRIPTEN_BUILD:
     executor: emscripten-porter
+    working_directory: ~/repo
     steps:
       - run:
           name: Configure apt and install packages
@@ -168,8 +169,10 @@ jobs:
           destination: /CMakefiles/
 
   NPM_PUBLISH:
-    <<: *defaults
+    executor: emscripten-porter
+    working_directory: ~/repo
     steps:
+      - run: node -v
       - run: yarn -v
       - checkout:
           post:
@@ -207,6 +210,13 @@ workflows:
 
   PR_CHECKS:
     jobs:
+      - NPM_PUBLISH:
+          filters:
+            branches:
+              ignore:
+                - main
+                - feat/*
+                - hotfix/*
       # - UNIT_TESTS:
       #     filters:
       #       branches:
@@ -215,13 +225,13 @@ workflows:
       #           - feat/*
       #           - hotfix/*
       #- EMSCRIPTEN_BUILD:
-      - EMSCRIPTEN_BUILD_2:
-          filters:
-            branches:
-              ignore:
-                - main
-                - feat/*
-                - hotfix/*
+      # - EMSCRIPTEN_BUILD_2:
+      #     filters:
+      #       branches:
+      #         ignore:
+      #           - main
+      #           - feat/*
+      #           - hotfix/*
 
   DEPLOY:
     jobs:
