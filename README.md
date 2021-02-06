@@ -17,6 +17,33 @@ This repository is maintained as a monorepo. This means that this repository, in
 └── README.md               # This file
 ```
 
+### Transfer Syntaxes
+
+> ℹ List of DICOM Transfer syntaxes: [https://www.dicomlibrary.com/dicom/transfer-syntax/](https://www.dicomlibrary.com/dicom/transfer-syntax/)
+
+
+
+| Transfer Syntax UID    | Transfer Syntax Name                                              | Codec          |
+|------------------------|-------------------------------------------------------------------|----------------|
+| Uncompressed           |                                                                   |                |
+| 1.2.840.10008.1.2      | Implicit VR Little Endian: Default DICOM Transfer Syntax          |                |
+| 1.2.840.10008.1.2.1    | Explicit VR Little Endian                                         |                |
+| 1.2.840.10008.1.2.2    | Explicit VR Big Endian                                            |                |
+| Compressed             |                                                                   |                |
+| 1.2.840.10008.1.2.5    | RLE Lossless                                                      | ?              |              
+| 1.2.840.10008.1.2.4.50 | JPEG Baseline lossy process 1 (8 bit)                             | libJPEG-turbo  |
+| 1.2.840.10008.1.2.4.51 | JPEG Baseline lossy process 2 & 4 (12 bit)                        | libJPEG-turbo  |
+| 1.2.840.10008.1.2.4.57 | JPEG Lossless, Nonhierarchical (Processes 14)                     | ?              |
+| 1.2.840.10008.1.2.4.70 | JPEG Lossless, Nonhierarchical (Processes 14 [Selection 1])       | ?              |
+| 1.2.840.10008.1.2.4.80 | JPEG-LS Lossless Image Compression                                | CharLS         |
+| 1.2.840.10008.1.2.4.81 | JPEG-LS Lossy (Near-Lossless) Image Compression                   | CharLS         |
+| 1.2.840.10008.1.2.4.90 | JPEG 2000 Image Compression (Lossless Only)                       | OpenJPEG       |
+| 1.2.840.10008.1.2.4.91 | JPEG 2000 Image Compression                                       | OpenJPEG       |
+| 1.2.840.10008.1.2.4.91 | JPEG 2000 Image Compression 	                                     |                |
+| 1.2.840.10008.1.2.4.92 | JPEG 2000 Part 2 Multicomponent Image Compression (Lossless Only) |                |
+| 1.2.840.10008.1.2.4.93 | JPEG 2000 Part 2 Multicomponent Image Compression                 |                |
+| 1.2.840.10008.1.2.1.99 | Deflated Explicit VR Little Endian                                | ?              |
+
 ### Codec Package Anatomy
 
 ...
