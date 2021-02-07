@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-charls-js",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "WASM Build of CharLS",
   "main": "dist/charlsjs.js",
   "publishConfig": {
