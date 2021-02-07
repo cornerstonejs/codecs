@@ -19,32 +19,48 @@ This repository is maintained as a monorepo. This means that this repository, in
 
 ### Transfer Syntaxes
 
-> ℹ List of DICOM Transfer syntaxes: [https://www.dicomlibrary.com/dicom/transfer-syntax/](https://www.dicomlibrary.com/dicom/transfer-syntax/)
+> ℹ List of DICOM Transfer syntaxes: [https://www.dicomlibrary.com/dicom/transfer-syntax/](https://www.dicomlibrary.com/dicom/transfer-syntax/). More on each transfer syntax, how they differ, and in which situations they excel can be found here: [https://www.medicalconnections.co.uk/kb/Transfer-Syntax](https://www.medicalconnections.co.uk/kb/Transfer-Syntax)
+
+Transfer Syntax is the language used in DICOM to describe the DICOM file format and the network transfer methods. 3 main variables are contained in the Transfer Syntax:
+
+- VR: Implicit/Explicit
+- Endianism: Little-Endian/BigEndian
+- Pixel Data Compression
 
 
 
-| Transfer Syntax UID    | Transfer Syntax Name                                                | Codec          |
-|------------------------|---------------------------------------------------------------------|----------------|
-| Uncompressed           |                                                                     |                |
-| 1.2.840.10008.1.2      | Implicit VR Little Endian: Default DICOM Transfer Syntax            | Little Endian  |
-| 1.2.840.10008.1.2.1    | Explicit VR Little Endian                                           | Little Endian  |
-| 1.2.840.10008.1.2.2    | Explicit VR Big Endian                                              | Big Endian     |
-| Compressed             |                                                                     |                |
-| 1.2.840.10008.1.2.5    | RLE Lossless                                                        | RLE            |
-| 1.2.840.10008.1.2.4.50 | JPEG Baseline lossy process 1 (8 bit)*                              | libJPEG-turbo  |
-| 1.2.840.10008.1.2.4.51 | JPEG Baseline lossy process 2 & 4 (12 bit)                          | libJPEG-turbo  |
-| 1.2.840.10008.1.2.4.57 | JPEG Lossless, Nonhierarchical (Processes 14)                       | ?              |
-| 1.2.840.10008.1.2.4.70 | JPEG Lossless, Nonhierarchical (Processes 14 [Selection 1])         | ?              |
-| 1.2.840.10008.1.2.4.80 | JPEG-LS Lossless Image Compression                                  | CharLS         |
-| 1.2.840.10008.1.2.4.81 | JPEG-LS Lossy (Near-Lossless) Image Compression                     | CharLS         |
-| 1.2.840.10008.1.2.4.90 | JPEG 2000 Image Compression (Lossless Only)                         | OpenJPEG       |
-| 1.2.840.10008.1.2.4.91 | JPEG 2000 Image Compression                                         | OpenJPEG       |
-| 1.2.840.10008.1.2.4.92 | JPEG 2000 Part 2 Multicomponent Image Compression (Lossless Only)** | OpenJPEG?      |
-| 1.2.840.10008.1.2.4.93 | JPEG 2000 Part 2 Multicomponent Image Compression**                 | OpenJPEG?      |
-| 1.2.840.10008.1.2.1.99 | Deflated Explicit VR Little Endian                                  | Little Endian  |
+| Transfer Syntax UID     | Transfer Syntax Name                                                | Codec          |
+|-------------------------|---------------------------------------------------------------------|----------------|
+| Uncompressed            |                                                                     |                |
+| 1.2.840.10008.1.2       | Implicit VR Little Endian: Default DICOM Transfer Syntax            | Little Endian  |
+| 1.2.840.10008.1.2.1     | Explicit VR Little Endian                                           | Little Endian  |
+| 1.2.840.10008.1.2.2     | Explicit VR Big Endian                                              | Big Endian     |
+| Lossless Compressed     |                                                                     |                |
+| 1.2.840.10008.1.2.4.57  | JPEG Lossless, Nonhierarchical (Processes 14)                       | ?              |
+| 1.2.840.10008.1.2.4.70  | JPEG Lossless, Nonhierarchical (Processes 14 [Selection 1])         | ?              |
+| 1.2.840.10008.1.2.4.80  | JPEG-LS Lossless Image Compression                                  | CharLS         |
+| 1.2.840.10008.1.2.4.90  | JPEG 2000 Image Compression (Lossless Only)                         | OpenJPEG       |
+| 1.2.840.10008.1.2.5     | RLE Lossless                                                        | RLE            |
+| Lossy Compressed        |                                                                     |                |
+| 1.2.840.10008.1.2.4.50  | JPEG Baseline lossy process 1 (8 bit)*                              | libJPEG-turbo  |
+| 1.2.840.10008.1.2.4.51  | JPEG Baseline lossy process 2 & 4 (12 bit)                          | libJPEG-turbo  |
+| 1.2.840.10008.1.2.4.81  | JPEG-LS Lossy (Near-Lossless) Image Compression                     | CharLS         |
+| 1.2.840.10008.1.2.4.91  | JPEG 2000 Image Compression                                         | OpenJPEG       |
+| 1.2.840.10008.1.2.4.92  | JPEG 2000 Part 2 Multicomponent Image Compression (Lossless Only)** | OpenJPEG?      |
+| 1.2.840.10008.1.2.4.93  | JPEG 2000 Part 2 Multicomponent Image Compression**                 | OpenJPEG?      |
+| MPEG                    |                                                                     |                |
+| 1.2.840.10008.1.2.4.100 | MPEG-2                                                              | Not supported  |
+| 1.2.840.10008.1.2.4.101 | MPEG-2                                                              | Not supported  |
+| 1.2.840.10008.1.2.4.102 | MPEG-4                                                              | Not supported  |
+| 1.2.840.10008.1.2.4.103 | MPEG-4                                                              | Not supported  |
+| Special                 |                                                                     |                |
+| 1.2.840.10008.1.2.4.94  | JPIP                                                                | Not supported  |
+| 1.2.840.10008.1.2.4.95  | JPIP-Deflate                                                        | Not supported  |
+| 1.2.840.10008.1.2.1.99  | Deflated Explicit VR Little Endian ***                              | Little Endian  |
 
 \* - 1.2.840.10008.1.2.4.50: 8-bit RGB can leverage the browser's built in decoder.
-\*\* - 1.2.840.10008.1.2.4.\[92|93\]: Not supported in previous image loaders; OpenJPEG may work with these 
+\*\* - 1.2.840.10008.1.2.4.\[92|93\]: Not supported in previous image loaders; OpenJPEG may work with these
+\*\*\* - Unlike all other DICOM transfer syntaxes, the deflate transfer syntaxes compress the whole of the DICOM data (tags, lengths, VR etc.) rather than just the pixel data - this is done using the standard “deflate” mechanism as used in gzip etc.) It is therefore most suitable for non-pixel objects such as structured reports, presentation states etc.
 
 5: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeRLE.js)
 57 & 70: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/codecs/jpegLossless.js)
