@@ -12,3 +12,15 @@ function init(configuration, registerLoaders = false) {
 }
 
 export default init;
+
+
+// TODO:
+// Top level exports:
+// - Loaders
+// - Metadata providers
+// - init
+// - A way to register decode / transferSyntax links?
+// - Default method that registers all DICOM codecs + transfer syntaxes?
+// TODO:
+// - Consistent interface for codec
+// - ???
