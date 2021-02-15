@@ -89,16 +89,18 @@ jobs:
       - run:
           name: Configure apt and install packages
           command: |
+            apt-get update
+            apt-get install -y gnupg
+
             # Install & Setup Yarn
-            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
-            echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
+            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+            echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 
             apt-get update
-            sudo apt install yarn
+            apt install yarn -y
             
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
-            # apt-get -y install zlib1g-dev liblcms2-dev libtiff-dev libpng-dev libz-dev
             
             # version 3.17 of cmake
             wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
