@@ -249,12 +249,9 @@ workflows:
             branches:
               ignore:
                 - main
-      # - UNIT_TESTS:
-      #     filters:
-      #       branches:
-      #         ignore:
-      #           - main
-
+      - TEST:
+          requires:
+            - BUILD
   DEPLOY:
     jobs:
       - NPM_PUBLISH:
