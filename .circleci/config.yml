@@ -163,6 +163,7 @@ jobs:
             apt-get autoremove -y
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
+      - run: gcc --version
       - run: node -v
       - run: yarn -v
       - checkout
