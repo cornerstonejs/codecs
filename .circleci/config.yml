@@ -1,11 +1,3 @@
-# Points to latest release
-# https://github.com/emscripten-core/emscripten/releases
-# https://hub.docker.com/r/trzeci/emscripten/tags?page=1
-# trzeci/emscripten:latest --> trzeci/emscripten:1.39.18-upstream
-#
-# Deprecated, in favor of:
-# https://hub.docker.com/repository/r/emscripten/emsdk
-# https://hub.docker.com/r/emscripten/emsdk
 version: 2.1
 
 # 
@@ -18,6 +10,7 @@ version: 2.1
 executors:
   emscripten-porter:
     docker:
+      # @see https://hub.docker.com/repository/r/emscripten/emsdk
       - image: emscripten/emsdk:1.39.5
         environment:
           # Enable colors in term
@@ -31,6 +24,11 @@ executors:
           USERNAME: vscode
           USER_UID: 1000
           USER_GID: 1000 # $USER_UID
+  node:
+    docker:
+      - image: circleci/node:14.15.0
+        environment:
+          TERM: xterm # Enable colors in term
   # Custom executor to override Cypress config
   # deploy-to-prod-executor:
   #   docker:
@@ -43,20 +41,9 @@ executors:
   #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
   #     - image: 'ohif/viewer-testdata:0.1-test'
       
-      
-# defaults: &defaults
-#   docker:
-#     - image: circleci/node:14.15.0
-#       environment:
-#         TERM: xterm # Enable colors in term
-#         QUICK_BUILD: true
-#   working_directory: ~/repo
-  
-  
 jobs:
 
   # UNIT_TESTS:
-  #   <<: *defaults
   #   steps:
   #     - run: yarn -v
   #     - checkout:
@@ -95,7 +82,7 @@ jobs:
   # Run test since main
   # Upload test results to CircleCI
   # Upload test results to a ?? per package?
-  EMSCRIPTEN_BUILD:
+  BUILD:
     executor: emscripten-porter
     working_directory: ~/repo
     steps:
@@ -130,12 +117,19 @@ jobs:
       - run: gcc --version
       - checkout
       - run: git submodule update --init
-      - run: cd packages/openjpegjs/ && bash build.sh
+      - run: yarn run build:ci
 
   NPM_PUBLISH:
     executor: emscripten-porter
     working_directory: ~/repo
     steps:
+      #
+      # Environment setup to install yarn, CMAKE, and C++ tools
+      # TODO: Leverage CircleCI caching for these dependencies across builds,
+      # or configure docker layer caching (this should be deterministic). We could
+      # also publish an image on top of our executor to speed up build times.
+      # TODO: As this is a requirement for local testing, we should probably
+      # push this into a shared script
       - run:
           name: Configure apt and install packages
           command: |
@@ -151,7 +145,6 @@ jobs:
             
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
-            # apt-get -y install zlib1g-dev liblcms2-dev libtiff-dev libpng-dev libz-dev
             
             # version 3.17 of cmake
             wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
@@ -167,12 +160,21 @@ jobs:
             apt-get autoremove -y
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
+      #
+      # Print versions of misc. dependent tooling
       - run: gcc --version
       - run: node -v
       - run: yarn -v
+      #
+      # Checkout source code and dependent submodules
+      # Where submodules are the C/C++ libraries we intend to port
+      # using emscripten
       - checkout
-      # We probably don't want to automatically get latest?
       - run: git submodule update --init
+      #
+      # Caches dependencies between CI runs. We use the `yarn.lock` file as our
+      # "cache key". We then restore dependencies from lockfile and update our
+      # cache if it's changed.
       - restore_cache:
           name: Restore Yarn and Cypress Package Cache
           keys:
@@ -186,6 +188,10 @@ jobs:
           paths:
             - ~/.cache/yarn
           key: yarn-packages-{{ checksum "yarn.lock" }}
+      #
+      # This step is a prerequisite for `lerna version`
+      # The git config values need to match the personal access token set
+      # via the `GH_TOKEN` environment variable
       - run:
           name: Avoid hosts unknown for github
           command: |
@@ -194,11 +200,29 @@ jobs:
             echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
             git config --global user.email "danny.ri.brown@gmail.com"
             git config --global user.name "dannyrb"
+      #
+      # This step is a prerequisite for `lera publish`
+      # Lerna and NPM will not automatically detect environment variables
+      # instead, we set our registry and auth token by writing to a temporary
+      # `.npmrc` file that `lerna publish`/`npm publish` will use
+      # The value is determined by out `NPM_TOKEN` environment variable
       - run:
           name: Authenticate with NPM registry
           command:
             echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/repo/.npmrc
+      #
+      # This step is configured in `/lerna.json`.
+      # Only runs on `main` branch. Walks all commits since last tagged release.
+      # Determines, based on commit syntax and files changed, what each packages new
+      # version should be. Creates a commit to update all updated package versions.
+      # Pushes commit to main, cuts GitHub release w/ changelog.
+      # @see https://github.com/lerna/lerna/tree/main/commands/version
       - run: npx lerna version
+      #
+      # This step is configured in `/lerna.json`.
+      # Checks package versions and publishes packages where the latest version is not
+      # present in the registry. This command ignores changes to files w/ specific extensions.
+      # @see https://github.com/lerna/lerna/tree/main/commands/publish
       - run: npx lerna publish from-package
       
 workflows:
@@ -206,28 +230,16 @@ workflows:
 
   PR_CHECKS:
     jobs:
-      - NPM_PUBLISH:
+      - BUILD:
           filters:
             branches:
               ignore:
                 - main
-                - feat/*
-                - hotfix/*
-      # - UNIT_TESTS:
-      #     filters:
-      #       branches:
-      #         ignore:
-      #           - main
-      #           - feat/*
-      #           - hotfix/*
-      #- EMSCRIPTEN_BUILD:
-      # - EMSCRIPTEN_BUILD_2:
-      #     filters:
-      #       branches:
-      #         ignore:
-      #           - main
-      #           - feat/*
-      #           - hotfix/*
+      - UNIT_TESTS:
+          filters:
+            branches:
+              ignore:
+                - main
 
   DEPLOY:
     jobs:

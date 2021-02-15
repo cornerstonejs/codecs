@@ -12,6 +12,7 @@
   "scripts": {
     "test": "node test/node/index.js",
     "build": "bash ./build.sh",
+    "build:ci": "yarn run build",
     "build:ui": "webpack --config ./.webpack/webpack.config.js",
     "start": "cross-env NODE_ENV=development webpack-dev-server --config ./.webpack/webpack.config.js",
     "prepublishOnly": "bash build.sh",

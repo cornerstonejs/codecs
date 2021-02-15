@@ -15,8 +15,10 @@
     "dist"
   ],
   "scripts": {
+    "build": "bash build.sh",
+    "build:ci": "yarn run build",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "bash build.sh"
+    "prepublishOnly": "yarn run build"
   },
   "author": "",
   "license": "ISC"
