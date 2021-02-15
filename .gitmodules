@@ -1,9 +1,9 @@
-[submodule "packages/openjpegjs/extern/openjpeg"]
-	path = packages/openjpegjs/extern/openjpeg
+[submodule "packages/openjpeg/extern/openjpeg"]
+	path = packages/openjpeg/extern/openjpeg
 	url = https://github.com/PrecisionMetrics/openjpeg.git
-[submodule "packages/charls-js/extern/charls"]
-	path = packages/charls-js/extern/charls
+[submodule "packages/charls/extern/charls"]
+	path = packages/charls/extern/charls
 	url = https://github.com/PrecisionMetrics/charls.git
-[submodule "packages/libjpeg-turbojs/extern/libjpeg-turbo"]
-	path = packages/libjpeg-turbojs/extern/libjpeg-turbo
+[submodule "packages/libjpeg-turbo/extern/libjpeg-turbo"]
+	path = packages/libjpeg-turbo/extern/libjpeg-turbo
 	url = https://github.com/PrecisionMetrics/libjpeg-turbo.git

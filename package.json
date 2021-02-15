@@ -1,11 +1,14 @@
 {
   "name": "root",
   "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
     "lerna": "^3.22.1"
   },
   "scripts": {
-    "build:ci": "lerna run build:ci --parallel --stream",
-    "test:unit:ci": "lerna run test:unit:ci --parallel --stream"
+    "build:ci": "npx lerna@3.22.1 run build:ci --since main --parallel --stream",
+    "test:ci": "npx lerna@3.22.1 run test:ci --since main --parallel --stream"
   }
 }
