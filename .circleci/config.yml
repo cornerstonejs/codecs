@@ -174,8 +174,8 @@ jobs:
             rm -rf ~/.ssh
             mkdir ~/.ssh/
             echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
-            git config --global user.email "danny.ri.brown+ohif-bot@gmail.com"
-            git config --global user.name "ohif-bot"
+            git config --global user.email "danny.ri.brown@gmail.com"
+            git config --global user.name "dannyrb"
       - run:
           name: Authenticate with NPM registry
           command:
