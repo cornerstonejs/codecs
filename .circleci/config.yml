@@ -126,7 +126,6 @@ jobs:
       - run: gcc --version
       - checkout
       - run: git submodule update --init
-      # - run: bash build-native.sh
       - run: cd packages/openjpegjs/ && bash build.sh
       - store_artifacts:
           path: packages/openjpegjs/dist
