@@ -1,0 +1,17 @@
+{
+  "name": "@cornerstonejs/codec-libjpeg-turbo",
+  "version": "0.0.1",
+  "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
+  "main": "dist/libjpeg-turbojs.js",
+  "publishConfig": {
+    "access": "restricted"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
