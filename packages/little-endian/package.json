@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-little-endian",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "",
   "main": "index.js",
   "publishConfig": {
