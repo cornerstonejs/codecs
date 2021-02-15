@@ -235,11 +235,11 @@ workflows:
             branches:
               ignore:
                 - main
-      - UNIT_TESTS:
-          filters:
-            branches:
-              ignore:
-                - main
+      # - UNIT_TESTS:
+      #     filters:
+      #       branches:
+      #         ignore:
+      #           - main
 
   DEPLOY:
     jobs:
