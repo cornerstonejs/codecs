@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
   "main": "dist/libjpeg-turbojs.js",
   "publishConfig": {
