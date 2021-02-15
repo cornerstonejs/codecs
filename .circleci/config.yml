@@ -127,12 +127,6 @@ jobs:
       - checkout
       - run: git submodule update --init
       - run: cd packages/openjpegjs/ && bash build.sh
-      - store_artifacts:
-          path: packages/openjpegjs/dist
-          destination: /
-      - store_artifacts:
-          path: packages/openjpegjs/build/CMakeFiles
-          destination: /CMakefiles/
 
   NPM_PUBLISH:
     executor: emscripten-porter
