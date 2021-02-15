@@ -58,17 +58,51 @@ Transfer Syntax is the language used in DICOM to describe the DICOM file format 
 | 1.2.840.10008.1.2.4.95  | JPIP-Deflate                                                        | Not supported  |
 | 1.2.840.10008.1.2.1.99  | Deflated Explicit VR Little Endian ***                              | Little Endian  |
 
-\* - 1.2.840.10008.1.2.4.50: 8-bit RGB can leverage the browser's built in decoder.
-\*\* - 1.2.840.10008.1.2.4.\[92|93\]: Not supported in previous image loaders; OpenJPEG may work with these
-\*\*\* - Unlike all other DICOM transfer syntaxes, the deflate transfer syntaxes compress the whole of the DICOM data (tags, lengths, VR etc.) rather than just the pixel data - this is done using the standard “deflate” mechanism as used in gzip etc.) It is therefore most suitable for non-pixel objects such as structured reports, presentation states etc.
+- \* - 1.2.840.10008.1.2.4.50: 8-bit RGB can leverage the browser's built in decoder.
+- \*\* - 1.2.840.10008.1.2.4.\[92|93\]: Not supported in previous image loaders; OpenJPEG may work with these
+- \*\*\* - Unlike all other DICOM transfer syntaxes, the deflate transfer syntaxes compress the whole of the DICOM data (tags, lengths, VR etc.) rather than just the pixel data - this is done using the standard “deflate” mechanism as used in gzip etc.) It is therefore most suitable for non-pixel objects such as structured reports, presentation states etc.
 
-5: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeRLE.js)
-57 & 70: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/codecs/jpegLossless.js)
-1.2 & 2.1 & 99: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeLittleEndian.js)
-2.2: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeBigEndian.js)
+- 5: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeRLE.js)
+- 57 & 70: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/codecs/jpegLossless.js)
+- 1.2 & 2.1 & 99: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeLittleEndian.js)
+- 2.2: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeBigEndian.js)
+
+
+
+### CI
+
+We are leveraging `lerna` to version and publish packages. Lerna adds tooling on top of `yarn workspaces` to enable monorepo functionality. Our lerna configuration/usage is confined to:
+
+- `package.json`
+- `lerna.json`
+- `.circleci/config.yml`
+
+Pull requests attempt to build and test packages that have been modified (when compared against the `main` branch). "Semantic commit" messages, and the files included in the commit, help `lerna` determine how package versions should be updated and what to include in changelogs. Example commit messages include:
+
+- `fix(charls-decode): should not break when no config option is provided`
+- `feat(encode): add encode API method`
+- `feat(encode): friendlier API method BREAKING_CHANGE`
+
+You can read more about the specific lerna features we're using here:
+
+- `lerna run <cmd>`: Used in `package.json`
+- `lerna version`: Used in `.circleci/config.yml`
+- `lerna publish`: Used in `.circleci/config.yml`
+- ["Lerna filter options"][lerna-filter-options]: Used in `package.json` (--since main)
+
+You can read more about semantic commit messages here:
+
+- Semantic commits
 
 
 
 ### Codec Package Anatomy
 
 ...
+
+<!--
+    LINKS
+-->
+
+
+[lerna-filter-options]: https://github.com/lerna/lerna/tree/main/core/filter-options

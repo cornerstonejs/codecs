@@ -120,6 +120,18 @@ jobs:
       - checkout
       - run: git submodule update --init
       - run: yarn run build:ci
+      - persist_to_workspace:
+          root: ~/repo
+          paths:
+            - .
+  
+  TEST:
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - attach_workspace:
+          at: ~/repo
+      - run: yarn run test:ci
 
   NPM_PUBLISH:
     executor: emscripten-porter

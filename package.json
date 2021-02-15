@@ -8,7 +8,7 @@
     "lerna": "^3.22.1"
   },
   "scripts": {
-    "build:ci": "npx lerna@3.22.1 run build:ci --parallel --stream",
-    "test:unit:ci": "npx lerna@3.22.1 run test:unit:ci --parallel --stream"
+    "build:ci": "npx lerna@3.22.1 run build:ci --since main --parallel --stream",
+    "test:unit:ci": "npx lerna@3.22.1 run test:ci --since main --parallel --stream"
   }
 }
