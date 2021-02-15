@@ -91,6 +91,10 @@ jobs:
       # - codecov/upload:
       #     file: '/home/circleci/repo/coverage/reports'
 
+  # Run build since main
+  # Run test since main
+  # Upload test results to CircleCI
+  # Upload test results to a ?? per package?
   EMSCRIPTEN_BUILD:
     executor: emscripten-porter
     working_directory: ~/repo
