@@ -191,9 +191,9 @@ jobs:
             apt install yarn -y
       - run: node -v
       - run: yarn -v
-      - checkout:
-          post:
-            - git fetch --all
+      - checkout
+      # We probably don't want to automatically get latest?
+      - run: git submodule update --init
       - restore_cache:
           name: Restore Yarn and Cypress Package Cache
           keys:

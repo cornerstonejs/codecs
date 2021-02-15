@@ -4,7 +4,7 @@
     "description": "JS/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg)",
     "main": "dist/openjpegjs.js",
     "publishConfig": {
-      "access": "restricted"
+      "access": "public"
     },
     "directories": {
       "test": "test"
@@ -14,7 +14,7 @@
       "build": "bash ./build.sh",
       "build:ui": "webpack --config ./.webpack/webpack.config.js",
       "start": "cross-env NODE_ENV=development webpack-dev-server --config ./.webpack/webpack.config.js",
-      "prepublishOnly": "yarn run build:package",
+      "prepublishOnly": "bash build.sh",
       "postpublish": "node -p -e \"require('./package.json').version\" > success_version.txt"
     },
     "repository": {

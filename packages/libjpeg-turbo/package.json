@@ -4,13 +4,19 @@
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
   "main": "dist/libjpeg-turbojs.js",
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
   "directories": {
     "test": "test"
   },
+  "files": [
+    "package.json",
+    "README.md",
+    "dist"
+  ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "bash build.sh"
   },
   "author": "",
   "license": "ISC"

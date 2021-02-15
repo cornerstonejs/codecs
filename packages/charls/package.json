@@ -4,13 +4,19 @@
   "description": "WASM Build of CharLS",
   "main": "dist/charlsjs.js",
   "publishConfig": {
-    "access": "restricted"
+    "access": "public"
   },
+  "files": [
+    "package.json",
+    "README.md",
+    "dist"
+  ],
   "directories": {
     "test": "test"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "bash build.sh"
   },
   "repository": {
     "type": "git",
