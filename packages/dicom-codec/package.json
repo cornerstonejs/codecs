@@ -12,5 +12,12 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@cornerstonejs/codec-big-endian": "^0.0.4",
+    "@cornerstonejs/codec-charls": "^0.0.4",
+    "@cornerstonejs/codec-libjpeg-turbo": "^0.0.4",
+    "@cornerstonejs/codec-little-endian": "^0.0.4",
+    "@cornerstonejs/codec-openjpeg": "^0.0.4"
+  }
 }
