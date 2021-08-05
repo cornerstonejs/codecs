@@ -1,5 +1,5 @@
 {
-  "name": "@cornerstonejs/codec-libjpeg-turbo",
+  "name": "@cornerstonejs/codec-libjpeg-turbo-16bit",
   "version": "0.0.4",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
   "main": "dist/libjpeg-turbojs.js",

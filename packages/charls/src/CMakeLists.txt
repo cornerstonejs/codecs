@@ -13,17 +13,59 @@ endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+##
+## https://emscripten.org/docs/getting_started/FAQ.html#how-can-i-tell-when-the-page-is-fully-loaded-and-it-is-safe-to-call-compiled-functions
+#   
+#   -s MODULARIZE=1 \
+#   -s WASM=0 \
+#
 set_target_properties(
     charlsjs 
     PROPERTIES 
     LINK_FLAGS "\
       --bind \
+      -s MODULARIZE=1 \
+      -s EXPORT_NAME=CharLS \
+      -s WASM=0 \
       -s NO_EXIT_RUNTIME=1 \
       -s DISABLE_EXCEPTION_CATCHING=1 \
       -s MALLOC=emmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
       -s TOTAL_MEMORY=1073741824 \
       -s ASSERTIONS=0 \
+      -s FILESYSTEM=0 \
+      -s EXPORTED_FUNCTIONS=[] \
+      -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+   ")
+
+## WASM BUILD
+add_executable(charlswasm jslib.cpp)
+
+target_link_libraries(charlswasm PRIVATE charls)
+
+target_compile_features(charlswasm PUBLIC cxx_std_17)
+
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+  SET(linkFlags "-g4")
+else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
+  SET(linkFlags "-O3")
+endif()
+
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
+set_target_properties(
+  charlswasm 
+    PROPERTIES 
+    LINK_FLAGS "\
+      --bind \
+      -s MODULARIZE=1 \
+      -s EXPORT_NAME=CharLSWASM \
+      -s DISABLE_EXCEPTION_CATCHING=1 \
+      -s ASSERTIONS=0 \
+      -s NO_EXIT_RUNTIME=1 \
+      -s MALLOC=emmalloc \
+      -s ALLOW_MEMORY_GROWTH=1 \
+      -s TOTAL_MEMORY=1073741824 \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \

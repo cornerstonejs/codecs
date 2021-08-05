@@ -94,8 +94,6 @@ You can read more about semantic commit messages here:
 
 - Semantic commits
 
-
-
 ### Codec Package Anatomy
 
 ...
