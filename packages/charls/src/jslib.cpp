@@ -29,7 +29,6 @@ EMSCRIPTEN_BINDINGS(JpegLSDecoder) {
     .function("getFrameInfo", &JpegLSDecoder::getFrameInfo)
     .function("getInterleaveMode", &JpegLSDecoder::getInterleaveMode)
     .function("getNearLossless", &JpegLSDecoder::getNearLossless)
-    .function("doLeakCheck", &__lsan_do_recoverable_leak_check);
    ;
 }
 
@@ -41,6 +40,5 @@ EMSCRIPTEN_BINDINGS(JpegLSEncoder) {
     .function("setNearLossless", &JpegLSEncoder::setNearLossless)
     .function("setInterleaveMode", &JpegLSEncoder::setInterleaveMode)
     .function("encode", &JpegLSEncoder::encode)
-    .function("doLeakCheck", &__lsan_do_recoverable_leak_check);
    ;
 }

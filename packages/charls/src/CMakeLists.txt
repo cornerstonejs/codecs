@@ -6,7 +6,7 @@ target_link_libraries(charlsjs PRIVATE charls)
 target_compile_features(charlsjs PUBLIC cxx_std_17)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-	SET(linkFlags "-g4")
+	SET(linkFlags "-g3")
 else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
 	SET(linkFlags "-O3")
 endif()
@@ -35,7 +35,7 @@ set_target_properties(
       -s ASSERTIONS=0 \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
-      -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+      -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
 
 ## WASM BUILD
@@ -46,7 +46,7 @@ target_link_libraries(charlswasm PRIVATE charls)
 target_compile_features(charlswasm PUBLIC cxx_std_17)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-  SET(linkFlags "-g4")
+  SET(linkFlags "-g3")
 else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
   SET(linkFlags "-O3")
 endif()
@@ -68,5 +68,5 @@ set_target_properties(
       -s TOTAL_MEMORY=1073741824 \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
-      -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+      -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
