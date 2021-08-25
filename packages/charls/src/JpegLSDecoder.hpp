@@ -9,6 +9,10 @@
 
 #include "FrameInfo.hpp"
 
+using namespace emscripten;
+
+thread_local const val Uint8ClampedArray = val::global("Uint8ClampedArray");
+
 /// <summary>
 /// JavaScript API for decoding JPEG-LS bistreams with CharLS
 /// </summary>
@@ -27,17 +31,24 @@ class JpegLSDecoder {
   /// returned TypedArray.  This copy operation is needed because WASM runs
   /// in a sandbox and cannot access memory managed by JavaScript.
   /// </summary>
-  emscripten::val getEncodedBuffer(size_t encodedSize) {
+  val getEncodedBuffer(size_t encodedSize) {
     encoded_.resize(encodedSize);
+
     return emscripten::val(emscripten::typed_memory_view(encoded_.size(), encoded_.data()));
   }
   
   /// <summary>
-  /// Returns a TypedArray of the buffer allocated in WASM memory space that
-  /// holds the decoded pixel data
+  /// Returns a TypedArray of the buffer with the decoded pixel data
   /// </summary>
-  emscripten::val getDecodedBuffer() {
-    return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
+  val getDecodedBuffer() {
+    // Create a JavaScript-friendly result from the memory view
+    // instead of relying on the consumer to detach it from WASM memory
+    // See https://web.dev/webassembly-memory-debugging/
+    val js_result = Uint8ClampedArray.new_(typed_memory_view(
+      decoded_.size(), decoded_.data()
+    ));
+    
+    return js_result;
   }
 
   /// <summary>

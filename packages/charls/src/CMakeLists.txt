@@ -34,7 +34,8 @@ set_target_properties(
       -s TOTAL_MEMORY=1073741824 \
       -s ASSERTIONS=0 \
       -s FILESYSTEM=0 \
-      -s EXPORTED_FUNCTIONS=[] \
+      -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
+      -s EXPORTED_FUNCTIONS=[___lsan_do_recoverable_leak_check] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
 
@@ -67,6 +68,8 @@ set_target_properties(
       -s ALLOW_MEMORY_GROWTH=1 \
       -s TOTAL_MEMORY=1073741824 \
       -s FILESYSTEM=0 \
-      -s EXPORTED_FUNCTIONS=[] \
+      -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
+      -s EXPORTED_FUNCTIONS=[___lsan_do_recoverable_leak_check] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
+      -fsanitize=address \
    ")

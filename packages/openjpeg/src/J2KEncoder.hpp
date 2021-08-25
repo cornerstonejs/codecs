@@ -156,7 +156,7 @@ class J2KEncoder {
   /// Sets the tile size
   /// </summary>
   void setTileSize(Size tileSize) {
-    tileSize_ = tileSize_;
+    tileSize_ = tileSize;
   }
 
   /// <summary>

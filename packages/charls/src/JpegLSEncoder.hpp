@@ -52,7 +52,11 @@ class JpegLSEncoder {
   /// encoded pixel data.
   /// </returns>
   emscripten::val getEncodedBuffer() {
-    return emscripten::val(emscripten::typed_memory_view(encoded_.size(), encoded_.data()));
+    val js_result = Uint8ClampedArray.new_(typed_memory_view(
+      encoded_.size(), encoded_.data()
+    ));
+    
+    return js_result;
   }
 
   /// <summary>
