@@ -9,6 +9,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
+
 #endif
 
 #include "FrameInfo.hpp"
@@ -59,7 +60,14 @@ class JPEGEncoder {
   /// encoded pixel data.
   /// </returns>
   emscripten::val getEncodedBuffer() {
-    return emscripten::val(emscripten::typed_memory_view(encoded_.size(), encoded_.data()));
+    // Create a JavaScript-friendly result from the memory view
+    // instead of relying on the consumer to detach it from WASM memory
+    // See https://web.dev/webassembly-memory-debugging/
+    emscripten::val js_result = Uint8ClampedArray.new_(emscripten::typed_memory_view(
+      encoded_.size(), encoded_.data()
+    ));
+    
+    return js_result;
   }
 #else
   /// <summary>

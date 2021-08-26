@@ -9,6 +9,9 @@
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
+
+thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("Uint8ClampedArray");
+
 #endif
 
 #include "FrameInfo.hpp"
@@ -43,7 +46,14 @@ class JPEGDecoder {
   /// holds the decoded pixel data
   /// </summary>
   emscripten::val getDecodedBuffer() {
-    return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
+    // Create a JavaScript-friendly result from the memory view
+    // instead of relying on the consumer to detach it from WASM memory
+    // See https://web.dev/webassembly-memory-debugging/
+    emscripten::val js_result = Uint8ClampedArray.new_(emscripten::typed_memory_view(
+      decoded_.size(), decoded_.data()
+    ));
+    
+    return js_result;
   }
 #else
   /// <summary>

@@ -4,12 +4,13 @@
 
    add_executable(libjpegturbojs jslib.cpp)
 
-   target_link_libraries(libjpegturbojs PRIVATE turbojpeg-static)
+   # target_link_libraries(libjpegturbojs PRIVATE)
+   # target_link_libraries(libjpegturbojs PRIVATE turbojpeg-static)
    
    target_compile_features(libjpegturbojs PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)
-     SET(linkFlags "-g4")
+     SET(linkFlags "-g3")
    else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
      SET(linkFlags "-O3")
    endif()
@@ -31,17 +32,19 @@
          -s TOTAL_MEMORY=1073741824 \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
-         -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s ERROR_ON_UNDEFINED_SYMBOLS=0
       ")
 
    add_executable(libjpegturbowasm jslib.cpp)
 
-   target_link_libraries(libjpegturbowasm PRIVATE turbojpeg-static)
+   # target_link_libraries(libjpegturbowasm PRIVATE)
+   # target_link_libraries(libjpegturbowasm PRIVATE turbojpeg-static)
    
    target_compile_features(libjpegturbowasm PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)
-     SET(linkFlags "-g4")
+     SET(linkFlags "-g3")
    else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
      SET(linkFlags "-O3")
    endif()
@@ -63,6 +66,7 @@
          -s TOTAL_MEMORY=1073741824 \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
-         -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s ERROR_ON_UNDEFINED_SYMBOLS=0
       ")
    

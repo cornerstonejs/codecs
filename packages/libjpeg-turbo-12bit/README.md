@@ -1,5 +1,5 @@
 # libjpeg-turbojs
-JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)
+JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo) WITH12BIT=ON
 
 ## Try It Out!
 

@@ -45,4 +45,4 @@ function decode(imageFrame, pixelData) {
   return imageFrame;
 }
   
-  export default decode;
+export default decode;

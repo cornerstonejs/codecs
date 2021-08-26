@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:1.39.5
+FROM emscripten/emsdk:2.0.28
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -16,6 +16,10 @@ RUN apt-get update \
     #
     # Install C++ tools
     && apt-get -y install build-essential cppcheck valgrind kcachegrind \
+
+    # Dependencies for libjpeg-turbo builds
+    && apt-get -y install nasm texinfo \
+
     # version 3.17 of cmake
     && wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \
     # sudo
@@ -32,6 +36,10 @@ RUN apt-get update \
     && apt-get autoremove -y \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt-get install -y nodejs
+RUN npm install --global yarn
 
 # Switch back to dialog for any ad-hoc use of apt-get
 ENV DEBIAN_FRONTEND=dialog

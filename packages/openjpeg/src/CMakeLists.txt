@@ -6,7 +6,7 @@ target_link_libraries(openjpegjs PRIVATE openjp2)
 target_compile_features(openjpegjs PUBLIC cxx_std_11)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
-	SET(linkFlags "-g4")
+	SET(linkFlags "-g3")
 else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
 	SET(linkFlags "-O3")
 endif()
@@ -34,7 +34,7 @@ set_target_properties(
       -s TOTAL_MEMORY=1073741824 \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
-      -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+      -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
 
    add_executable(openjpegwasm jslib.cpp)
@@ -44,7 +44,7 @@ set_target_properties(
    target_compile_features(openjpegwasm PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)
-     SET(linkFlags "-g4")
+     SET(linkFlags "-g3")
    else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
      SET(linkFlags "-O3")
    endif()
@@ -70,6 +70,6 @@ set_target_properties(
          -s TOTAL_MEMORY=1073741824 \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
-         -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s EXPORTED_RUNTIME_METHODS=[ccall] \
       ")
    

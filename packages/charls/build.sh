@@ -1,14 +1,15 @@
 #!/bin/sh
 # Disable exit on non 0
 set +e
+rm -rf build
 mkdir -p build
 mkdir -p dist
 
 # DEBUG CONFIGURE
-#(cd build && emconfigure cmake -DCMAKE_BUILD_TYPE=Debug ..)
+#(cd build && emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..)
 
 echo "~~~ CONFIGURE ~~~"
-(cd build && emconfigure cmake ..)
+(cd build && emcmake cmake ..)
 echo "~~~ MAKE ~~~"
 (cd build && emmake make VERBOSE=1 -j 16)
 echo "~~~ COPY ~~~ "

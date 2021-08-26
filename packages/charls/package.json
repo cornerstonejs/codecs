@@ -16,9 +16,10 @@
   },
   "scripts": {
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
+    "build-debug": "bash build-debug.sh",
+    "build:ci": "yarn run build && yarn run build-debug",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build && yarn run build-debug"
   },
   "repository": {
     "type": "git",
