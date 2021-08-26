@@ -72,9 +72,9 @@ set_target_properties(
       -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
-      -fsanitize=address \
    ")
 
+   # -fsanitize=address \
    # -s EXPORTED_FUNCTIONS=[___lsan_do_recoverable_leak_check] \
 
 #### DECODE-ONLY VERSION
@@ -117,6 +117,8 @@ set_target_properties(
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
+
+# -fsanitize=address \
 #-s EXPORTED_FUNCTIONS=[___lsan_do_recoverable_leak_check] \
 
 ## WASM BUILD
@@ -151,5 +153,6 @@ set_target_properties(
       -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
-      -fsanitize=address \
    ")
+
+   #      -fsanitize=address \
