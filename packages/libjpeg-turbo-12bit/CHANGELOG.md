@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 0.0.7 (2021-08-26)
+
+**Note:** Version bump only for package @cornerstonejs/codec-libjpeg-turbo-12bit
+
+
+
+
+
 ## [0.0.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-16bit@0.0.5...@cornerstonejs/codec-libjpeg-turbo-16bit@0.0.6) (2021-08-05)
 
 
