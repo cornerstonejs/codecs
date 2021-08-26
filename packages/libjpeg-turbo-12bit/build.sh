@@ -9,7 +9,7 @@ mkdir -p dist
 #(cd build && emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..) &&
 
 echo "~~~ CONFIGURE ~~~"
-(cd build && emcmake cmake -G"Unix Makefiles" -DWITH_12BIT=1 -DWITH_JPEG7=0 -DWITH_JPEG8=0 -DCMAKE_BUILD_TYPE=Debug ..)
+(cd build && emcmake cmake -G"Unix Makefiles" ..)
 echo "~~~ MAKE ~~~"
 (cd build && emmake make VERBOSE=1 -j 16)
 echo "~~~ COPY ~~~ "

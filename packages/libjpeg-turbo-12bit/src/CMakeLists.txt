@@ -5,8 +5,9 @@
    add_executable(libjpegturbojs jslib.cpp)
 
    # target_link_libraries(libjpegturbojs PRIVATE)
-   # target_link_libraries(libjpegturbojs PRIVATE turbojpeg-static)
+   target_link_libraries(libjpegturbojs PRIVATE turbojpeg-static)
    
+   target_compile_definitions(libjpegturbojs PUBLIC WITH_12BIT=1)
    target_compile_features(libjpegturbojs PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -39,8 +40,9 @@
    add_executable(libjpegturbowasm jslib.cpp)
 
    # target_link_libraries(libjpegturbowasm PRIVATE)
-   # target_link_libraries(libjpegturbowasm PRIVATE turbojpeg-static)
+   target_link_libraries(libjpegturbowasm PRIVATE turbojpeg-static)
    
+   target_compile_definitions(libjpegturbowasm PUBLIC WITH_12BIT=1)
    target_compile_features(libjpegturbowasm PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)

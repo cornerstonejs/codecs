@@ -1,7 +1,6 @@
 #!/bin/sh
 # Disable exit on non 0
 set +e
-rm -rf build
 mkdir -p build
 mkdir -p dist
 
@@ -17,6 +16,11 @@ cp ./build/src/charlswasm.js ./dist
 cp ./build/src/charlswasm.wasm ./dist
 cp ./build/src/charlsjs.js ./dist
 cp ./build/src/charlsjs.js.mem ./dist
+
+cp ./build/src/charlswasm_decode.js ./dist
+cp ./build/src/charlswasm_decode.wasm ./dist
+cp ./build/src/charlsjs_decode.js ./dist
+cp ./build/src/charlsjs_decode.js.mem ./dist
 
 echo "~~~ BUILD:"
 (cd build && dir)
