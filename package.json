@@ -15,6 +15,8 @@
     "webpack-merge": "^5.7.3"
   },
   "scripts": {
+    "build:all": "npx lerna@3.22.1 run build:ci --parallel --stream",
+    "test:all": "npx lerna@3.22.1 run test:ci --parallel --stream",
     "build:ci": "npx lerna@3.22.1 run build:ci --since main --parallel --stream",
     "test:ci": "npx lerna@3.22.1 run test:ci --since main --parallel --stream"
   }

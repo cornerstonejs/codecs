@@ -23,6 +23,11 @@ cp ./build/extern/openjpeg/bin/openjpegjs.js.mem ./dist
 cp ./build/extern/openjpeg/bin/openjpegwasm.js ./dist
 cp ./build/extern/openjpeg/bin/openjpegwasm.wasm ./dist
 
+cp ./build/extern/openjpeg/bin/openjpegjs_decode.js ./dist
+cp ./build/extern/openjpeg/bin/openjpegjs_decode.js.mem ./dist
+cp ./build/extern/openjpeg/bin/openjpegwasm_decode.js ./dist
+cp ./build/extern/openjpeg/bin/openjpegwasm_decode.wasm ./dist
+
 echo "~~~ BUILD:"
 (cd build && dir)
 echo "~~~ DIST:"
