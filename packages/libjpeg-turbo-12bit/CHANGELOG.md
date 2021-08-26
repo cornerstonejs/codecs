@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.1.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-12bit@0.0.7...@cornerstonejs/codec-libjpeg-turbo-12bit@0.1.0) (2021-08-26)
+
+
+### Features
+
+* add decode-only versions of packages to slim down WADO Image Loader a bit ([#8](https://github.com/cornerstonejs/codecs/issues/8)) ([974d2db](https://github.com/cornerstonejs/codecs/commit/974d2db6494c842ac801c45ca33a6efc5b115a89))
+
+
+
+
+
 ## 0.0.7 (2021-08-26)
 
 **Note:** Version bump only for package @cornerstonejs/codec-libjpeg-turbo-12bit

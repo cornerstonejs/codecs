@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo-12bit",
-  "version": "0.0.7",
+  "version": "0.1.0",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo) WITH12BIT=ON",
   "main": "dist/libjpeg-turbojs.js",
   "publishConfig": {
