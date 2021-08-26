@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.1](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@0.1.0...@cornerstonejs/codec-charls@0.1.1) (2021-08-26)
+
+
+### Bug Fixes
+
+* Disable sanitizer when not debugging ([30961c3](https://github.com/chafey/charls-js/commit/30961c3fc73cbc4e98497dc3b3059a6fc99da7d5))
+
+
+
+
+
 # [0.1.0](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@0.0.6...@cornerstonejs/codec-charls@0.1.0) (2021-08-26)
 
 
