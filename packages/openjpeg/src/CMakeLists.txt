@@ -34,7 +34,7 @@ set_target_properties(
       -s TOTAL_MEMORY=1073741824 \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
-      -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+      -s EXPORTED_RUNTIME_METHODS=[ccall] \
    ")
 
    add_executable(openjpegwasm jslib.cpp)
@@ -70,6 +70,6 @@ set_target_properties(
          -s TOTAL_MEMORY=1073741824 \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
-         -s EXTRA_EXPORTED_RUNTIME_METHODS=[ccall] \
+         -s EXPORTED_RUNTIME_METHODS=[ccall] \
       ")
    
