@@ -21,20 +21,20 @@ EMSCRIPTEN_BINDINGS(JPEGDecoder) {
     .constructor<>()
     .function("getEncodedBuffer", &JPEGDecoder::getEncodedBuffer)
     .function("getDecodedBuffer", &JPEGDecoder::getDecodedBuffer)
-    .function("readHeader", &JPEGDecoder::readHeader)
+    //.function("readHeader", &JPEGDecoder::readHeader)
     .function("decode", &JPEGDecoder::decode)
     .function("getFrameInfo", &JPEGDecoder::getFrameInfo)
    ;
 }
 
-EMSCRIPTEN_BINDINGS(JPEGEncoder) {
-  class_<JPEGEncoder>("JPEGEncoder")
-    .constructor<>()
-    .function("getDecodedBuffer", &JPEGEncoder::getDecodedBuffer)
-    .function("getEncodedBuffer", &JPEGEncoder::getEncodedBuffer)
-    .function("encode", &JPEGEncoder::encode)
-    .function("setProgressive", &JPEGEncoder::setProgressive)
-    .function("setQuality", &JPEGEncoder::setQuality)
-    .function("setSubSampling", &JPEGEncoder::setSubSampling)
-   ;
-}
+// EMSCRIPTEN_BINDINGS(JPEGEncoder) {
+//   class_<JPEGEncoder>("JPEGEncoder")
+//     .constructor<>()
+//     .function("getDecodedBuffer", &JPEGEncoder::getDecodedBuffer)
+//     .function("getEncodedBuffer", &JPEGEncoder::getEncodedBuffer)
+//     .function("encode", &JPEGEncoder::encode)
+//     .function("setProgressive", &JPEGEncoder::setProgressive)
+//     .function("setQuality", &JPEGEncoder::setQuality)
+//     .function("setSubSampling", &JPEGEncoder::setSubSampling)
+//    ;
+// }
