@@ -4,8 +4,11 @@
 #pragma once
 
 #include <memory>
-#include <turbojpeg.h>
 #include <vector>
+// #include "config.h"
+#include "jpeglib.h"
+
+using namespace std;
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
@@ -13,6 +16,11 @@
 thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("Uint8ClampedArray");
 
 #endif
+
+extern "C" {
+  #include "cdjpeg.h"
+}
+
 
 #include "FrameInfo.hpp"
 
@@ -68,58 +76,85 @@ class JPEGDecoder {
   /// Returns the buffer to store the decoded bytes.  This method is not exported
   /// to JavaScript, it is intended to be called by C++ code
   /// </summary>
-  const std::vector<uint8_t>& getDecodedBytes() const {
+  const std::vector<int16_t>& getDecodedBytes() const {
       return decoded_;
   }
 #endif
  
-  /// <summary>
-  /// Reads the header from an encoded JPEG bitstream.  The caller must have
-  /// copied the JPEG encoded bitstream into the encoded buffer before 
-  /// calling this method, see getEncodedBuffer() and getEncodedBytes() above.
-  /// </summary>
-  void readHeader() {
-    tjhandle tjInstance = NULL;
-    if ((tjInstance = tjInitDecompress()) == NULL) {
-        throw("initializing decompressor\n");
-    }
-    
-    if(readHeader_i(tjInstance) < 0) {
-        tjDestroy(tjInstance);  tjInstance = NULL;
-        throw("reading header");
-    }
-
-    tjDestroy(tjInstance);  tjInstance = NULL;
-  }
-
   /// <summary>
   /// Decodes the encoded JPEG bitstream.  The caller must have copied the
   /// JPEG encoded bitstream into the encoded buffer before calling this
   /// method, see getEncodedBuffer() and getEncodedBytes() above.
   /// </summary>
   void decode() {
-    tjhandle tjInstance = NULL;
-    if ((tjInstance = tjInitDecompress()) == NULL) {
-        throw("initializing decompressor\n");
-    }
+    // tjhandle tjInstance = NULL;
+    // if ((tjInstance = tjInitDecompress()) == NULL) {
+    //     throw("initializing decompressor\n");
+    // }
     
-    if(readHeader_i(tjInstance)) {
-        tjDestroy(tjInstance);
-        throw("error reading header\n");
+    // if(readHeader_i(tjInstance)) {
+    //     tjDestroy(tjInstance);
+    //     throw("error reading header\n");
+    // }
+
+    // int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
+
+    // const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
+    // decoded_.resize(destinationSize);
+
+    // if (tjDecompress2(tjInstance, encoded_.data(), encoded_.size(), decoded_.data(), 
+    //     frameInfo_.width, 0, frameInfo_.height, pixelFormat, 0) < 0) {
+    //     tjDestroy(tjInstance);
+    //     throw("~~decompressing JPEG image\n");
+    // }
+
+    // tjDestroy(tjInstance);
+
+    jpeg_decompress_struct cinfo;
+    jpeg_error_mgr jerr;
+    // Initialize the JPEG decompression object with default error handling.
+    cinfo.err = jpeg_std_error(&jerr);
+    jpeg_create_decompress(&cinfo);
+
+    jpeg_mem_src(&cinfo, encoded_.data(), encoded_.size());
+    // Read file header, set default decompression parameters
+    jpeg_read_header(&cinfo, TRUE);
+    // Force RGBA decoding, even for grayscale images
+    cinfo.out_color_space = JCS_EXT_RGBA;
+    jpeg_start_decompress(&cinfo);
+
+
+    frameInfo_.width = cinfo.output_width;
+    frameInfo_.height = cinfo.output_height;
+    frameInfo_.bitsPerSample = 8;
+    frameInfo_.componentCount = 1; //inColorspace == 2 ? 1 : 3;
+    
+    // Prepare output buffer
+      // int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
+
+    // const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
+    int pixelFormat = 1;
+    size_t output_size = cinfo.output_width * cinfo.output_height * pixelFormat;
+
+    // std::vector<uint8_t> output_buffer(output_size);
+
+    decoded_.resize(output_size);
+
+    auto stride = cinfo.output_width * pixelFormat;
+
+    // Process data
+    while (cinfo.output_scanline < cinfo.output_height) {
+      int16_t* output_data = &decoded_[stride * cinfo.output_scanline];
+      (void)jpeg_read_scanlines(&cinfo, &output_data, 1);
     }
+    jpeg_finish_decompress(&cinfo);
 
-    int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
+    // Step 7: release JPEG compression object
 
-    const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
-    decoded_.resize(destinationSize);
+    // auto data = Uint8ClampedArray.new_(typed_memory_view(output_size, &output_buffer[0]));
 
-    if (tjDecompress2(tjInstance, encoded_.data(), encoded_.size(), decoded_.data(), 
-        frameInfo_.width, 0, frameInfo_.height, pixelFormat, 0) < 0) {
-        tjDestroy(tjInstance);
-        throw("~~decompressing JPEG image\n");
-    }
-
-    tjDestroy(tjInstance);
+    // This is an important step since it will release a good deal of memory.
+    jpeg_destroy_decompress(&cinfo);
   }
 
   /// <summary>
@@ -137,27 +172,8 @@ class JPEGDecoder {
   }
 
   private:
-
-    int readHeader_i(tjhandle tjInstance) {
-        int width, height, inSubsamp, inColorspace;
-        unsigned long jpegSize = (unsigned long)encoded_.size();
-
-        if (tjDecompressHeader3(tjInstance, encoded_.data(), jpegSize, &width, &height,
-                                &inSubsamp, &inColorspace) < 0) {
-            return -1;
-        }
-
-        frameInfo_.width = width;
-        frameInfo_.height = height;
-        frameInfo_.bitsPerSample = 8;
-        frameInfo_.isSigned = false;
-        frameInfo_.componentCount = inColorspace == 2 ? 1 : 3;
-        
-        return 0;
-    }
-
     std::vector<uint8_t> encoded_;
-    std::vector<uint8_t> decoded_;
+    std::vector<int16_t> decoded_;
     FrameInfo frameInfo_;
     bool isReversible_;
 };

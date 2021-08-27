@@ -9,14 +9,14 @@ mkdir -p dist
 #(cd build && emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..) &&
 
 echo "~~~ CONFIGURE ~~~"
-(cd build && emcmake cmake -G"Unix Makefiles" ..)
+(cd build && emcmake cmake -G"Unix Makefiles" -DCMAKE_BUILD_TYPE=Debug -DWITH_12BIT=1 ..)
 echo "~~~ MAKE ~~~"
 (cd build && emmake make VERBOSE=1 -j 16)
 echo "~~~ COPY ~~~ "
-cp ./build/src/libjpegturbowasm.js ./dist
-cp ./build/src/libjpegturbowasm.wasm ./dist
-cp ./build/src/libjpegturbojs.js.mem ./dist
-cp ./build/src/libjpegturbojs.js ./dist
+cp ./build/src/libjpegturbo12wasm.js ./dist
+cp ./build/src/libjpegturbo12wasm.wasm ./dist
+cp ./build/src/libjpegturbo12js.js.mem ./dist
+cp ./build/src/libjpegturbo12js.js ./dist
 
 echo "~~~ BUILD:"
 (cd build && dir)
