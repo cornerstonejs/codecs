@@ -1,15 +1,16 @@
 {
   "name": "@cornerstonejs/codec-big-endian",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "description": "",
-  "main": "index.js",
+  "main": "dist/index.js",
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "build": "echo 'Nothing to build' && exit 0",
+    "build": "cross-env NODE_ENV=production webpack --config ./webpack.config.js",
     "build:ci": "yarn run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 0",
+    "prepublishOnly": "yarn run build"
   },
   "author": "",
   "license": "ISC"

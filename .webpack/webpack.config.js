@@ -1,5 +1,5 @@
 const path = require('path');
-const transpileJavaScriptRule = require('./rules/transpileJavaScript.js');
+// const transpileJavaScriptRule = require('./rules/transpileJavaScript.js');
 // const TerserJSPlugin = require('terser-webpack-plugin');
 const dotenv = require('dotenv');
 const NODE_ENV = process.env.NODE_ENV;
@@ -21,6 +21,9 @@ module.exports = (env, argv, { SRC_DIR, DIST_DIR }) => {
     entry: {
       app: `${SRC_DIR}/index.js`,
     },
+    output: {
+      path: DIST_DIR,
+    },
     optimization: {
       minimize: isProdBuild,
       sideEffects: true,
@@ -30,10 +33,6 @@ module.exports = (env, argv, { SRC_DIR, DIST_DIR }) => {
       rules: [
         {
           test: /\.js$/,
-          // These are packages that are not transpiled to our lowest supported
-          // JS version (currently ES5). Most of these leverage ES6+ features,
-          // that we need to transpile to a different syntax.
-          exclude,
           loader: 'babel-loader',
           options: {
             // Find babel.config.js in monorepo root

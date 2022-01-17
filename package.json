@@ -8,11 +8,16 @@
     "@babel/core": "^7.12.16",
     "@babel/preset-env": "^7.12.16",
     "babel-loader": "^8.2.2",
+    "clean-webpack-plugin": "^4.0.0",
+    "dotenv": "^14.1.0",
     "jest": "^26.6.3",
     "lerna": "^3.22.1",
     "webpack": "^5.22.0",
     "webpack-cli": "^4.5.0",
     "webpack-merge": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=0.14"
   },
   "scripts": {
     "build:all": "npx lerna@3.22.1 run build:ci --parallel --stream",

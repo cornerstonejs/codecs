@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo-12bit",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo) WITH12BIT=ON",
   "main": "dist/libjpeg-turbojs.js",
   "publishConfig": {
@@ -15,8 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "echo \"Skipping 12 bit version for now\" && exit 0",
-    "build-not-used": "bash build.sh",
+    "build": "bash build.sh",
     "build:ci": "yarn run build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "yarn run build"

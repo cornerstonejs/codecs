@@ -1,42 +1,128 @@
-const jpeglscodec = require('./jpeglscodec')
-const jpeg2000codec = require('./jpeg2000codec')
-const htj2kcodec = require('./htj2kcodec')
+const codecs = require("./codecs");
 
-const codecs = {
-    '1.2.840.10008.1.2.4.80' : jpeglscodec,
-    '1.2.840.10008.1.2.4.81' : jpeglscodec,
-    '1.2.840.10008.1.2.4.90' : jpeg2000codec,
-    '1.2.840.10008.1.2.4.91' : jpeg2000codec,
-    'htj2k' : htj2kcodec,
-}
-
-const getCodec = (transferSyntaxUID) => {
-    const codec = codecs[transferSyntaxUID]
-    if(!codec) {
-        throw new Error('unknown transfer syntax UID ' + transferSyntaxUID)
+function assertCodec(codec, transferSyntaxUID) {
+    if (!codec) {
+        throw Error("Codec not found:" + transferSyntaxUID);
     }
-    return codec
+}
+/**
+ * Decodes imageFrame using codec for decoderTransferSyntaxUID
+ * @param {*} imageFrame image frame to be decoded
+ * @param {*} imageInfo image information
+ * @param {*} decoderTransferSyntaxUID codec transferSyntaxUID value
+ * 
+ * @returns Object containing decoded image frame and previousImageInfo/imageInfo (current) data
+ * 
+ * @throws Will throw an error if codec is not found.
+ * @throws Will throw an error if codec's decoder is not found.
+ * @throws Will throw an error if there is an exception when decoding.
+ */
+async function decode(
+  imageFrame,
+  imageInfo,
+  decoderTransferSyntaxUID
+) {
+  const codec = codecs.getCodec(decoderTransferSyntaxUID);
+  assertCodec(codec, decoderTransferSyntaxUID);
+
+  return codec.decode(imageFrame, imageInfo);
 }
 
-const decode = async (compressedImageFrame, sourceTransferSyntaxUID, imageInfo) => {
-    const codec = getCodec(sourceTransferSyntaxUID)
-    return codec.decode(compressedImageFrame, imageInfo)
+/**
+ * Encodes imageFrame using codec for encoderTransferSyntaxUID
+ * @param {*} imageFrame image frame to be decoded
+ * @param {*} imageInfo image information
+ * @param {*} encoderTransferSyntaxUID codec transferSyntaxUID value
+ * 
+ * @returns Object containing encoded image frame and previousImageInfo/imageInfo (current) data
+ * 
+ * @throws Will throw an error if codec is not found.
+ * @throws Will throw an error if codec's encoder is not found.
+ * @throws Will throw an error if there is an exception when encoding.
+ */
+async function encode(
+  imageFrame,
+  imageInfo,
+  encoderTransferSyntaxUID,
+  options
+) {
+  const codec = codecs.getCodec(encoderTransferSyntaxUID);
+
+  assertCodec(codec, encoderTransferSyntaxUID);
+
+  return codec.encode(imageFrame, imageInfo, options);
 }
 
-const encode = async (imageFrame, targetTransferSyntaxUID, imageInfo, encodeOptions) => {
-    const codec = getCodec(targetTransferSyntaxUID)
-    return codec.encode(imageFrame, imageInfo, encodeOptions)
+/**
+ * Transcode image frame from one transferSyntaxUid to another transferSyntaxUid.
+ * Its a 2 step operation: first decode then encode.
+ * 
+ * @param {*} imageFrame image frame to be decoded
+ * @param {*} imageInfo image information
+ * @param {*} sourceTransferSyntaxUID codec decoder transferSyntaxUID value
+ * @param {*} targetTransferSyntaxUID codec encoder transferSyntaxUID value
+ * @param {*} encodeOptions options for encoding
+ * 
+ * @returns Object containing encoded image frame and previousImageInfo/imageInfo (current) data
+ * 
+ * @throws Will throw an error if codec is not found (for encoding or decoding).
+ * @throws Will throw an error if source codec's decoder or target codec's encoder is not found.
+ * @throws Will throw an error if there is an exception when encoding/decoding.
+ */
+async function transcode(
+  imageFrame,
+  imageInfo,
+  sourceTransferSyntaxUID,
+  targetTransferSyntaxUID,
+  encodeOptions
+) {
+
+  const decoded = await decode(
+    imageFrame,
+    imageInfo,
+    sourceTransferSyntaxUID
+  );
+
+  return encode(
+    decoded.imageFrame,
+    decoded.imageInfo,
+    targetTransferSyntaxUID,
+    encodeOptions
+  );
 }
 
-const transcode = async (compressedImageFrame, sourceTransferSyntaxUID, imageInfo, targetTransferSyntaxUID, encodeOptions) => {
-    const decoded = await decode(compressedImageFrame, sourceTransferSyntaxUID, imageInfo)
-    return encode(decoded.imageFrame, targetTransferSyntaxUID, decoded.imageInfo, encodeOptions)
+/**
+ * Return pixel data based on transfer syntax.
+ * @param {*} imageFrame imageframe to get pixel data from.
+ * @param {*} transferSyntaxUID transfer syntax for current imageframe
+ * @param {*} imageInfo image information
+ * @returns Typed array
+ * 
+ * @throws Will throw an error if codec is not found.
+ * @throws Will throw an error if there is an exception when getting pixelData.
+ */
+function getPixelData(imageFrame, transferSyntaxUID, imageInfo = {}) {
+
+    const codec = codecs.getCodec(transferSyntaxUID);
+
+    assertCodec(codec, transferSyntaxUID);
+
+   return codec.getPixelData(imageFrame, imageInfo);
 }
 
+function hasCodec(sourceTransferSyntaxUID) {
+  return codecs.hasCodec(sourceTransferSyntaxUID);
+}
+
+/**
+ * dicom codec api
+ */
 const dicomCodec = {
-    decode,
-    encode,
-    transcode
-}
+  decode,
+  encode,
+  getPixelData,
+  hasCodec,
+  transcode
+};
 
-module.exports = dicomCodec
+module.exports = dicomCodec;

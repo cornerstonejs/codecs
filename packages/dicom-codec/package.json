@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/dicom-codec",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "",
   "main": "src/index.js",
   "publishConfig": {
@@ -11,12 +11,15 @@
     "build:ci": "yarn run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "engines": {
+    "node": ">=0.14"
+  },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@cornerstonejs/codec-big-endian": "^0.0.5",
     "@cornerstonejs/codec-charls": "^0.1.1",
-    "@cornerstonejs/codec-libjpeg-turbo": "^0.0.4",
+    "@cornerstonejs/codec-libjpeg-turbo-8bit": "^0.0.4",
     "@cornerstonejs/codec-little-endian": "^0.0.4",
     "@cornerstonejs/codec-openjpeg": "^0.1.0"
   }
