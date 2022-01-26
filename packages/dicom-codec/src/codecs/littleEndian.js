@@ -1,10 +1,10 @@
 const local = {
   // assign it and prevent initialization
-  codec: undefined,
+  codec: {},
   Decoder: undefined,
   Encoder: undefined,
-  decoderName: "codec little endian",
-  encoderName: "codec little endian",
+  decoderName: "littleEndian",
+  encoderName: "littleEndian",
 };
 
 async function decode(imageFrame, previousImageInfo, pixelData) {

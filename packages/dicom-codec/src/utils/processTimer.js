@@ -1,3 +1,4 @@
+const { isNode, isBrowser } = require("browser-or-node");
 /**
  * Wrapper for process timer to capture process timestamp.
  *
@@ -14,7 +15,7 @@ function processTimer(processName, loggerInstance) {
 
   function hrtime(previousTime) {
     // node
-    if (process && process.hrtime) {
+    if (isNode) {
       if (previousTime) {
         return process.hrtime(previousTime);
       } else {
@@ -23,7 +24,7 @@ function processTimer(processName, loggerInstance) {
     }
 
     // browser
-    if (window && window.performance) {
+    if (isBrowser) {
       if (previousTime) {
         return [Math.abs(window.performance.now() - previousTime[0]), 0];
       } else {

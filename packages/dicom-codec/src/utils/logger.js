@@ -1,18 +1,28 @@
+let verbose = false
 /**
  * Simple logger instance
  */
 const logger = (() => {
   function error(message) {
-    console.error(message);
+    if(verbose) {
+      console.error(message);
+    }
   }
 
   function log(message) {
-    console.log(message);
+    if(verbose) {
+      console.log(message);
+    }
+  }
+
+  function setVerbose() {
+    verbose = true;
   }
 
   return {
     error,
     log,
+    setVerbose
   };
 })();
 

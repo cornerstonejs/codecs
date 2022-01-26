@@ -2,7 +2,7 @@
   "name": "@cornerstonejs/codec-libjpeg-turbo-8bit",
   "version": "0.0.8",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
-  "main": "dist/libjpeg-turbojs.js",
+  "main": "dist/libjpegturbojs.js",
   "publishConfig": {
     "access": "public"
   },

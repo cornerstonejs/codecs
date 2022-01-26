@@ -11,8 +11,9 @@ const local = {
 };
 
 /**
- * Decode compressed imageFrame from jpegjs
- * @param {*} compressedImageFrame to decopress
+ * Decode compressed imageFrame from jpegls
+ *
+ * @param {*} compressedImageFrame to decompress
  * @param {*} previousImageInfo image info options
  * @returns Object containing decoded image frame and previousImageInfo/imageInfo (current) data
  */
@@ -23,57 +24,18 @@ async function decode(compressedImageFrame, previousImageInfo) {
     codecWasmModule,
     local.decoderName,
     (context) => {
-      const decoderInstance = new local.Decoder();
-
-      // get pointer to the source/encoded bit stream buffer in WASM memory
-      // that can hold the encoded bitstream
-      const encodedBuffer = decoderInstance.getEncodedBuffer(
-        compressedImageFrame.length
+      return codecFactory.decode(
+        context,
+        local,
+        compressedImageFrame,
+        previousImageInfo
       );
-
-      // copy the encoded bitstream into WASM memory buffer
-      encodedBuffer.set(compressedImageFrame);
-
-      context.timer.init();
-      // decode it
-      decoderInstance.decode();
-      context.timer.end();
-
-      // get information about the decoded image
-      const frameInfo = decoderInstance.getFrameInfo();
-      const interleaveMode = decoderInstance.getInterleaveMode();
-      const nearLossless = decoderInstance.getNearLossless();
-
-      const imageFrame = codecFactory.getImageFrame(
-        encoderInstance.getDecodedBuffer()
-      );
-
-      const processInfo = {
-        nearLossless,
-        interleaveMode,
-        duration: context.timer.getDuration(),
-      };
-
-      // local.codecFactory.doLeakCheck();
-
-      // cleanup allocated memory
-      decoderInstance.delete();
-
-      return {
-        imageFrame,
-        imageInfo: codecFactory.getTargetImageInfo(
-          previousImageInfo,
-          frameInfo
-        ),
-        previousImageInfo,
-        processInfo,
-      };
     }
   );
 }
 
 /**
- * Encode uncompressed imageFrame to jpgejs compressed format.
+ * Encode uncompressed imageFrame to jpegls compressed format.
  *
  * @param {*} uncompressedImageFrame uncompressed image frame
  * @param {*} previousImageInfo image info options
@@ -87,42 +49,17 @@ async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
     codecWasmModule,
     local.encoderName,
     (context) => {
-      const { iterations = 1 } = options;
-      const encoderInstance = new local.Encoder();
-
-      const decodedBuffer = encoderInstance.getDecodedBuffer(previousImageInfo);
-      decodedBuffer.set(uncompressedImageFrame);
-      encoderInstance.setNearLossless(0);
-
-      context.timer.init();
-      for (let i = 0; i < iterations; i++) {
-        encoderInstance.encode();
+      function beforeEncode(encoderInstance) {
+        encoderInstance.setNearLossless(0);
       }
 
-      context.timer.end();
-      const encodedBuffer = encoderInstance.getEncodedBuffer();
-      context.logger.log("encoded length=" + encodedBuffer.length);
-
-      const imageFrame = codecFactory.getImageFrame(
-        encoderInstance.getEncodedBuffer()
-      );
-
-      // cleanup allocated memory
-      encoderInstance.delete();
-
-      const processInfo = {
-        duration: context.timer.getDuration(),
-      };
-
-      return {
-        imageFrame,
-        imageInfo: codecFactory.getTargetImageInfo(
-          previousImageInfo,
-          previousImageInfo
-        ),
+      return codecFactory.encode(
+        context,
+        local,
+        uncompressedImageFrame,
         previousImageInfo,
-        processInfo,
-      };
+        Object.assign({}, options, { beforeEncode })
+      );
     }
   );
 }
