@@ -51,5 +51,50 @@ function getCodec(transferSyntaxUID) {
   return codec;
 }
 
+/**
+ * Define extended image information.
+ * It can be resumed as: extended and generic image info object that contains properties to be used by any codec.
+ * 
+ * @typedef ExtendedImageInfo
+ * @type {object}
+ * @property {number} rows - Number with the image rows/height.
+ * @property {number} [height] - Number with the image rows/height.
+ * @property {number} columns - Number with the image columns/width.
+ * @property {number} [width] - Number with the image columns/width.
+ * @property {number} bitsAllocated - Number with bits per pixel sample.
+ * @property {number} [bitsPerPixel] - Number with bits per pixel sample.
+ * @property {number} [bitsPerSample] - Number with bits per pixel sample.
+ * @property {number} samplesPerPixel -  Number with number of components per pixel.
+ * @property {number} [componentCount] -  Number with number of components per pixel.
+ * @property {number} [componentsPerPixel] -  Number with number of components per pixel.
+ * @property {boolean} [signed] - Boolean true if pixel data is signed, false if unsigned.
+ * /
+ * 
+/**
+ * Adapt imageInfo to an object of properties which will satisfy any codec.
+ * Object keys are based on codec need.
+ * 
+ * @param {ImageInfo} imageInfo 
+ * @returns {ExtendedImageInfo} Adapted imageInfo to all codecs.
+ */
+function adaptImageInfo(imageInfo) {
+  const { rows, columns, bitsAllocated, signed, samplesPerPixel } = imageInfo;
+
+  return {
+    bitsAllocated,
+    samplesPerPixel,
+    rows, // Number with the image rows/height
+    columns, // Number with the image columns/width
+    width: columns,
+    height: rows,
+    bitsPerPixel: bitsAllocated, // Number with bits per pixel
+    bitsPerSample: bitsAllocated,
+    componentCount: samplesPerPixel,
+    componentsPerPixel: samplesPerPixel,
+    signed,
+  };
+}
+
+exports.adaptImageInfo = adaptImageInfo;
 exports.getCodec = getCodec;
 exports.hasCodec = hasCodec;

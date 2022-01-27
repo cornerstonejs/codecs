@@ -8,14 +8,27 @@ function assertCodec(codec, transferSyntaxUID) {
 }
 
 /**
- * Returning type for decode/encode operations.
- * 
+ *  Decode/encode operations' returning type
+ *
  * @typedef OperationResult
  * @type {object}
  * @property {TypedArray} imageFrame - image frame data from operatation's result.
- * @property {object} imageInfo - image information. Properties name are codec based.
- * @property {object} processInfo - process information.
+ * @property {ExtendedImageInfo} imageInfo - image information. Some properties key belongs to codec and some others are generic information.
+ * @property {Object} processInfo - process information.
+ *
  */
+
+/**
+ * Define image information.
+ * 
+ * @typedef ImageInfo
+ * @type {object}
+ * @property {number} rows - Number with the image rows/height.
+ * @property {number} columns - Number with the image columns/width.
+ * @property {number} bitsAllocated - Number with bits per pixel sample.
+ * @property {number} samplesPerPixel -  Number with number of components per pixel.
+ * @property {boolean} signed - Boolean true if pixel data is signed, false if unsigned.
+ * /
 
 /**
  * Decodes imageFrame using codec for decoderTransferSyntaxUID.
@@ -34,14 +47,14 @@ async function decode(imageFrame, imageInfo, decoderTransferSyntaxUID) {
   const codec = codecs.getCodec(decoderTransferSyntaxUID);
   assertCodec(codec, decoderTransferSyntaxUID);
 
-  return codec.decode(imageFrame, imageInfo);
+  return codec.decode(imageFrame, codecs.adaptImageInfo(imageInfo));
 }
 
 /**
  * Encode imageFrame using codec for encoderTransferSyntaxUID.
- * 
+ *
  * @param {TypedArray} imageFrame to encode.
- * @param {object} imageInfo image information.
+ * @param {ImageInfo} imageInfo image information.
  * @param {string} encoderTransferSyntaxUID codec transferSyntaxUID value.
  *
  * @returns {OperationResult} Object containing encoded image frame and previousImageInfo/imageInfo (current) data.
@@ -59,7 +72,7 @@ async function encode(
   const codec = codecs.getCodec(encoderTransferSyntaxUID);
   assertCodec(codec, encoderTransferSyntaxUID);
 
-  return codec.encode(imageFrame, imageInfo, options);
+  return codec.encode(imageFrame, codecs.adaptImageInfo(imageInfo), options);
 }
 
 /**
@@ -67,7 +80,7 @@ async function encode(
  * Its a 2 step operation: first decode (if necessary) then encode (if necessary).
  *
  * @param {TypedArray} imageFrame image frame to be decoded
- * @param {object} imageInfo image information
+ * @param {ImageInfo} imageInfo image information
  * @param {string} sourceTransferSyntaxUID codec decoder transferSyntaxUID value
  * @param {string} targetTransferSyntaxUID codec encoder transferSyntaxUID value
  * @param {object} encodeOptions options for encoding
@@ -96,20 +109,20 @@ async function transcode(
 
 /**
  * Return pixel data based on transfer syntax.
- * 
+ *
  * @param {TypedArray} imageFrame imageframe to get pixel data from.
+ * @param {ImageInfo} imageInfo image information.
  * @param {string} transferSyntaxUID transfer syntax for current imageframe.
- * @param {object} imageInfo image information.
  * @returns Typed array.
  *
  * @throws Will throw an error if codec is not found.
  * @throws Will throw an error if there is an exception when getting pixelData.
  */
-function getPixelData(imageFrame, transferSyntaxUID, imageInfo = {}) {
+function getPixelData(imageFrame, imageInfo, transferSyntaxUID) {
   const codec = codecs.getCodec(transferSyntaxUID);
   assertCodec(codec, transferSyntaxUID);
 
-  return codec.getPixelData(imageFrame, imageInfo);
+  return codec.getPixelData(imageFrame, codecs.adaptImageInfo(imageInfo));
 }
 
 /**
@@ -124,8 +137,8 @@ function hasCodec(transferSyntaxUID) {
 
 /**
  * Set codecs general configuration.
- * 
- * @param {object} options 
+ *
+ * @param {object} options
  * @param {boolean} [options.verbose=false] Set verbose mode.
  */
 function setConfig(options = {}) {

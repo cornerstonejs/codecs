@@ -16,7 +16,7 @@ const codecWrapper = {
  * Decode imageFrame.
  *
  * @param {TypedArray} imageFrame to decode.
- * @param {Object} imageInfo image info options.
+ * @param {ExtendedImageInfo} imageInfo image info options.
  * @returns Object containing decoded image frame and imageInfo (current) data.
  */
 function decode(imageFrame, imageInfo) {

@@ -15,9 +15,9 @@ const codecWrapper = {
 
 /**
  * Decode imageFrame using jpegLossless decoder.
- * 
+ *
  * @param {TypedArray} imageFrame to decode.
- * @param {Object} imageInfo image info options.
+ * @param {ExtendedImageInfo} imageInfo image info options.
  * @returns Object containing decoded image frame and imageInfo (current) data.
  */
 async function decode(imageFrame, imageInfo) {
@@ -53,10 +53,7 @@ async function decode(imageFrame, imageInfo) {
 
       return {
         imageFrame: decodedTypedArray,
-        imageInfo: codecFactory.getTargetImageInfo(
-          imageInfo,
-          imageInfo
-        ),
+        imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
         processInfo,
       };
     }
@@ -67,7 +64,7 @@ async function decode(imageFrame, imageInfo) {
  * Encode  imageFrame to jpegLossless format.
  *
  * @param {TypedArray} imageFrame to encode.
- * @param {Object} imageInfo image info options
+ * @param {ExtendedImageInfo} imageInfo image info options
  * @param {Object} options encode option
  * @returns Object containing encoded image frame and imageInfo (current) data
  */

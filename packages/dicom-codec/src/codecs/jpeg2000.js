@@ -17,7 +17,7 @@ const codecWrapper = {
  * Decode imageFrame using jpeg2000 decoder.
  *
  * @param {TypedArray} imageFrame to decode.
- * @param {Object} imageInfo image info options.
+ * @param {ExtendedImageInfo} imageInfo image info options.
  * @returns Object containing decoded image frame and imageInfo (current) data.
  *
  */
@@ -37,9 +37,9 @@ async function decode(imageFrame, imageInfo) {
  * Encode imageFrame to jpeg2000 format.
  *
  * @param {TypedArray} imageFrame to encode.
- * @param {Object} imageInfo image info options
- * @param {Object} options encode option
- * @returns Object containing encoded image frame and imageInfo (current) data
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @param {Object} options encode option.
+ * @returns Object containing encoded image frame and imageInfo (current) data.
  */
 async function encode(imageFrame, imageInfo, options = {}) {
   return codecFactory.runProcess(

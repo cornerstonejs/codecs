@@ -109,13 +109,14 @@ async function runProcess(
  * Returns imageInfo object based on previous and target imageInfo.
  * It combines both to produce the returning type of a process operation.
  *
- * @param {Object} previousImageInfo previous imageInfo object.
- * @param {Object} imageInfo current imageInfo object (after operation).
- * @returns imageInfo object.
+ * @param {ImageInfo} previousImageInfo previous imageInfo object.
+ * @param {ExtendedImageInfo} imageInfo current imageInfo object (after operation).
+ * @returns {ExtendedImageInfo} imageInfo object.
  */
 function getTargetImageInfo(previousImageInfo, imageInfo) {
   const { bitsPerSample, componentCount } = imageInfo;
   const { height, width, signed } = imageInfo;
+  
   return {
     ...previousImageInfo,
     ...imageInfo,
@@ -123,7 +124,7 @@ function getTargetImageInfo(previousImageInfo, imageInfo) {
     columns: width,
     componentsPerPixel: componentCount,
     rows: height,
-    signed: signed,
+    signed,
   };
 }
 
@@ -131,7 +132,7 @@ function getTargetImageInfo(previousImageInfo, imageInfo) {
  * Returns pixel data based on the given imageInfo.
  *
  * @param {TypedArray} imageFrame current image frame pixels.
- * @param {Object} imageInfo current imageInfo object (after operation).
+ * @param {ExtendedImageInfo} imageInfo current imageInfo object (after operation).
  * @returns Typed array based on imageInfo properties.
  */
 function getPixelData(imageFrame, imageInfo = {}) {
@@ -195,7 +196,7 @@ function getImageFrame(typedArray) {
  * @param {Object} context runner context.
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
  * @param {TypedArray} imageFrame current image frame pixels.
- * @param {Object} imageInfo current image info object.
+ * @param {ExtendedImageInfo} imageInfo current image info object.
  * @param {*} [options] process options.
  * @returns Object containing encoded image frame and imageInfo (current) data
  */
@@ -244,7 +245,7 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
  * @param {Object} context runner context.
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
  * @param {TypedArray} imageFrame current image frame pixels.
- * @param {Object} imageInfo previous image info object.
+ * @param {ExtendedImageInfo} imageInfo previous image info object.
  * @returns Object containing decoded image frame and imageInfo (current) data
  *
  */
