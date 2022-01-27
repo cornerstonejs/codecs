@@ -2,8 +2,8 @@ const { isNode, isBrowser } = require("browser-or-node");
 /**
  * Wrapper for process timer to capture process timestamp.
  *
- * @param {*} processName name of process
- * @param {*} loggerInstance logger instance
+ * @param {string} processName name of process.
+ * @param {Logger} loggerInstance logger instance.
  * @returns object containing methods to register timestamps and get process duration.
  */
 function processTimer(processName, loggerInstance) {

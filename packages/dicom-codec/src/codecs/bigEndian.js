@@ -1,4 +1,7 @@
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   // assign it and prevent initialization
   codec: {},
   Decoder: undefined,
@@ -7,24 +10,24 @@ const local = {
   encoderName: "bigEndian",
 };
 
-async function decode(compressedImageFrame, previousImageInfo) {
+async function decode(imageFrame, imageInfo) {
   // big endian Package has different usage of decode.
   // Use getPixelData in case pixelData is needed.
   throw Error(
-    "Decoder not found or not applied for codec:" + local.encoderName
+    "Decoder not found or not applied for codec:" + codecWrapper.encoderName
   );
 }
 
-async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
+async function encode(imageFrame, imageInfo, options = {}) {
   // Use getPixelData in case pixelData is needed.
   throw Error(
-    "Encoder not found or not applied for codec:" + local.encoderName
+    "Encoder not found or not applied for codec:" + codecWrapper.encoderName
   );
 }
 
-function getPixelData(imageFrame, frameInfo) {
+function getPixelData(imageFrame, imageInfo) {
   let result;
-  const { bitsAllocated, pixelRepresentation } = frameInfo;
+  const { bitsAllocated, pixelRepresentation } = imageInfo;
 
   if (bitsAllocated === 16) {
     let arrayBuffer = pixelData.buffer;

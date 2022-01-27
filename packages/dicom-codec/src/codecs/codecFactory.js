@@ -4,10 +4,10 @@ const processTimer = require("../utils/processTimer");
 /**
  * Change by reference the given codecConfig and set related Encoder/Decoder from codec.
  *
- * @param {*} codecConfig
- * @param {*} codec
- * @param {*} encoderName
- * @param {*} decoderName
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @param {Object} codec codec instance.
+ * @param {string} encoderName encoder name (codec property key).
+ * @param {string} decoderName decoder name (codec property key).
  */
 function setCodec(codecConfig, encoderName, decoderName, codec = {}) {
   codecConfig.Encoder = codec[encoderName];
@@ -16,14 +16,14 @@ function setCodec(codecConfig, encoderName, decoderName, codec = {}) {
 }
 
 /**
- * Initialize codec dynamically. It has two initialization strategy: if the module to be initialized is a js based or if its wasm based.
+ * Initialize codec dynamically. It has two initialization strategies: js based or wasm based.
  * In case dynamic initialization is not needed consumer can set by default codec into codecConfig.codec. This will skip initialization process.
  *
- * @param {*} codecConfig
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
  * @param {*} codecModule js based module promise for initialization. Promise is resolved with the codec instance.
  * @param {*} codecWasmModule wasm based module promise for initialization. Promise is resolved with the codec instance.
- * @param {*} encoderName encoder name to seek for encoder on codec instance.
- * @param {*} decoderName decoder name to seek for decoder on codec instance.
+ * @param {string} encoderName encoder name to seek for encoder on codec instance.
+ * @param {string} decoderName decoder name to seek for decoder on codec instance.
  */
 async function initialize(
   codecConfig,
@@ -54,9 +54,9 @@ async function initialize(
 
 /**
  * Wrapper method to getException from codec. Otherwise received exception is returned.
- * @param {*} codecConfig codec config
- * @param {*} exception current exception
- * @returns exception (current or from codec)
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @param {Error} exception current exception.
+ * @returns exception (current or processed from codec).
  */
 function getExceptionMessage(codecConfig, exception) {
   return typeof exception === "number"
@@ -67,11 +67,11 @@ function getExceptionMessage(codecConfig, exception) {
 /**
  * Runner of processes. It will execute the given process (through processCallback) after ensuring codec is initialized.
  *
- * @param {*} codecConfig
- * @param {*} codecModule
- * @param {*} codecWasmModule
- * @param {*} processName
- * @param {*} processCallback
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @param {*} codecModule js based module promise for initialization. Promise is resolved with the codec instance.
+ * @param {*} codecWasmModule wasm based module promise for initialization. Promise is resolved with the codec instance.
+ * @param {string} processName name of current process
+ * @param {string} processCallback callback for current process.
  *
  * @returns returning type of processCallback
  *
@@ -105,37 +105,37 @@ async function runProcess(
 }
 
 /**
- * Shared or default codec getTargetImageInfo (codec must implement its own in case a more specific case is needed).
  *
  * Returns imageInfo object based on previous and target imageInfo.
- * It combines both to produce the returning type of process operations.
+ * It combines both to produce the returning type of a process operation.
  *
- * @param {*} previousImageInfo
- * @param {*} frameInfo
- * @returns
+ * @param {Object} previousImageInfo previous imageInfo object.
+ * @param {Object} imageInfo current imageInfo object (after operation).
+ * @returns imageInfo object.
  */
-function getTargetImageInfo(previousImageInfo, frameInfo) {
+function getTargetImageInfo(previousImageInfo, imageInfo) {
+  const { bitsPerSample, componentCount } = imageInfo;
+  const { height, width, signed } = imageInfo;
   return {
     ...previousImageInfo,
-    ...frameInfo,
-    bitsPerPixel: frameInfo.bitsPerSample,
-    columns: frameInfo.width,
-    componentsPerPixel: frameInfo.componentCount,
-    rows: frameInfo.height,
-    signed: previousImageInfo.signed,
+    ...imageInfo,
+    bitsPerPixel: bitsPerSample,
+    columns: width,
+    componentsPerPixel: componentCount,
+    rows: height,
+    signed: signed,
   };
 }
 
 /**
- * Shared or default codec getPixelData (codec must implement its own in case a more specific case is needed).
- * Returns pixel data based on frameInfo.
+ * Returns pixel data based on the given imageInfo.
  *
- * @param {*} imageFrame
- * @param {*} frameInfo
- * @returns Typed array based on frameInfo details.
+ * @param {TypedArray} imageFrame current image frame pixels.
+ * @param {Object} imageInfo current imageInfo object (after operation).
+ * @returns Typed array based on imageInfo properties.
  */
-function getPixelData(imageFrame, frameInfo = {}) {
-  const { signed = false, bitsPerSample = 0 } = frameInfo;
+function getPixelData(imageFrame, imageInfo = {}) {
+  const { signed = false, bitsPerSample = 0 } = imageInfo;
 
   if (bitsPerSample > 8) {
     if (signed) {
@@ -170,9 +170,10 @@ function getPixelData(imageFrame, frameInfo = {}) {
 
 /**
  * Returns typed array from the given typed array param.
- * It prevents returning type be Uint8ClampedArray
- * @param {*} typedArray
- * @returns Typed array
+ * It prevents the returning type to be Uint8ClampedArray.
+ *
+ * @param {TypedArray} typedArray A typed array object.
+ * @returns Typed array.
  */
 function getImageFrame(typedArray) {
   if (typedArray instanceof Uint8ClampedArray) {
@@ -187,34 +188,28 @@ function getImageFrame(typedArray) {
 }
 
 /**
- * Encode uncompressedImageFrame using Encoder from the given local param.
+ * Encode imageFrame using Encoder from the given local param.
  *
- * Its common encode process for wasm codec's based.
+ * Its the common encode process for js/wasm codec's based.
  *
- * @param {*} context
- * @param {*} local
- * @param {*} uncompressedImageFrame
- * @param {*} previousImageInfo
- * @param {*} options
- * @returns Object containing encoded image frame and previousImageInfo/imageInfo (current) data
+ * @param {Object} context runner context.
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @param {TypedArray} imageFrame current image frame pixels.
+ * @param {Object} imageInfo current image info object.
+ * @param {*} [options] process options.
+ * @returns Object containing encoded image frame and imageInfo (current) data
  */
-function encode(
-  context,
-  local,
-  uncompressedImageFrame,
-  previousImageInfo,
-  options = {}
-) {
+function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   const { iterations = 1 } = options;
-  const encoderInstance = new local.Encoder();
-  const decodedTypedArray = encoderInstance.getDecodedBuffer(previousImageInfo);
-  decodedTypedArray.set(uncompressedImageFrame);
+  const encoderInstance = new codecConfig.Encoder();
+  const decodedTypedArray = encoderInstance.getDecodedBuffer(imageInfo);
+  decodedTypedArray.set(imageFrame);
 
   const { beforeEncode = () => {} } = options;
 
   beforeEncode(encoderInstance);
 
-  context.timer.init("To encode length: " + uncompressedImageFrame.length);
+  context.timer.init("To encode length: " + imageFrame.length);
   for (let i = 0; i < iterations; i++) {
     encoderInstance.encode();
   }
@@ -236,34 +231,33 @@ function encode(
 
   return {
     imageFrame: getImageFrame(encodedTypedArray),
-    imageInfo: getTargetImageInfo(previousImageInfo, previousImageInfo),
-    previousImageInfo,
+    imageInfo: getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
 }
 
 /**
- * Decode compressed imageFrame using Decoder from the given local param.
+ * Decode (encoded) imageFrame using Decoder from the given local param.
  *
- * Its common encode process for wasm codec's based.
+ * Its the common encode process for js/wasm codec's based.
  *
- * @param {*} context
- * @param {*} local
- * @param {*} compressedImageFrame to decompress
- * @param {*} previousImageInfo image info options
- * @returns Object containing decoded image frame and previousImageInfo/imageInfo (current) data
+ * @param {Object} context runner context.
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @param {TypedArray} imageFrame current image frame pixels.
+ * @param {Object} imageInfo previous image info object.
+ * @returns Object containing decoded image frame and imageInfo (current) data
  *
  */
-function decode(context, local, compressedImageFrame, previousImageInfo) {
-  const decoderInstance = new local.Decoder();
+function decode(context, codecConfig, imageFrame, imageInfo) {
+  const decoderInstance = new codecConfig.Decoder();
 
-  const { length } = compressedImageFrame;
+  const { length } = imageFrame;
   // get pointer to the source/encoded bit stream buffer in WASM memory
   // that can hold the encoded bitstream
   const encodedTypedArray = decoderInstance.getEncodedBuffer(length);
 
   // copy the encoded bitstream into WASM memory buffer
-  encodedTypedArray.set(compressedImageFrame);
+  encodedTypedArray.set(imageFrame);
   context.timer.init("To decode length: " + length);
   // decode it
   decoderInstance.decode();
@@ -277,7 +271,7 @@ function decode(context, local, compressedImageFrame, previousImageInfo) {
   );
 
   // get information about the decoded image
-  const frameInfo = decoderInstance.getFrameInfo();
+  const decodedImageInfo = decoderInstance.getFrameInfo();
 
   // cleanup allocated memory
   decoderInstance.delete();
@@ -288,8 +282,7 @@ function decode(context, local, compressedImageFrame, previousImageInfo) {
 
   return {
     imageFrame: getImageFrame(decodedTypedArray),
-    imageInfo: getTargetImageInfo(previousImageInfo, frameInfo),
-    previousImageInfo,
+    imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
     processInfo,
   };
 }

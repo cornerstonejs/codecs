@@ -2,7 +2,10 @@ const codecModule = require("jpeg-lossless-decoder-js/release/current/lossless-m
 const codecWasmModule = {};
 const codecFactory = require("./codecFactory");
 
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   codec: codecModule["lossless"],
   Decoder: undefined,
   Encoder: undefined,
@@ -11,22 +14,23 @@ const local = {
 };
 
 /**
- * Decode compressed imageFrame from jpegLossless
- * @param {*} compressedImageFrame to decompress
- * @param {*} previousImageInfo image info options
- * @returns Object containing decoded image frame and previousImageInfo/imageInfo (current) data
+ * Decode imageFrame using jpegLossless decoder.
+ * 
+ * @param {TypedArray} imageFrame to decode.
+ * @param {Object} imageInfo image info options.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
  */
-async function decode(compressedImageFrame, previousImageInfo) {
+async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
-    local,
+    codecWrapper,
     codecModule,
     codecWasmModule,
-    local.decoderName,
+    codecWrapper.decoderName,
     (context) => {
-      const byteOutput = previousImageInfo.bitsAllocated <= 8 ? 1 : 2;
-      const decoderInstance = new local.Decoder();
+      const byteOutput = imageInfo.bitsAllocated <= 8 ? 1 : 2;
+      const decoderInstance = new codecWrapper.Decoder();
 
-      const { buffer, byteOffset, length } = compressedImageFrame;
+      const { buffer, byteOffset, length } = imageFrame;
       context.timer.init("To decode length: " + length);
 
       const decodedTypedArray = decoderInstance.decode(
@@ -50,10 +54,9 @@ async function decode(compressedImageFrame, previousImageInfo) {
       return {
         imageFrame: decodedTypedArray,
         imageInfo: codecFactory.getTargetImageInfo(
-          previousImageInfo,
-          previousImageInfo
+          imageInfo,
+          imageInfo
         ),
-        previousImageInfo,
         processInfo,
       };
     }
@@ -61,21 +64,21 @@ async function decode(compressedImageFrame, previousImageInfo) {
 }
 
 /**
- * Encode uncompressed imageFrame to jpegLossless compressed format.
+ * Encode  imageFrame to jpegLossless format.
  *
- * @param {*} uncompressedImageFrame uncompressed image frame
- * @param {*} previousImageInfo image info options
- * @param {*} options encode option
- * @returns Object containing encoded image frame and previousImageInfo/imageInfo (current) data
+ * @param {TypedArray} imageFrame to encode.
+ * @param {Object} imageInfo image info options
+ * @param {Object} options encode option
+ * @returns Object containing encoded image frame and imageInfo (current) data
  */
-async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
-  throw Error("Encoder not found for codec: jpeg/" + local.encoderName);
+async function encode(imageFrame, imageInfo, options = {}) {
+  throw Error("Encoder not found for codec: jpeg/" + codecWrapper.encoderName);
 }
 
-function getPixelData(imageFrame, frameInfo) {
+function getPixelData(imageFrame, imageInfo) {
   let result;
-  if (frameInfo.pixelRepresentation === 0) {
-    if (frameInfo.bitsAllocated === 16) {
+  if (imageInfo.pixelRepresentation === 0) {
+    if (imageInfo.bitsAllocated === 16) {
       result = new Uint16Array(imageFrame.buffer);
     } else {
       // untested!

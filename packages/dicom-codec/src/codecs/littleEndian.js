@@ -1,4 +1,7 @@
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   // assign it and prevent initialization
   codec: {},
   Decoder: undefined,
@@ -7,28 +10,28 @@ const local = {
   encoderName: "littleEndian",
 };
 
-async function decode(imageFrame, previousImageInfo, pixelData) {
+async function decode(imageFrame, imageInfo) {
   // little endian Package has different usage of decode.
   // Use getPixelData in case pixelData is needed.
   throw Error(
-    "Decoder not found or not applied for codec:" + local.encoderName
+    "Decoder not found or not applied for codec:" + codecWrapper.encoderName
   );
 }
 
-async function encode(imageFrame, previousImageInfo, options = {}) {
+async function encode(imageFrame, imageInfo, options = {}) {
   // Use getPixelData in case pixelData is needed.
   throw Error(
-    "Encoder not found or not applied for codec:" + local.encoderName
+    "Encoder not found or not applied for codec:" + codecWrapper.encoderName
   );
 }
 
-function getPixelData(imageFrame, frameInfo) {
+function getPixelData(imageFrame, imageInfo) {
   let result;
   let arrayBuffer = imageFrame.buffer;
   let offset = imageFrame.byteOffset;
   const length = imageFrame.length;
 
-  const { bitsAllocated, pixelRepresentation } = frameInfo;
+  const { bitsAllocated, pixelRepresentation } = imageInfo;
 
   if (bitsAllocated === 16) {
     // if pixel data is not aligned on even boundary, shift it so we can create the 16 bit array

@@ -2,7 +2,10 @@ const codecModule = require("@cornerstonejs/codec-charls");
 const codecWasmModule = require("@cornerstonejs/codec-charls/wasmjs");
 const codecFactory = require("./codecFactory");
 
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   codec: undefined,
   Decoder: undefined,
   Encoder: undefined,
@@ -11,43 +14,38 @@ const local = {
 };
 
 /**
- * Decode compressed imageFrame from jpegls
+ * Decode imageFrame using jpegls decoder.
  *
- * @param {*} compressedImageFrame to decompress
- * @param {*} previousImageInfo image info options
- * @returns Object containing decoded image frame and previousImageInfo/imageInfo (current) data
+ * @param {TypedArray} imageFrame to decode.
+ * @param {Object} imageInfo image info options.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
  */
-async function decode(compressedImageFrame, previousImageInfo) {
+async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
-    local,
+    codecWrapper,
     codecModule,
     codecWasmModule,
-    local.decoderName,
+    codecWrapper.decoderName,
     (context) => {
-      return codecFactory.decode(
-        context,
-        local,
-        compressedImageFrame,
-        previousImageInfo
-      );
+      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
     }
   );
 }
 
 /**
- * Encode uncompressed imageFrame to jpegls compressed format.
+ * Encode imageFrame to jpegls format.
  *
- * @param {*} uncompressedImageFrame uncompressed image frame
- * @param {*} previousImageInfo image info options
- * @param {*} options encode option
- * @returns Object containing encoded image frame and previousImageInfo/imageInfo (current) data
+ * @param {TypedArray} imageFrame to encode.
+ * @param {Object} imageInfo image info options.
+ * @param {Object} options encode option.
+ * @returns Object containing encoded image frame and imageInfo (current) data
  */
-async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
+async function encode(imageFrame, imageInfo, options = {}) {
   return codecFactory.runProcess(
-    local,
+    codecWrapper,
     codecModule,
     codecWasmModule,
-    local.encoderName,
+    codecWrapper.encoderName,
     (context) => {
       function beforeEncode(encoderInstance) {
         encoderInstance.setNearLossless(0);
@@ -55,17 +53,17 @@ async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
 
       return codecFactory.encode(
         context,
-        local,
-        uncompressedImageFrame,
-        previousImageInfo,
+        codecWrapper,
+        imageFrame,
+        imageInfo,
         Object.assign({}, options, { beforeEncode })
       );
     }
   );
 }
 
-function getPixelData(imageFrame, frameInfo) {
-  return codecFactory.getPixelData(imageFrame, frameInfo);
+function getPixelData(imageFrame, imageInfo) {
+  return codecFactory.getPixelData(imageFrame, imageInfo);
 }
 
 exports.decode = decode;

@@ -8,6 +8,19 @@ const libjpegTurbo8BitCodec = require("./libjpegTurbo8Bit");
 const libjpegTurbo12BitCodec = require("./libjpegTurbo12Bit");
 
 /**
+ * Wrapper to codec. It holds current codec, encoder, decoder, name for each.
+ * It can be initialized dinamically (do not set codec, but set decoderName and encoderName and use codecFactory initialization) or static assigned (direct assign the codec).
+ *
+ * @typedef CodecWrapper
+ * @type {object}
+ * @property {Object} codec - instance.
+ * @property {Object} Decoder - function or class for decoder.
+ * @property {Object} Encoder - function or class for encoder.
+ * @property {Object} decoderName - decoder name. Used to access decoder on codec (codec property key) and also describe decoder.
+ * @property {Object} encoderName - encoder name. Used to access encoder on codec (codec property key) and also describe encoder.
+ */
+
+/**
  * @see {@link https://www.dicomlibrary.com/dicom/transfer-syntax/} for transfer syntax details.
  */
 const codecsMap = {

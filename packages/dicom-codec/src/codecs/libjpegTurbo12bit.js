@@ -1,4 +1,7 @@
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   // assign it and prevent initialization
   codec: undefined,
   Decoder: undefined,
@@ -7,17 +10,17 @@ const local = {
   encoderName: "codec libjpeg turbo 12bit",
 };
 
-async function decode(compressedImageFrame, previousImageInfo) {
-  throw Error("Decoder not found for codec:" + local.encoderName);
+async function decode(imageFrame, imageInfo) {
+  throw Error("Decoder not found for codec:" + codecWrapper.encoderName);
 }
 
-async function encode(uncompressedImageFrame, previousImageInfo, options = {}) {
-  throw Error("Encoder not found for codec:" + local.encoderName);
+async function encode(imageFrame, imageInfo, options = {}) {
+  throw Error("Encoder not found for codec:" + codecWrapper.encoderName);
 }
 
-function getPixelData(imageFrame, frameInfo) {
+function getPixelData(imageFrame, imageInfo) {
   throw Error(
-    "GetPixel not found or not applied for codec:" + local.encoderName
+    "GetPixel not found or not applied for codec:" + codecWrapper.encoderName
   );
 }
 

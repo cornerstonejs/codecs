@@ -1,6 +1,9 @@
 const codecFactory = require("./codecFactory");
 
-const local = {
+/**
+ * @type {CodecWrapper}
+ */
+const codecWrapper = {
   // assign it and prevent initialization
   codec: {},
   Decoder: undefined,
@@ -9,21 +12,28 @@ const local = {
   encoderName: "rleLossless",
 };
 
-function decode(imageFrame, previousImageInfo) {
+/**
+ * Decode imageFrame.
+ *
+ * @param {TypedArray} imageFrame to decode.
+ * @param {Object} imageInfo image info options.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
+ */
+function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
-    local,
+    codecWrapper,
     codecModule,
     codecWasmModule,
-    local.decoderName,
+    codecWrapper.decoderName,
     (context) => {
-      if (previousImageInfo.bitsAllocated === 8) {
-        if (previousImageInfo.planarConfiguration) {
-          return decode8Planar(imageFrame, previousImageInfo, context);
+      if (imageInfo.bitsAllocated === 8) {
+        if (imageInfo.planarConfiguration) {
+          return decode8Planar(imageFrame, imageInfo, context);
         }
 
-        return decode8(imageFrame, previousImageInfo, context);
-      } else if (previousImageInfo.bitsAllocated === 16) {
-        return decode16(imageFrame, previousImageInfo, context);
+        return decode8(imageFrame, imageInfo, context);
+      } else if (imageInfo.bitsAllocated === 16) {
+        return decode16(imageFrame, imageInfo, context);
       }
 
       throw new Error("unsupported pixel format for RLE");
@@ -31,11 +41,9 @@ function decode(imageFrame, previousImageInfo) {
   );
 }
 
-function decode8(imageFrame, previousImageInfo, context) {
-  const frameSize = previousImageInfo.rows * previousImageInfo.columns;
-  const outFrame = new ArrayBuffer(
-    frameSize * previousImageInfo.samplesPerPixel
-  );
+function decode8(imageFrame, imageInfo, context) {
+  const frameSize = imageInfo.rows * imageInfo.columns;
+  const outFrame = new ArrayBuffer(frameSize * imageInfo.samplesPerPixel);
   const header = new DataView(imageFrame.buffer, imageFrame.byteOffset);
   const data = new Int8Array(imageFrame.buffer, imageFrame.byteOffset);
   const out = new Int8Array(outFrame);
@@ -64,7 +72,7 @@ function decode8(imageFrame, previousImageInfo, context) {
         // copy n bytes
         for (let i = 0; i < n + 1 && outIndex < endOfSegment; ++i) {
           out[outIndex] = data[inIndex++];
-          outIndex += previousImageInfo.samplesPerPixel;
+          outIndex += imageInfo.samplesPerPixel;
         }
       } else if (n <= -1 && n >= -127) {
         const value = data[inIndex++];
@@ -72,7 +80,7 @@ function decode8(imageFrame, previousImageInfo, context) {
 
         for (let j = 0; j < -n + 1 && outIndex < endOfSegment; ++j) {
           out[outIndex] = value;
-          outIndex += previousImageInfo.samplesPerPixel;
+          outIndex += imageInfo.samplesPerPixel;
         }
       } /* else if (n === -128) {
 
@@ -91,20 +99,14 @@ function decode8(imageFrame, previousImageInfo, context) {
 
   return {
     imageFrame: out,
-    imageInfo: codecFactory.getTargetImageInfo(
-      previousImageInfo,
-      previousImageInfo
-    ),
-    previousImageInfo,
+    imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
 }
 
-function decode8Planar(imageFrame, previousImageInfo, context) {
-  const frameSize = previousImageInfo.rows * previousImageInfo.columns;
-  const outFrame = new ArrayBuffer(
-    frameSize * previousImageInfo.samplesPerPixel
-  );
+function decode8Planar(imageFrame, imageInfo, context) {
+  const frameSize = imageInfo.rows * imageInfo.columns;
+  const outFrame = new ArrayBuffer(frameSize * imageInfo.samplesPerPixel);
   const header = new DataView(imageFrame.buffer, imageFrame.byteOffset);
   const data = new Int8Array(imageFrame.buffer, imageFrame.byteOffset);
   const out = new Int8Array(outFrame);
@@ -160,20 +162,14 @@ function decode8Planar(imageFrame, previousImageInfo, context) {
 
   return {
     imageFrame: out,
-    imageInfo: codecFactory.getTargetImageInfo(
-      previousImageInfo,
-      previousImageInfo
-    ),
-    previousImageInfo,
+    imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
 }
 
-function decode16(imageFrame, previousImageInfo, context) {
-  const frameSize = previousImageInfo.rows * previousImageInfo.columns;
-  const outFrame = new ArrayBuffer(
-    frameSize * previousImageInfo.samplesPerPixel * 2
-  );
+function decode16(imageFrame, imageInfo, context) {
+  const frameSize = imageInfo.rows * imageInfo.columns;
+  const outFrame = new ArrayBuffer(frameSize * imageInfo.samplesPerPixel * 2);
 
   const header = new DataView(imageFrame.buffer, imageFrame.byteOffset);
   const data = new Int8Array(imageFrame.buffer, imageFrame.byteOffset);
@@ -226,23 +222,19 @@ function decode16(imageFrame, previousImageInfo, context) {
 
   return {
     imageFrame: out,
-    imageInfo: codecFactory.getTargetImageInfo(
-      previousImageInfo,
-      previousImageInfo
-    ),
-    previousImageInfo,
+    imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
 }
 
-function encode() {
-  throw Error("Encoder not found for codec:" + local.encoderName);
+function encode(imageFrame, imageInfo, options) {
+  throw Error("Encoder not found for codec:" + codecWrapper.encoderName);
 }
 
-function getPixelData(imageFrame, frameInfo) {
+function getPixelData(imageFrame, imageInfo) {
   let result;
-  if (frameInfo.pixelRepresentation === 0) {
-    if (frameInfo.bitsAllocated === 16) {
+  if (imageInfo.pixelRepresentation === 0) {
+    if (imageInfo.bitsAllocated === 16) {
       result = new Uint16Array(imageFrame.buffer);
     } else {
       // untested!
