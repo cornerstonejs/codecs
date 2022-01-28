@@ -2,21 +2,17 @@ const path = require('path');
 // const transpileJavaScriptRule = require('./rules/transpileJavaScript.js');
 // const TerserJSPlugin = require('terser-webpack-plugin');
 const dotenv = require('dotenv');
-const NODE_ENV = process.env.NODE_ENV;
 
 //
 dotenv.config();
 
 module.exports = (env, argv, { SRC_DIR, DIST_DIR }) => {
-  if (!process.env.NODE_ENV) {
-    throw new Error('process.env.NODE_ENV not set');
-  }
+  const { production: isProdBuild} = env;
 
-  const mode = NODE_ENV === 'production' ? 'production' : 'development';
-  const isProdBuild = NODE_ENV === 'production';
+  const mode = isProdBuild ? 'production' : 'development';
 
   const config = {
-    mode: isProdBuild ? 'production' : 'development',
+    mode,
     devtool: isProdBuild ? 'source-map' : 'cheap-module-eval-source-map',
     entry: {
       app: `${SRC_DIR}/index.js`,
