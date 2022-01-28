@@ -122,6 +122,9 @@ jobs:
       - run: gcc --version
       - checkout
       - run: git submodule update --init
+      - run:
+          name: Install Dependencies
+          command: yarn install --frozen-lockfile
       - run: yarn run build:ci
       - persist_to_workspace:
           root: ~/repo
