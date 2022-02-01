@@ -22,8 +22,8 @@ const codecWrapper = {
 function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
     codecWrapper,
-    codecModule,
-    codecWasmModule,
+    undefined,
+    undefined,
     codecWrapper.decoderName,
     (context) => {
       if (imageInfo.bitsAllocated === 8) {

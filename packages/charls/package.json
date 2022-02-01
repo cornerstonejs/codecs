@@ -11,6 +11,7 @@
     "README.md",
     "dist"
   ],
+  "engines" : { "node" : ">=0.14" },
   "exports": {
     ".": "./dist/charlsjs.js",
     "./wasm": "./dist/charlswasm.wasm",
@@ -19,7 +20,6 @@
     "./decodewasm": "./dist/charlswasm_decode.wasm",
     "./decodewasmjs": "./dist/charlswasm_decode.js"
   },
-  "engines" : { "node" : ">=0.14" },
   "directories": {
     "test": "test"
   },

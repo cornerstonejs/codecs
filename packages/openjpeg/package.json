@@ -9,6 +9,7 @@
   "directories": {
     "test": "test"
   },
+  "engines" : { "node" : ">=0.14" },
   "exports": {
     ".": "./dist/openjpegjs.js",
     "./wasm": "./dist/openjpegwasm.wasm",
@@ -17,7 +18,6 @@
     "./decodewasm": "./dist/openjpegwasm_decode.wasm",
     "./decodewasmjs": "./dist/openjpegwasm_decode.js"
   },
-  "engines" : { "node" : ">=0.14" },
   "scripts": {
     "test": "node test/node/index.js",
     "test:ci": "yarn run test",

@@ -9,6 +9,7 @@
   "directories": {
     "test": "test"
   },
+  "engines" : { "node" : ">=0.14" },
   "files": [
     "package.json",
     "README.md",

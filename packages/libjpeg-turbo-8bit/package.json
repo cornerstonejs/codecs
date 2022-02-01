@@ -9,6 +9,7 @@
   "directories": {
     "test": "test"
   },
+  "engines" : { "node" : ">=0.14" },
   "exports": {
     ".": "./dist/libjpegturbojs.js",
     "./wasm": "./dist/libjpegturbowasm.wasm",
