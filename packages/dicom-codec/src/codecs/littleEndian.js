@@ -1,3 +1,4 @@
+const codecFactory = require("./codecFactory");
 /**
  * @type {CodecWrapper}
  */
@@ -11,10 +12,32 @@ const codecWrapper = {
 };
 
 async function decode(imageFrame, imageInfo) {
-  // little endian Package has different usage of decode.
-  // Use getPixelData in case pixelData is needed.
-  throw Error(
-    "Decoder not found or not applied for codec:" + codecWrapper.encoderName
+  return codecFactory.runProcess(
+    codecWrapper,
+    undefined,
+    undefined,
+    codecWrapper.decoderName,
+    (context) => {
+      context.timer.init("To decode length: " + imageFrame.length);
+      const _imageFrame = getPixelData(imageFrame, imageInfo);
+
+      context.timer.end();
+
+      context.logger.log("Decoded length:" + _imageFrame.length);
+      context.logger.log(
+        "Decoded is a Typed array of: " + _imageFrame.constructor.name
+      );
+
+      const processInfo = {
+        duration: context.timer.getDuration(),
+      };
+
+      return {
+        imageFrame: _imageFrame,
+        imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
+        processInfo,
+      };
+    }
   );
 }
 
@@ -47,7 +70,7 @@ function getPixelData(imageFrame, imageInfo) {
       result = new Int16Array(arrayBuffer, offset, length / 2);
     }
   } else if (bitsAllocated === 8 || bitsAllocated === 1) {
-    result = pixelData;
+    result = imageFrame;
   } else if (bitsAllocated === 32) {
     // if pixel data is not aligned on even boundary, shift it
     if (offset % 2) {

@@ -1,3 +1,5 @@
+const codecFactory = require("./codecFactory");
+
 /**
  * @type {CodecWrapper}
  */
@@ -11,10 +13,32 @@ const codecWrapper = {
 };
 
 async function decode(imageFrame, imageInfo) {
-  // big endian Package has different usage of decode.
-  // Use getPixelData in case pixelData is needed.
-  throw Error(
-    "Decoder not found or not applied for codec:" + codecWrapper.encoderName
+  return codecFactory.runProcess(
+    codecWrapper,
+    undefined,
+    undefined,
+    codecWrapper.decoderName,
+    (context) => {
+      context.timer.init("To decode length: " + imageFrame.length);
+      const _imageFrame = getPixelData(imageFrame, imageInfo);
+
+      context.timer.end();
+
+      context.logger.log("Decoded length:" + _imageFrame.length);
+      context.logger.log(
+        "Decoded is a Typed array of: " + _imageFrame.constructor.name
+      );
+
+      const processInfo = {
+        duration: context.timer.getDuration(),
+      };
+
+      return {
+        imageFrame: _imageFrame,
+        imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
+        processInfo,
+      };
+    }
   );
 }
 
@@ -30,10 +54,10 @@ function getPixelData(imageFrame, imageInfo) {
   const { bitsAllocated, pixelRepresentation } = imageInfo;
 
   if (bitsAllocated === 16) {
-    let arrayBuffer = pixelData.buffer;
+    let arrayBuffer = imageFrame.buffer;
 
-    let offset = pixelData.byteOffset;
-    const length = pixelData.length;
+    let offset = imageFrame.byteOffset;
+    const length = imageFrame.length;
     // if pixel data is not aligned on even boundary, shift it so we can create the 16 bit array
     // buffers on it
 
@@ -56,6 +80,11 @@ function getPixelData(imageFrame, imageInfo) {
   }
 
   return result;
+}
+
+/* eslint no-bitwise: 0 */
+function swap16(val) {
+  return ((val & 0xff) << 8) | ((val >> 8) & 0xff);
 }
 
 exports.decode = decode;

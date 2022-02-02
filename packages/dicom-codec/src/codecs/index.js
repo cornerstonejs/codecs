@@ -92,6 +92,7 @@ function adaptImageInfo(imageInfo) {
     componentCount: samplesPerPixel,
     componentsPerPixel: samplesPerPixel,
     signed,
+    isSigned: signed
   };
 }
 
