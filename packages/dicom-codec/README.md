@@ -3,7 +3,7 @@
 DICOM Codecs for JavaScript (browser and node support).
 
 # Features (v0.0.10)
-| codec name        	| transferSyntaxUID(s)                                         	| decode 	| encode 	| external decode 	| js/wasm based 	|
+| codec name        	| transferSyntaxUID(s)                                         	| decode 	| encode 	| external codec 	| js/wasm based 	|
 |-------------------	|--------------------------------------------------------------	|:------:	|:------:	|:---------------:	|:-------------:	|
 | LittleEndian      	| 1.2.840.10008.1.2 1.2.840.10008.1.2.1 1.2.840.10008.1.2.1.99 	|    -   	|    -   	|        -        	|       -       	|
 | BigEndian         	| 1.2.840.10008.1.2.2                                          	|    -   	|    -   	|        -         	|          -     	|
