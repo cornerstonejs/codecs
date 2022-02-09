@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo-8bit",
-  "version": "0.0.8",
+  "version": "0.1.0",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
   "main": "dist/libjpegturbojs.js",
   "publishConfig": {
@@ -9,7 +9,9 @@
   "directories": {
     "test": "test"
   },
-  "engines" : { "node" : ">=0.14" },
+  "engines": {
+    "node": ">=0.14"
+  },
   "exports": {
     ".": "./dist/libjpegturbojs.js",
     "./wasm": "./dist/libjpegturbowasm.wasm",
