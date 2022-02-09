@@ -14,7 +14,7 @@ DICOM Codecs for JavaScript (browser and node support).
 | Jpeg2000          	| 1.2.840.10008.1.2.4.90 1.2.840.10008.1.2.4.91                	|    X   	|    X   	|        X        	|       X       	|
 | RleLossless       	| 1.2.840.10008.1.2.5                                          	|    X   	|    -   	|        -        	|       -       	|
 
-### Next releases plannig
+### Next releases planning
 v0.0.11: support for LibjpegTurbo12Bit.
 v.0.0.12 support for encoding options.
 v1.0.0: support for browser (dynamic loading included) and node.
@@ -67,18 +67,18 @@ Parameters (**It does not mutate any param**):
     - rows - Number with the image rows/height.
     - columns - Number with the image columns/width.
     - bitsAllocated - Number with bits per pixel sample.
-    - samplesPerPixel - Number with number of components per pixel. 
+    - samplesPerPixel - Number with number of components per pixel.
     - signed - Boolean true if pixel data is signed, false if unsigned.
 - sourceTransferSyntaxUID - String with the transfer syntax uid of the compressed image frame
 
 Returns:
 - Object
-    - imageFrame - TypedArray with the uncompressed image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array,Int16Array can be seen)
+    - imageFrame - TypedArray with the uncompressed image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array, Int16Array can be seen)
     - imageInfo - Object
         - rows - Number with the image rows/height.
         - columns - Number with the image columns/width.
         - bitsAllocated - Number with bits per pixel sample.
-        - samplesPerPixel - Number with number of components per pixel. 
+        - samplesPerPixel - Number with number of components per pixel.
         - signed - Boolean true if pixel data is signed, false if unsigned.
         - there are also some other codec properties.
 
@@ -101,12 +101,12 @@ Parameters (**It does not mutate any param**):
 
 Returns:
 - Object
-    - imageFrame - TypedArray with the image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array,Int16Array can be seen)
+    - imageFrame - TypedArray with the image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array, Int16Array can be seen)
     - imageInfo - Object
         - rows - Number with the image rows/height.
         - columns - Number with the image columns/width.
         - bitsAllocated - Number with bits per pixel sample.
-        - samplesPerPixel - Number with number of components per pixel. 
+        - samplesPerPixel - Number with number of components per pixel.
         - signed - Boolean true if pixel data is signed, false if unsigned.
         - there are also some other codec properties.
     - processInfo - Object
@@ -125,7 +125,7 @@ Parameters (**It does not mutate any param**):
     - rows - Number with the image rows/height.
     - columns - Number with the image columns/width.
     - bitsAllocated - Number with bits per pixel sample.
-    - samplesPerPixel - Number with number of components per pixel. 
+    - samplesPerPixel - Number with number of components per pixel.
     - signed - Boolean true if pixel data is signed, false if unsigned.
 - sourceTransferSyntaxUID - String with the transfer syntax uid of the compressed.
 - targetTransferSyntaxUID - String with the transfer syntax uid to encode the image frame as.
@@ -133,7 +133,7 @@ Parameters (**It does not mutate any param**):
 
 Returns:
 - Object
-    - imageFrame - TypedArray with the uncompressed image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array,Int16Array can be seen)
+    - imageFrame - TypedArray with the uncompressed image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array, Int16Array can be seen)
     - imageInfo - Object
         - rows - Number with the image rows/height.
         - columns - Number with the image columns/width.
@@ -162,7 +162,7 @@ Parameters (**It does not mutate any param**):
 
 Returns:
 - Object
-    - imageFrame - TypedArray with the image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array,Int16Array can be seen). Each codec might treat this differently based on imageInfo.
+    - imageFrame - TypedArray with the image frame bytes (Mostly codecs returns Uint8Array, but Uint16Array, Int16Array can be seen). Each codec might treat this differently based on imageInfo.
 
 ## setConfig
 

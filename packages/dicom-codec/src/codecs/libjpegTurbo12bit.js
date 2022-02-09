@@ -14,6 +14,14 @@ async function decode(imageFrame, imageInfo) {
   throw Error("Decoder not found for codec:" + codecWrapper.encoderName);
 }
 
+/**
+ * <<Not available yet>> Encode imageFrame to libjpegTurbo 12bits format.
+ *
+ * @param {TypedArray} imageFrame to encode.
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @param {Object} options encode option.
+ * @returns Object containing encoded image frame and imageInfo (current) data
+ */
 async function encode(imageFrame, imageInfo, options = {}) {
   throw Error("Encoder not found for codec:" + codecWrapper.encoderName);
 }

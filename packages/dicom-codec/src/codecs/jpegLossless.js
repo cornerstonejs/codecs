@@ -61,7 +61,7 @@ async function decode(imageFrame, imageInfo) {
 }
 
 /**
- * Encode  imageFrame to jpegLossless format.
+ * <<Not available yet>> Encode imageFrame to jpegLossless format.
  *
  * @param {TypedArray} imageFrame to encode.
  * @param {ExtendedImageInfo} imageInfo image info options

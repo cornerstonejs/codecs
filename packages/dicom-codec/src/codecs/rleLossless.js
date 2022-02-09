@@ -227,6 +227,14 @@ function decode16(imageFrame, imageInfo, context) {
   };
 }
 
+/**
+ * <<Not available yet>> Encode imageFrame to rle format.
+ *
+ * @param {TypedArray} imageFrame to encode.
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @param {Object} options encode option.
+ * @returns Object containing encoded image frame and imageInfo (current) data
+ */
 function encode(imageFrame, imageInfo, options) {
   throw Error("Encoder not found for codec:" + codecWrapper.encoderName);
 }

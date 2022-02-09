@@ -11,6 +11,13 @@ const codecWrapper = {
   encoderName: "littleEndian",
 };
 
+/**
+ * Decode imageFrame.
+ *
+ * @param {TypedArray} imageFrame to decode.
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
+ */
 async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
     codecWrapper,
@@ -41,6 +48,14 @@ async function decode(imageFrame, imageInfo) {
   );
 }
 
+/**
+ * <<Not available yet>> Encode imageFrame to little endian format.
+ *
+ * @param {TypedArray} imageFrame to encode.
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @param {Object} options encode option.
+ * @returns Object containing encoded image frame and imageInfo (current) data
+ */
 async function encode(imageFrame, imageInfo, options = {}) {
   // Use getPixelData in case pixelData is needed.
   throw Error(

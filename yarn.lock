@@ -915,21 +915,6 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@cornerstonejs/codec-big-endian@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-big-endian/-/codec-big-endian-0.0.5.tgz#49da0e1828b89e3a8d74d2df1a3509e7723b7dea"
-  integrity sha512-sAhSwpD2HSiBvaSX14Y9RPfZfDWOoOZ9KpgsY6/18M3PSR/TiXM93Og1+kn4NTNwBfTkFwnM3KVSXePmvMvndQ==
-
-"@cornerstonejs/codec-libjpeg-turbo-8bit@^0.0.7":
-  version "0.0.7"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-libjpeg-turbo-8bit/-/codec-libjpeg-turbo-8bit-0.0.7.tgz#2ea9b575eed19e6e7e3701b7a50a4ae0ffbef0c4"
-  integrity sha512-qgm6BuVAy5mNP8SJ+A6+VbmPnqgj8jPvJrw4HbUoAzndmf9/VHjTYwawn3kmZWya5ErFAsXQ6c0U0noB1LKAiA==
-
-"@cornerstonejs/codec-little-endian@^0.0.4":
-  version "0.0.4"
-  resolved "https://registry.yarnpkg.com/@cornerstonejs/codec-little-endian/-/codec-little-endian-0.0.4.tgz#a5af02b8c91718ff223032b8fdddc021bdb760df"
-  integrity sha512-nqUy/JKfUK7Hkr4ICXmfQwizSnyvTAbbboa6/QNoGflRO5Hi9Mgquh410+MPIqA3QQyxdRqDwASvfVZFOz77jQ==
-
 "@discoveryjs/json-ext@^0.5.0":
   version "0.5.6"
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.6.tgz#d5e0706cf8c6acd8c6032f8d54070af261bbbb2f"
