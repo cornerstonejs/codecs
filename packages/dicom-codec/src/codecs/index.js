@@ -4,8 +4,8 @@ const littleEndianCodec = require("./littleEndian");
 const jpegLosslessCodec = require("./jpegLossless");
 const rleLosslessCodec = require("./rleLossless");
 const bigEndianCodec = require("./bigEndian");
-const libjpegTurbo8BitCodec = require("./libjpegTurbo8Bit");
-const libjpegTurbo12BitCodec = require("./libjpegTurbo12Bit");
+const libjpegTurbo8BitCodec = require("./libjpegTurbo8bit");
+const libjpegTurbo12BitCodec = require("./libjpegTurbo12bit");
 
 /**
  * Wrapper to codec. It holds current codec, encoder, decoder, name for each.
