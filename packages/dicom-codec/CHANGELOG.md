@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.2](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.1...@cornerstonejs/dicom-codec@0.1.2) (2022-02-10)
+
+
+### Bug Fixes
+
+* **pencil:** Case fix for import ([d0b9762](https://github.com/cornerstonejs/codecs/commit/d0b9762796105c92cc874f893e05952836747aad))
+
+
+
+
+
 ## [0.1.1](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.0...@cornerstonejs/dicom-codec@0.1.1) (2022-02-09)
 
 
