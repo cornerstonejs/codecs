@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.3](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.2...@cornerstonejs/dicom-codec@0.1.3) (2022-03-30)
+
+**Note:** Version bump only for package @cornerstonejs/dicom-codec
+
+
+
+
+
 ## [0.1.2](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.1...@cornerstonejs/dicom-codec@0.1.2) (2022-02-10)
 
 
