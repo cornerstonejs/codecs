@@ -78,9 +78,10 @@ function getCodec(transferSyntaxUID) {
  * @returns {ExtendedImageInfo} Adapted imageInfo to all codecs.
  */
 function adaptImageInfo(imageInfo) {
-  const { rows, columns, bitsAllocated, signed, samplesPerPixel } = imageInfo;
+  const { rows, columns, bitsAllocated, signed, samplesPerPixel, pixelRepresentation } = imageInfo;
 
   return {
+    pixelRepresentation,
     bitsAllocated,
     samplesPerPixel,
     rows, // Number with the image rows/height

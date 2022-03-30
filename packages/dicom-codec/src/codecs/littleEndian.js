@@ -26,21 +26,16 @@ async function decode(imageFrame, imageInfo) {
     codecWrapper.decoderName,
     (context) => {
       context.timer.init("To decode length: " + imageFrame.length);
-      const _imageFrame = getPixelData(imageFrame, imageInfo);
-
       context.timer.end();
 
-      context.logger.log("Decoded length:" + _imageFrame.length);
-      context.logger.log(
-        "Decoded is a Typed array of: " + _imageFrame.constructor.name
-      );
+      context.logger.log("Use getPixel");
 
       const processInfo = {
         duration: context.timer.getDuration(),
       };
 
       return {
-        imageFrame: _imageFrame,
+        imageFrame,
         imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
         processInfo,
       };
