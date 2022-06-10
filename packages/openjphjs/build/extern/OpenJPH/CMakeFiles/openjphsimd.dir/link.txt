@@ -1,0 +1,1 @@
+/emsdk/upstream/emscripten/emar rc libopenjphsimd.a  @CMakeFiles/openjphsimd.dir/objects1.rsp
