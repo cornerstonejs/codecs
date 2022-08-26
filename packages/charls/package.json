@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-charls",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "WASM Build of CharLS",
   "main": "dist/charlsjs.js",
   "publishConfig": {
@@ -11,6 +11,17 @@
     "README.md",
     "dist"
   ],
+  "engines": {
+    "node": ">=0.14"
+  },
+  "exports": {
+    ".": "./dist/charlsjs.js",
+    "./wasm": "./dist/charlswasm.wasm",
+    "./wasmjs": "./dist/charlswasm.js",
+    "./decode": "./dist/charlsjs_decode.js",
+    "./decodewasm": "./dist/charlswasm_decode.wasm",
+    "./decodewasmjs": "./dist/charlswasm_decode.js"
+  },
   "directories": {
     "test": "test"
   },
