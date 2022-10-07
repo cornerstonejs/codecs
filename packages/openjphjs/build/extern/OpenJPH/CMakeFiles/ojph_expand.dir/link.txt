@@ -1,0 +1,1 @@
+/emsdk/upstream/emscripten/em++  -msimd128 -fexceptions -Wall -Wextra -Wconversion -Wunused-parameter -DOJPH_DISABLE_INTEL_SIMD -DNDEBUG -O2 -O3 -fexceptions  -O2 @CMakeFiles/ojph_expand.dir/objects1.rsp  -o ../../../bin/ojph_expand.js @CMakeFiles/ojph_expand.dir/linklibs.rsp

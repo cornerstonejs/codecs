@@ -1,0 +1,26 @@
+{
+  "name": "@cornerstonejs/codec-openjph",
+  "version": "1.0.0",
+  "description": "JS/WebAssembly build of OpenJPH",
+  "main": "dist/openjphjs.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "exports": {
+    ".": "./dist/openjphjs.js",
+    "./wasm": "./dist/openjphjs.wasm"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chafey/openjphjs.git"
+  },
+  "author": "Chris Hafey",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/chafey/openjphjs/issues"
+  },
+  "homepage": "https://github.com/chafey/openjphjs#readme"
+}
