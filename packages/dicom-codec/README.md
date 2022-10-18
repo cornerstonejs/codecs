@@ -12,6 +12,7 @@ DICOM Codecs for JavaScript (browser and node support).
 | JpegLossless      	| 1.2.840.10008.1.2.4.57 1.2.840.10008.1.2.4.70                	|    X   	|    -   	|        X        	|       -       	|
 | Jpegls            	| 1.2.840.10008.1.2.4.80 1.2.840.10008.1.2.4.81                	|    X   	|    X   	|        X        	|       X       	|
 | Jpeg2000          	| 1.2.840.10008.1.2.4.90 1.2.840.10008.1.2.4.91                	|    X   	|    X   	|        X        	|       X       	|
+| HTJ2K          	| 1.2.840.10008.1.2.4.96 (Provisional)                	|    X   	|    X   	|        X        	|       X       	|
 | RleLossless       	| 1.2.840.10008.1.2.5                                          	|    X   	|    -   	|        -        	|       -       	|
 
 ### Next releases planning
