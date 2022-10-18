@@ -1,5 +1,6 @@
 const jpeglsCodec = require("./jpegls");
 const jpeg2000Codec = require("./jpeg2000");
+const htj2kCodec = require("./htj2k");
 const littleEndianCodec = require("./littleEndian");
 const jpegLosslessCodec = require("./jpegLossless");
 const rleLosslessCodec = require("./rleLossless");
@@ -36,6 +37,7 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
+  "1.2.840.10008.1.2.4.96": htj2kCodec,
   "1.2.840.10008.1.2.5": rleLosslessCodec,
 };
 
