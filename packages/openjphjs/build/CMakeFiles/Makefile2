@@ -36,6 +36,9 @@ default_target: all
 .SUFFIXES: .hpux_make_needs_suffix_list
 
 
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -61,10 +64,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspaces/openjphjs
+CMAKE_SOURCE_DIR = /workspaces/codecs/packages/openjphjs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspaces/openjphjs/build
+CMAKE_BINARY_DIR = /workspaces/codecs/packages/openjphjs/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -132,16 +135,16 @@ src/clean: src/CMakeFiles/openjphjs.dir/clean
 
 # All Build rule for target.
 extern/OpenJPH/CMakeFiles/openjph.dir/all:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/depend
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=7,8,9,10,11,12,13,14,15,16,17,18 "Built target openjph"
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/depend
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=7,8,9,10,11,12,13,14,15,16,17,18 "Built target openjph"
 .PHONY : extern/OpenJPH/CMakeFiles/openjph.dir/all
 
 # Build rule for subdir invocation for target.
 extern/OpenJPH/CMakeFiles/openjph.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 12
-	$(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjph.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 12
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjph.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : extern/OpenJPH/CMakeFiles/openjph.dir/rule
 
 # Convenience name for target.
@@ -151,7 +154,7 @@ openjph: extern/OpenJPH/CMakeFiles/openjph.dir/rule
 
 # clean rule for target.
 extern/OpenJPH/CMakeFiles/openjph.dir/clean:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/clean
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/clean
 .PHONY : extern/OpenJPH/CMakeFiles/openjph.dir/clean
 
 #=============================================================================
@@ -159,16 +162,16 @@ extern/OpenJPH/CMakeFiles/openjph.dir/clean:
 
 # All Build rule for target.
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/all: extern/OpenJPH/CMakeFiles/openjph.dir/all
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/depend
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=4,5,6 "Built target ojph_expand"
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/depend
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=4,5,6 "Built target ojph_expand"
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/all
 
 # Build rule for subdir invocation for target.
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 15
-	$(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_expand.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 15
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_expand.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
 
 # Convenience name for target.
@@ -178,7 +181,7 @@ ojph_expand: extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
 
 # clean rule for target.
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean
 
 #=============================================================================
@@ -186,16 +189,16 @@ extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean:
 
 # All Build rule for target.
 extern/OpenJPH/CMakeFiles/ojph_compress.dir/all: extern/OpenJPH/CMakeFiles/openjph.dir/all
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/depend
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=1,2,3 "Built target ojph_compress"
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/depend
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=1,2,3 "Built target ojph_compress"
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_compress.dir/all
 
 # Build rule for subdir invocation for target.
 extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 15
-	$(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_compress.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 15
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_compress.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
 
 # Convenience name for target.
@@ -205,7 +208,7 @@ ojph_compress: extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
 
 # clean rule for target.
 extern/OpenJPH/CMakeFiles/ojph_compress.dir/clean:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/clean
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/clean
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_compress.dir/clean
 
 #=============================================================================
@@ -213,16 +216,16 @@ extern/OpenJPH/CMakeFiles/ojph_compress.dir/clean:
 
 # All Build rule for target.
 extern/OpenJPH/CMakeFiles/openjphsimd.dir/all:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/depend
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36 "Built target openjphsimd"
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/depend
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36 "Built target openjphsimd"
 .PHONY : extern/OpenJPH/CMakeFiles/openjphsimd.dir/all
 
 # Build rule for subdir invocation for target.
 extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 16
-	$(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjphsimd.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 16
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjphsimd.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
 
 # Convenience name for target.
@@ -232,7 +235,7 @@ openjphsimd: extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
 
 # clean rule for target.
 extern/OpenJPH/CMakeFiles/openjphsimd.dir/clean:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/clean
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/clean
 .PHONY : extern/OpenJPH/CMakeFiles/openjphsimd.dir/clean
 
 #=============================================================================
@@ -240,16 +243,16 @@ extern/OpenJPH/CMakeFiles/openjphsimd.dir/clean:
 
 # All Build rule for target.
 src/CMakeFiles/openjphjs.dir/all: extern/OpenJPH/CMakeFiles/openjphsimd.dir/all
-	$(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/depend
-	$(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=19,20 "Built target openjphjs"
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/depend
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=19,20 "Built target openjphjs"
 .PHONY : src/CMakeFiles/openjphjs.dir/all
 
 # Build rule for subdir invocation for target.
 src/CMakeFiles/openjphjs.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 18
-	$(MAKE) -f CMakeFiles/Makefile2 src/CMakeFiles/openjphjs.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 18
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/openjphjs.dir/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : src/CMakeFiles/openjphjs.dir/rule
 
 # Convenience name for target.
@@ -259,7 +262,7 @@ openjphjs: src/CMakeFiles/openjphjs.dir/rule
 
 # clean rule for target.
 src/CMakeFiles/openjphjs.dir/clean:
-	$(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/clean
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/clean
 .PHONY : src/CMakeFiles/openjphjs.dir/clean
 
 #=============================================================================

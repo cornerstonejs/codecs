@@ -4,21 +4,21 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/codestream/ojph_codestream.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/codestream/ojph_codestream_wasm.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/codestream/ojph_params.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_common.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_decoder.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_decoder_wasm.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_encoder.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/others/ojph_arch.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/others/ojph_file.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/others/ojph_mem.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/others/ojph_message.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/transform/ojph_colour.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/transform/ojph_colour_wasm.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/transform/ojph_transform.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.o"
-  "/workspaces/openjphjs/extern/OpenJPH/src/core/transform/ojph_transform_wasm.cpp" "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/codestream/ojph_codestream.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/codestream/ojph_codestream_wasm.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/codestream/ojph_params.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_common.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_decoder.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_decoder_wasm.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/coding/ojph_block_encoder.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/others/ojph_arch.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/others/ojph_file.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/others/ojph_mem.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/others/ojph_message.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/transform/ojph_colour.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/transform/ojph_colour_wasm.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/transform/ojph_transform.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/transform/ojph_transform_wasm.cpp" "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "Clang")
 

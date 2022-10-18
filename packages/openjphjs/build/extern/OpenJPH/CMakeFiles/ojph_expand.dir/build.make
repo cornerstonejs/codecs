@@ -35,6 +35,9 @@
 .SUFFIXES: .hpux_make_needs_suffix_list
 
 
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -60,10 +63,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspaces/openjphjs
+CMAKE_SOURCE_DIR = /workspaces/codecs/packages/openjphjs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspaces/openjphjs/build
+CMAKE_BINARY_DIR = /workspaces/codecs/packages/openjphjs/build
 
 # Include any dependencies generated for this target.
 include extern/OpenJPH/CMakeFiles/ojph_expand.dir/depend.make
@@ -77,30 +80,30 @@ include extern/OpenJPH/CMakeFiles/ojph_expand.dir/flags.make
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o: extern/OpenJPH/CMakeFiles/ojph_expand.dir/flags.make
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o: extern/OpenJPH/CMakeFiles/ojph_expand.dir/includes_CXX.rsp
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o: ../extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o -c /workspaces/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o"
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o -c /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspaces/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp > CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp > CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp -o CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/ojph_expand/ojph_expand.cpp -o CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o: extern/OpenJPH/CMakeFiles/ojph_expand.dir/flags.make
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o: extern/OpenJPH/CMakeFiles/ojph_expand.dir/includes_CXX.rsp
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o: ../extern/OpenJPH/src/apps/others/ojph_img_io.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o -c /workspaces/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o"
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o -c /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspaces/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp > CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp > CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp -o CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && /emsdk/upstream/emscripten/em++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/others/ojph_img_io.cpp -o CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s
 
 # Object files for target ojph_expand
 ojph_expand_OBJECTS = \
@@ -117,8 +120,8 @@ ojph_expand_EXTERNAL_OBJECTS =
 ../bin/ojph_expand.js: extern/OpenJPH/CMakeFiles/ojph_expand.dir/linklibs.rsp
 ../bin/ojph_expand.js: extern/OpenJPH/CMakeFiles/ojph_expand.dir/objects1.rsp
 ../bin/ojph_expand.js: extern/OpenJPH/CMakeFiles/ojph_expand.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/workspaces/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable ../../../bin/ojph_expand.js"
-	cd /workspaces/openjphjs/build/extern/OpenJPH && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ojph_expand.dir/link.txt --verbose=$(VERBOSE)
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/workspaces/codecs/packages/openjphjs/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Linking CXX executable ../../../bin/ojph_expand.js"
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && $(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ojph_expand.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/build: ../bin/ojph_expand.js
@@ -126,10 +129,10 @@ extern/OpenJPH/CMakeFiles/ojph_expand.dir/build: ../bin/ojph_expand.js
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean:
-	cd /workspaces/openjphjs/build/extern/OpenJPH && $(CMAKE_COMMAND) -P CMakeFiles/ojph_expand.dir/cmake_clean.cmake
+	cd /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH && $(CMAKE_COMMAND) -P CMakeFiles/ojph_expand.dir/cmake_clean.cmake
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/clean
 
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/depend:
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /workspaces/openjphjs /workspaces/openjphjs/extern/OpenJPH /workspaces/openjphjs/build /workspaces/openjphjs/build/extern/OpenJPH /workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/ojph_expand.dir/DependInfo.cmake --color=$(COLOR)
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /workspaces/codecs/packages/openjphjs /workspaces/codecs/packages/openjphjs/extern/OpenJPH /workspaces/codecs/packages/openjphjs/build /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/ojph_expand.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/depend
 
