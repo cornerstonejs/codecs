@@ -3,6 +3,9 @@
   "version": "1.0.1",
   "description": "JS/WebAssembly build of OpenJPH",
   "main": "dist/openjphjs.js",
+  "publishConfig": {
+    "access": "public"
+  },
   "directories": {
     "test": "test"
   },
