@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjph",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "JS/WebAssembly build of OpenJPH",
   "main": "dist/openjphjs.js",
   "publishConfig": {
@@ -14,15 +14,14 @@
     "build:ci": "yarn run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "publishConfig": {
-    "access": "public"
-  },
   "exports": {
     ".": "./dist/openjphjs.js",
     "./dist/openjphjs.wasm": "./dist/openjphjs.wasm",
     "./dist/openjphjs.js": "./dist/openjphjs.js"
   },
-  "files": [ "dist/**" ],
+  "files": [
+    "dist/**"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/chafey/openjphjs.git"
