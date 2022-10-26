@@ -4,7 +4,7 @@ set(CMAKE_DEPENDS_LANGUAGES
   )
 # The set of files for implicit dependencies of each language:
 set(CMAKE_DEPENDS_CHECK_CXX
-  "/workspaces/openjphjs/src/jslib.cpp" "/workspaces/openjphjs/build/src/CMakeFiles/openjphjs.dir/jslib.cpp.o"
+  "/workspaces/codecs/packages/openjphjs/src/jslib.cpp" "/workspaces/codecs/packages/openjphjs/build/src/CMakeFiles/openjphjs.dir/jslib.cpp.o"
   )
 set(CMAKE_CXX_COMPILER_ID "Clang")
 
@@ -15,7 +15,7 @@ set(CMAKE_CXX_TARGET_INCLUDE_PATH
 
 # Targets to which this target links.
 set(CMAKE_TARGET_LINKED_INFO_FILES
-  "/workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/DependInfo.cmake"
+  "/workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/openjphsimd.dir/DependInfo.cmake"
   )
 
 # Fortran module output directory.

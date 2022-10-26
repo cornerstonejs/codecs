@@ -1,4 +1,4 @@
-# Install script for directory: /workspaces/openjphjs/src
+# Install script for directory: /workspaces/codecs/packages/openjphjs/src
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

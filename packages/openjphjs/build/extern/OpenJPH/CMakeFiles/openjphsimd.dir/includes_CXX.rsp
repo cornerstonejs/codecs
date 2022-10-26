@@ -1,1 +1,1 @@
--I/workspaces/openjphjs/extern/OpenJPH/src/core/common -I/workspaces/openjphjs/extern/OpenJPH/src/apps/common 
+-I/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/core/common -I/workspaces/codecs/packages/openjphjs/extern/OpenJPH/src/apps/common 

@@ -40,6 +40,9 @@ default_target: all
 .SUFFIXES: .hpux_make_needs_suffix_list
 
 
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -65,10 +68,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspaces/openjphjs
+CMAKE_SOURCE_DIR = /workspaces/codecs/packages/openjphjs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspaces/openjphjs/build
+CMAKE_BINARY_DIR = /workspaces/codecs/packages/openjphjs/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -143,14 +146,14 @@ install/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles /workspaces/openjphjs/build/CMakeFiles/progress.marks
-	$(MAKE) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles /workspaces/codecs/packages/openjphjs/build/CMakeFiles/progress.marks
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	$(MAKE) -f CMakeFiles/Makefile2 clean
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 clean
 .PHONY : clean
 
 # The main clean target
@@ -160,12 +163,12 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	$(MAKE) -f CMakeFiles/Makefile2 preinstall
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	$(MAKE) -f CMakeFiles/Makefile2 preinstall
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 preinstall
 .PHONY : preinstall/fast
 
 # clear depends
@@ -178,12 +181,12 @@ depend:
 
 # Build rule for target.
 openjph: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 openjph
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 openjph
 .PHONY : openjph
 
 # fast build rule for target.
 openjph/fast:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
 .PHONY : openjph/fast
 
 #=============================================================================
@@ -191,12 +194,12 @@ openjph/fast:
 
 # Build rule for target.
 ojph_expand: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 ojph_expand
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ojph_expand
 .PHONY : ojph_expand
 
 # fast build rule for target.
 ojph_expand/fast:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
 .PHONY : ojph_expand/fast
 
 #=============================================================================
@@ -204,12 +207,12 @@ ojph_expand/fast:
 
 # Build rule for target.
 ojph_compress: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 ojph_compress
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 ojph_compress
 .PHONY : ojph_compress
 
 # fast build rule for target.
 ojph_compress/fast:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
 .PHONY : ojph_compress/fast
 
 #=============================================================================
@@ -217,12 +220,12 @@ ojph_compress/fast:
 
 # Build rule for target.
 openjphsimd: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 openjphsimd
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 openjphsimd
 .PHONY : openjphsimd
 
 # fast build rule for target.
 openjphsimd/fast:
-	$(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
+	$(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
 .PHONY : openjphsimd/fast
 
 #=============================================================================
@@ -230,12 +233,12 @@ openjphsimd/fast:
 
 # Build rule for target.
 openjphjs: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 openjphjs
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 openjphjs
 .PHONY : openjphjs
 
 # fast build rule for target.
 openjphjs/fast:
-	$(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
+	$(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
 .PHONY : openjphjs/fast
 
 # Help Target

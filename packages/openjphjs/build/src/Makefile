@@ -40,6 +40,9 @@ default_target: all
 .SUFFIXES: .hpux_make_needs_suffix_list
 
 
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -65,10 +68,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspaces/openjphjs
+CMAKE_SOURCE_DIR = /workspaces/codecs/packages/openjphjs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspaces/openjphjs/build
+CMAKE_BINARY_DIR = /workspaces/codecs/packages/openjphjs/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -143,14 +146,14 @@ list_install_components/fast: list_install_components
 
 # The main all target
 all: cmake_check_build_system
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles /workspaces/openjphjs/build/src/CMakeFiles/progress.marks
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 src/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles /workspaces/codecs/packages/openjphjs/build/src/CMakeFiles/progress.marks
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 src/clean
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/clean
 .PHONY : clean
 
 # The main clean target
@@ -160,22 +163,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 src/preinstall
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 src/preinstall
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 src/CMakeFiles/openjphjs.dir/rule:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 src/CMakeFiles/openjphjs.dir/rule
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 src/CMakeFiles/openjphjs.dir/rule
 .PHONY : src/CMakeFiles/openjphjs.dir/rule
 
 # Convenience name for target.
@@ -185,7 +188,7 @@ openjphjs: src/CMakeFiles/openjphjs.dir/rule
 
 # fast build rule for target.
 openjphjs/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/build
 .PHONY : openjphjs/fast
 
 jslib.o: jslib.cpp.o
@@ -194,7 +197,7 @@ jslib.o: jslib.cpp.o
 
 # target to build an object file
 jslib.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.o
 .PHONY : jslib.cpp.o
 
 jslib.i: jslib.cpp.i
@@ -203,7 +206,7 @@ jslib.i: jslib.cpp.i
 
 # target to preprocess a source file
 jslib.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.i
 .PHONY : jslib.cpp.i
 
 jslib.s: jslib.cpp.s
@@ -212,7 +215,7 @@ jslib.s: jslib.cpp.s
 
 # target to generate assembly for a file
 jslib.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f src/CMakeFiles/openjphjs.dir/build.make src/CMakeFiles/openjphjs.dir/jslib.cpp.s
 .PHONY : jslib.cpp.s
 
 # Help Target
@@ -242,6 +245,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

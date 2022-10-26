@@ -40,6 +40,9 @@ default_target: all
 .SUFFIXES: .hpux_make_needs_suffix_list
 
 
+# Command-line flag to silence nested $(MAKE).
+$(VERBOSE)MAKESILENT = -s
+
 # Suppress display of executed commands.
 $(VERBOSE).SILENT:
 
@@ -65,10 +68,10 @@ RM = /usr/local/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /workspaces/openjphjs
+CMAKE_SOURCE_DIR = /workspaces/codecs/packages/openjphjs
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /workspaces/openjphjs/build
+CMAKE_BINARY_DIR = /workspaces/codecs/packages/openjphjs/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -143,14 +146,14 @@ install/local/fast: preinstall/fast
 
 # The main all target
 all: cmake_check_build_system
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles /workspaces/openjphjs/build/extern/OpenJPH/CMakeFiles/progress.marks
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/openjphjs/build/CMakeFiles 0
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles /workspaces/codecs/packages/openjphjs/build/extern/OpenJPH/CMakeFiles/progress.marks
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /workspaces/codecs/packages/openjphjs/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/clean
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/clean
 .PHONY : clean
 
 # The main clean target
@@ -160,22 +163,22 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/preinstall
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/preinstall
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Convenience name for target.
 extern/OpenJPH/CMakeFiles/openjph.dir/rule:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjph.dir/rule
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjph.dir/rule
 .PHONY : extern/OpenJPH/CMakeFiles/openjph.dir/rule
 
 # Convenience name for target.
@@ -185,12 +188,12 @@ openjph: extern/OpenJPH/CMakeFiles/openjph.dir/rule
 
 # fast build rule for target.
 openjph/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/build
 .PHONY : openjph/fast
 
 # Convenience name for target.
 extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
 
 # Convenience name for target.
@@ -200,12 +203,12 @@ ojph_expand: extern/OpenJPH/CMakeFiles/ojph_expand.dir/rule
 
 # fast build rule for target.
 ojph_expand/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/build
 .PHONY : ojph_expand/fast
 
 # Convenience name for target.
 extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
 .PHONY : extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
 
 # Convenience name for target.
@@ -215,12 +218,12 @@ ojph_compress: extern/OpenJPH/CMakeFiles/ojph_compress.dir/rule
 
 # fast build rule for target.
 ojph_compress/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/build
 .PHONY : ojph_compress/fast
 
 # Convenience name for target.
 extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule:
-	cd /workspaces/openjphjs/build && $(MAKE) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
 .PHONY : extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
 
 # Convenience name for target.
@@ -230,7 +233,7 @@ openjphsimd: extern/OpenJPH/CMakeFiles/openjphsimd.dir/rule
 
 # fast build rule for target.
 openjphsimd/fast:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/build
 .PHONY : openjphsimd/fast
 
 src/apps/ojph_compress/ojph_compress.o: src/apps/ojph_compress/ojph_compress.cpp.o
@@ -239,7 +242,7 @@ src/apps/ojph_compress/ojph_compress.o: src/apps/ojph_compress/ojph_compress.cpp
 
 # target to build an object file
 src/apps/ojph_compress/ojph_compress.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.o
 .PHONY : src/apps/ojph_compress/ojph_compress.cpp.o
 
 src/apps/ojph_compress/ojph_compress.i: src/apps/ojph_compress/ojph_compress.cpp.i
@@ -248,7 +251,7 @@ src/apps/ojph_compress/ojph_compress.i: src/apps/ojph_compress/ojph_compress.cpp
 
 # target to preprocess a source file
 src/apps/ojph_compress/ojph_compress.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.i
 .PHONY : src/apps/ojph_compress/ojph_compress.cpp.i
 
 src/apps/ojph_compress/ojph_compress.s: src/apps/ojph_compress/ojph_compress.cpp.s
@@ -257,7 +260,7 @@ src/apps/ojph_compress/ojph_compress.s: src/apps/ojph_compress/ojph_compress.cpp
 
 # target to generate assembly for a file
 src/apps/ojph_compress/ojph_compress.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/ojph_compress/ojph_compress.cpp.s
 .PHONY : src/apps/ojph_compress/ojph_compress.cpp.s
 
 src/apps/ojph_expand/ojph_expand.o: src/apps/ojph_expand/ojph_expand.cpp.o
@@ -266,7 +269,7 @@ src/apps/ojph_expand/ojph_expand.o: src/apps/ojph_expand/ojph_expand.cpp.o
 
 # target to build an object file
 src/apps/ojph_expand/ojph_expand.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.o
 .PHONY : src/apps/ojph_expand/ojph_expand.cpp.o
 
 src/apps/ojph_expand/ojph_expand.i: src/apps/ojph_expand/ojph_expand.cpp.i
@@ -275,7 +278,7 @@ src/apps/ojph_expand/ojph_expand.i: src/apps/ojph_expand/ojph_expand.cpp.i
 
 # target to preprocess a source file
 src/apps/ojph_expand/ojph_expand.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.i
 .PHONY : src/apps/ojph_expand/ojph_expand.cpp.i
 
 src/apps/ojph_expand/ojph_expand.s: src/apps/ojph_expand/ojph_expand.cpp.s
@@ -284,7 +287,7 @@ src/apps/ojph_expand/ojph_expand.s: src/apps/ojph_expand/ojph_expand.cpp.s
 
 # target to generate assembly for a file
 src/apps/ojph_expand/ojph_expand.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/ojph_expand/ojph_expand.cpp.s
 .PHONY : src/apps/ojph_expand/ojph_expand.cpp.s
 
 src/apps/others/ojph_img_io.o: src/apps/others/ojph_img_io.cpp.o
@@ -293,8 +296,8 @@ src/apps/others/ojph_img_io.o: src/apps/others/ojph_img_io.cpp.o
 
 # target to build an object file
 src/apps/others/ojph_img_io.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.o
 .PHONY : src/apps/others/ojph_img_io.cpp.o
 
 src/apps/others/ojph_img_io.i: src/apps/others/ojph_img_io.cpp.i
@@ -303,8 +306,8 @@ src/apps/others/ojph_img_io.i: src/apps/others/ojph_img_io.cpp.i
 
 # target to preprocess a source file
 src/apps/others/ojph_img_io.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.i
 .PHONY : src/apps/others/ojph_img_io.cpp.i
 
 src/apps/others/ojph_img_io.s: src/apps/others/ojph_img_io.cpp.s
@@ -313,8 +316,8 @@ src/apps/others/ojph_img_io.s: src/apps/others/ojph_img_io.cpp.s
 
 # target to generate assembly for a file
 src/apps/others/ojph_img_io.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_expand.dir/build.make extern/OpenJPH/CMakeFiles/ojph_expand.dir/src/apps/others/ojph_img_io.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/ojph_compress.dir/build.make extern/OpenJPH/CMakeFiles/ojph_compress.dir/src/apps/others/ojph_img_io.cpp.s
 .PHONY : src/apps/others/ojph_img_io.cpp.s
 
 src/core/codestream/ojph_codestream.o: src/core/codestream/ojph_codestream.cpp.o
@@ -323,8 +326,8 @@ src/core/codestream/ojph_codestream.o: src/core/codestream/ojph_codestream.cpp.o
 
 # target to build an object file
 src/core/codestream/ojph_codestream.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.o
 .PHONY : src/core/codestream/ojph_codestream.cpp.o
 
 src/core/codestream/ojph_codestream.i: src/core/codestream/ojph_codestream.cpp.i
@@ -333,8 +336,8 @@ src/core/codestream/ojph_codestream.i: src/core/codestream/ojph_codestream.cpp.i
 
 # target to preprocess a source file
 src/core/codestream/ojph_codestream.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.i
 .PHONY : src/core/codestream/ojph_codestream.cpp.i
 
 src/core/codestream/ojph_codestream.s: src/core/codestream/ojph_codestream.cpp.s
@@ -343,8 +346,8 @@ src/core/codestream/ojph_codestream.s: src/core/codestream/ojph_codestream.cpp.s
 
 # target to generate assembly for a file
 src/core/codestream/ojph_codestream.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_codestream.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream.cpp.s
 .PHONY : src/core/codestream/ojph_codestream.cpp.s
 
 src/core/codestream/ojph_codestream_wasm.o: src/core/codestream/ojph_codestream_wasm.cpp.o
@@ -353,7 +356,7 @@ src/core/codestream/ojph_codestream_wasm.o: src/core/codestream/ojph_codestream_
 
 # target to build an object file
 src/core/codestream/ojph_codestream_wasm.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.o
 .PHONY : src/core/codestream/ojph_codestream_wasm.cpp.o
 
 src/core/codestream/ojph_codestream_wasm.i: src/core/codestream/ojph_codestream_wasm.cpp.i
@@ -362,7 +365,7 @@ src/core/codestream/ojph_codestream_wasm.i: src/core/codestream/ojph_codestream_
 
 # target to preprocess a source file
 src/core/codestream/ojph_codestream_wasm.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.i
 .PHONY : src/core/codestream/ojph_codestream_wasm.cpp.i
 
 src/core/codestream/ojph_codestream_wasm.s: src/core/codestream/ojph_codestream_wasm.cpp.s
@@ -371,7 +374,7 @@ src/core/codestream/ojph_codestream_wasm.s: src/core/codestream/ojph_codestream_
 
 # target to generate assembly for a file
 src/core/codestream/ojph_codestream_wasm.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_codestream_wasm.cpp.s
 .PHONY : src/core/codestream/ojph_codestream_wasm.cpp.s
 
 src/core/codestream/ojph_params.o: src/core/codestream/ojph_params.cpp.o
@@ -380,8 +383,8 @@ src/core/codestream/ojph_params.o: src/core/codestream/ojph_params.cpp.o
 
 # target to build an object file
 src/core/codestream/ojph_params.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.o
 .PHONY : src/core/codestream/ojph_params.cpp.o
 
 src/core/codestream/ojph_params.i: src/core/codestream/ojph_params.cpp.i
@@ -390,8 +393,8 @@ src/core/codestream/ojph_params.i: src/core/codestream/ojph_params.cpp.i
 
 # target to preprocess a source file
 src/core/codestream/ojph_params.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.i
 .PHONY : src/core/codestream/ojph_params.cpp.i
 
 src/core/codestream/ojph_params.s: src/core/codestream/ojph_params.cpp.s
@@ -400,8 +403,8 @@ src/core/codestream/ojph_params.s: src/core/codestream/ojph_params.cpp.s
 
 # target to generate assembly for a file
 src/core/codestream/ojph_params.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/codestream/ojph_params.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/codestream/ojph_params.cpp.s
 .PHONY : src/core/codestream/ojph_params.cpp.s
 
 src/core/coding/ojph_block_common.o: src/core/coding/ojph_block_common.cpp.o
@@ -410,8 +413,8 @@ src/core/coding/ojph_block_common.o: src/core/coding/ojph_block_common.cpp.o
 
 # target to build an object file
 src/core/coding/ojph_block_common.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.o
 .PHONY : src/core/coding/ojph_block_common.cpp.o
 
 src/core/coding/ojph_block_common.i: src/core/coding/ojph_block_common.cpp.i
@@ -420,8 +423,8 @@ src/core/coding/ojph_block_common.i: src/core/coding/ojph_block_common.cpp.i
 
 # target to preprocess a source file
 src/core/coding/ojph_block_common.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.i
 .PHONY : src/core/coding/ojph_block_common.cpp.i
 
 src/core/coding/ojph_block_common.s: src/core/coding/ojph_block_common.cpp.s
@@ -430,8 +433,8 @@ src/core/coding/ojph_block_common.s: src/core/coding/ojph_block_common.cpp.s
 
 # target to generate assembly for a file
 src/core/coding/ojph_block_common.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_common.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_common.cpp.s
 .PHONY : src/core/coding/ojph_block_common.cpp.s
 
 src/core/coding/ojph_block_decoder.o: src/core/coding/ojph_block_decoder.cpp.o
@@ -440,8 +443,8 @@ src/core/coding/ojph_block_decoder.o: src/core/coding/ojph_block_decoder.cpp.o
 
 # target to build an object file
 src/core/coding/ojph_block_decoder.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.o
 .PHONY : src/core/coding/ojph_block_decoder.cpp.o
 
 src/core/coding/ojph_block_decoder.i: src/core/coding/ojph_block_decoder.cpp.i
@@ -450,8 +453,8 @@ src/core/coding/ojph_block_decoder.i: src/core/coding/ojph_block_decoder.cpp.i
 
 # target to preprocess a source file
 src/core/coding/ojph_block_decoder.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.i
 .PHONY : src/core/coding/ojph_block_decoder.cpp.i
 
 src/core/coding/ojph_block_decoder.s: src/core/coding/ojph_block_decoder.cpp.s
@@ -460,8 +463,8 @@ src/core/coding/ojph_block_decoder.s: src/core/coding/ojph_block_decoder.cpp.s
 
 # target to generate assembly for a file
 src/core/coding/ojph_block_decoder.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_decoder.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder.cpp.s
 .PHONY : src/core/coding/ojph_block_decoder.cpp.s
 
 src/core/coding/ojph_block_decoder_wasm.o: src/core/coding/ojph_block_decoder_wasm.cpp.o
@@ -470,7 +473,7 @@ src/core/coding/ojph_block_decoder_wasm.o: src/core/coding/ojph_block_decoder_wa
 
 # target to build an object file
 src/core/coding/ojph_block_decoder_wasm.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.o
 .PHONY : src/core/coding/ojph_block_decoder_wasm.cpp.o
 
 src/core/coding/ojph_block_decoder_wasm.i: src/core/coding/ojph_block_decoder_wasm.cpp.i
@@ -479,7 +482,7 @@ src/core/coding/ojph_block_decoder_wasm.i: src/core/coding/ojph_block_decoder_wa
 
 # target to preprocess a source file
 src/core/coding/ojph_block_decoder_wasm.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.i
 .PHONY : src/core/coding/ojph_block_decoder_wasm.cpp.i
 
 src/core/coding/ojph_block_decoder_wasm.s: src/core/coding/ojph_block_decoder_wasm.cpp.s
@@ -488,7 +491,7 @@ src/core/coding/ojph_block_decoder_wasm.s: src/core/coding/ojph_block_decoder_wa
 
 # target to generate assembly for a file
 src/core/coding/ojph_block_decoder_wasm.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_decoder_wasm.cpp.s
 .PHONY : src/core/coding/ojph_block_decoder_wasm.cpp.s
 
 src/core/coding/ojph_block_encoder.o: src/core/coding/ojph_block_encoder.cpp.o
@@ -497,8 +500,8 @@ src/core/coding/ojph_block_encoder.o: src/core/coding/ojph_block_encoder.cpp.o
 
 # target to build an object file
 src/core/coding/ojph_block_encoder.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.o
 .PHONY : src/core/coding/ojph_block_encoder.cpp.o
 
 src/core/coding/ojph_block_encoder.i: src/core/coding/ojph_block_encoder.cpp.i
@@ -507,8 +510,8 @@ src/core/coding/ojph_block_encoder.i: src/core/coding/ojph_block_encoder.cpp.i
 
 # target to preprocess a source file
 src/core/coding/ojph_block_encoder.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.i
 .PHONY : src/core/coding/ojph_block_encoder.cpp.i
 
 src/core/coding/ojph_block_encoder.s: src/core/coding/ojph_block_encoder.cpp.s
@@ -517,8 +520,8 @@ src/core/coding/ojph_block_encoder.s: src/core/coding/ojph_block_encoder.cpp.s
 
 # target to generate assembly for a file
 src/core/coding/ojph_block_encoder.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/coding/ojph_block_encoder.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/coding/ojph_block_encoder.cpp.s
 .PHONY : src/core/coding/ojph_block_encoder.cpp.s
 
 src/core/others/ojph_arch.o: src/core/others/ojph_arch.cpp.o
@@ -527,8 +530,8 @@ src/core/others/ojph_arch.o: src/core/others/ojph_arch.cpp.o
 
 # target to build an object file
 src/core/others/ojph_arch.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.o
 .PHONY : src/core/others/ojph_arch.cpp.o
 
 src/core/others/ojph_arch.i: src/core/others/ojph_arch.cpp.i
@@ -537,8 +540,8 @@ src/core/others/ojph_arch.i: src/core/others/ojph_arch.cpp.i
 
 # target to preprocess a source file
 src/core/others/ojph_arch.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.i
 .PHONY : src/core/others/ojph_arch.cpp.i
 
 src/core/others/ojph_arch.s: src/core/others/ojph_arch.cpp.s
@@ -547,8 +550,8 @@ src/core/others/ojph_arch.s: src/core/others/ojph_arch.cpp.s
 
 # target to generate assembly for a file
 src/core/others/ojph_arch.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_arch.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_arch.cpp.s
 .PHONY : src/core/others/ojph_arch.cpp.s
 
 src/core/others/ojph_file.o: src/core/others/ojph_file.cpp.o
@@ -557,8 +560,8 @@ src/core/others/ojph_file.o: src/core/others/ojph_file.cpp.o
 
 # target to build an object file
 src/core/others/ojph_file.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.o
 .PHONY : src/core/others/ojph_file.cpp.o
 
 src/core/others/ojph_file.i: src/core/others/ojph_file.cpp.i
@@ -567,8 +570,8 @@ src/core/others/ojph_file.i: src/core/others/ojph_file.cpp.i
 
 # target to preprocess a source file
 src/core/others/ojph_file.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.i
 .PHONY : src/core/others/ojph_file.cpp.i
 
 src/core/others/ojph_file.s: src/core/others/ojph_file.cpp.s
@@ -577,8 +580,8 @@ src/core/others/ojph_file.s: src/core/others/ojph_file.cpp.s
 
 # target to generate assembly for a file
 src/core/others/ojph_file.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_file.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_file.cpp.s
 .PHONY : src/core/others/ojph_file.cpp.s
 
 src/core/others/ojph_mem.o: src/core/others/ojph_mem.cpp.o
@@ -587,8 +590,8 @@ src/core/others/ojph_mem.o: src/core/others/ojph_mem.cpp.o
 
 # target to build an object file
 src/core/others/ojph_mem.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.o
 .PHONY : src/core/others/ojph_mem.cpp.o
 
 src/core/others/ojph_mem.i: src/core/others/ojph_mem.cpp.i
@@ -597,8 +600,8 @@ src/core/others/ojph_mem.i: src/core/others/ojph_mem.cpp.i
 
 # target to preprocess a source file
 src/core/others/ojph_mem.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.i
 .PHONY : src/core/others/ojph_mem.cpp.i
 
 src/core/others/ojph_mem.s: src/core/others/ojph_mem.cpp.s
@@ -607,8 +610,8 @@ src/core/others/ojph_mem.s: src/core/others/ojph_mem.cpp.s
 
 # target to generate assembly for a file
 src/core/others/ojph_mem.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_mem.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_mem.cpp.s
 .PHONY : src/core/others/ojph_mem.cpp.s
 
 src/core/others/ojph_message.o: src/core/others/ojph_message.cpp.o
@@ -617,8 +620,8 @@ src/core/others/ojph_message.o: src/core/others/ojph_message.cpp.o
 
 # target to build an object file
 src/core/others/ojph_message.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.o
 .PHONY : src/core/others/ojph_message.cpp.o
 
 src/core/others/ojph_message.i: src/core/others/ojph_message.cpp.i
@@ -627,8 +630,8 @@ src/core/others/ojph_message.i: src/core/others/ojph_message.cpp.i
 
 # target to preprocess a source file
 src/core/others/ojph_message.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.i
 .PHONY : src/core/others/ojph_message.cpp.i
 
 src/core/others/ojph_message.s: src/core/others/ojph_message.cpp.s
@@ -637,8 +640,8 @@ src/core/others/ojph_message.s: src/core/others/ojph_message.cpp.s
 
 # target to generate assembly for a file
 src/core/others/ojph_message.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/others/ojph_message.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/others/ojph_message.cpp.s
 .PHONY : src/core/others/ojph_message.cpp.s
 
 src/core/transform/ojph_colour.o: src/core/transform/ojph_colour.cpp.o
@@ -647,8 +650,8 @@ src/core/transform/ojph_colour.o: src/core/transform/ojph_colour.cpp.o
 
 # target to build an object file
 src/core/transform/ojph_colour.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.o
 .PHONY : src/core/transform/ojph_colour.cpp.o
 
 src/core/transform/ojph_colour.i: src/core/transform/ojph_colour.cpp.i
@@ -657,8 +660,8 @@ src/core/transform/ojph_colour.i: src/core/transform/ojph_colour.cpp.i
 
 # target to preprocess a source file
 src/core/transform/ojph_colour.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.i
 .PHONY : src/core/transform/ojph_colour.cpp.i
 
 src/core/transform/ojph_colour.s: src/core/transform/ojph_colour.cpp.s
@@ -667,8 +670,8 @@ src/core/transform/ojph_colour.s: src/core/transform/ojph_colour.cpp.s
 
 # target to generate assembly for a file
 src/core/transform/ojph_colour.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_colour.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour.cpp.s
 .PHONY : src/core/transform/ojph_colour.cpp.s
 
 src/core/transform/ojph_colour_wasm.o: src/core/transform/ojph_colour_wasm.cpp.o
@@ -677,7 +680,7 @@ src/core/transform/ojph_colour_wasm.o: src/core/transform/ojph_colour_wasm.cpp.o
 
 # target to build an object file
 src/core/transform/ojph_colour_wasm.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.o
 .PHONY : src/core/transform/ojph_colour_wasm.cpp.o
 
 src/core/transform/ojph_colour_wasm.i: src/core/transform/ojph_colour_wasm.cpp.i
@@ -686,7 +689,7 @@ src/core/transform/ojph_colour_wasm.i: src/core/transform/ojph_colour_wasm.cpp.i
 
 # target to preprocess a source file
 src/core/transform/ojph_colour_wasm.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.i
 .PHONY : src/core/transform/ojph_colour_wasm.cpp.i
 
 src/core/transform/ojph_colour_wasm.s: src/core/transform/ojph_colour_wasm.cpp.s
@@ -695,7 +698,7 @@ src/core/transform/ojph_colour_wasm.s: src/core/transform/ojph_colour_wasm.cpp.s
 
 # target to generate assembly for a file
 src/core/transform/ojph_colour_wasm.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_colour_wasm.cpp.s
 .PHONY : src/core/transform/ojph_colour_wasm.cpp.s
 
 src/core/transform/ojph_transform.o: src/core/transform/ojph_transform.cpp.o
@@ -704,8 +707,8 @@ src/core/transform/ojph_transform.o: src/core/transform/ojph_transform.cpp.o
 
 # target to build an object file
 src/core/transform/ojph_transform.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.o
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.o
 .PHONY : src/core/transform/ojph_transform.cpp.o
 
 src/core/transform/ojph_transform.i: src/core/transform/ojph_transform.cpp.i
@@ -714,8 +717,8 @@ src/core/transform/ojph_transform.i: src/core/transform/ojph_transform.cpp.i
 
 # target to preprocess a source file
 src/core/transform/ojph_transform.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.i
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.i
 .PHONY : src/core/transform/ojph_transform.cpp.i
 
 src/core/transform/ojph_transform.s: src/core/transform/ojph_transform.cpp.s
@@ -724,8 +727,8 @@ src/core/transform/ojph_transform.s: src/core/transform/ojph_transform.cpp.s
 
 # target to generate assembly for a file
 src/core/transform/ojph_transform.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.s
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjph.dir/build.make extern/OpenJPH/CMakeFiles/openjph.dir/src/core/transform/ojph_transform.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform.cpp.s
 .PHONY : src/core/transform/ojph_transform.cpp.s
 
 src/core/transform/ojph_transform_wasm.o: src/core/transform/ojph_transform_wasm.cpp.o
@@ -734,7 +737,7 @@ src/core/transform/ojph_transform_wasm.o: src/core/transform/ojph_transform_wasm
 
 # target to build an object file
 src/core/transform/ojph_transform_wasm.cpp.o:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.o
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.o
 .PHONY : src/core/transform/ojph_transform_wasm.cpp.o
 
 src/core/transform/ojph_transform_wasm.i: src/core/transform/ojph_transform_wasm.cpp.i
@@ -743,7 +746,7 @@ src/core/transform/ojph_transform_wasm.i: src/core/transform/ojph_transform_wasm
 
 # target to preprocess a source file
 src/core/transform/ojph_transform_wasm.cpp.i:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.i
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.i
 .PHONY : src/core/transform/ojph_transform_wasm.cpp.i
 
 src/core/transform/ojph_transform_wasm.s: src/core/transform/ojph_transform_wasm.cpp.s
@@ -752,7 +755,7 @@ src/core/transform/ojph_transform_wasm.s: src/core/transform/ojph_transform_wasm
 
 # target to generate assembly for a file
 src/core/transform/ojph_transform_wasm.cpp.s:
-	cd /workspaces/openjphjs/build && $(MAKE) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.s
+	cd /workspaces/codecs/packages/openjphjs/build && $(MAKE) $(MAKESILENT) -f extern/OpenJPH/CMakeFiles/openjphsimd.dir/build.make extern/OpenJPH/CMakeFiles/openjphsimd.dir/src/core/transform/ojph_transform_wasm.cpp.s
 .PHONY : src/core/transform/ojph_transform_wasm.cpp.s
 
 # Help Target
@@ -836,6 +839,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /workspaces/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /workspaces/codecs/packages/openjphjs/build && $(CMAKE_COMMAND) -S$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 
