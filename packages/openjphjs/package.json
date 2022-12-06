@@ -10,7 +10,7 @@
     "test": "test"
   },
   "scripts": {
-    "build": "echo \"TODO call build.sh\"",
+    "build": "bash build.sh",
     "build:ci": "yarn run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
