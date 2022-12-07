@@ -1,9 +1,0 @@
-Name: openjph
-Description: Open source implementation of JPH
-Version: 
-Requires: 
-prefix=/usr/local
-includedir=
-libdir=
-Libs: 
-Cflags: 
