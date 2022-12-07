@@ -10,3 +10,6 @@
 [submodule "packages/libjpeg-turbo-12bit/extern/libjpeg-turbo"]
 	path = packages/libjpeg-turbo-12bit/extern/libjpeg-turbo
 	url = git@github.com:PrecisionMetrics/libjpeg-turbo.git
+[submodule "packages/openjphjs/extern/openjphjs"]
+	path = packages/openjphjs/extern/openjphjs
+	url = https://github.com/chafey/openjphjs.git
