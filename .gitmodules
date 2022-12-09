@@ -1,0 +1,6 @@
+[submodule "packages/libjpeg-turbo-8bit/extern/libjpeg-turbo"]
+	path = packages/libjpeg-turbo-8bit/extern/libjpeg-turbo
+	url = https://github.com/cornerstonejs/libjpeg-turbo.git
+[submodule "packages/libjpeg-turbo-12bit/extern/libjpeg-turbo"]
+	path = packages/libjpeg-turbo-12bit/extern/libjpeg-turbo
+	url = https://github.com/cornerstonejs/libjpeg-turbo.git
