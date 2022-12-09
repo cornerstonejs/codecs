@@ -4,3 +4,6 @@
 [submodule "packages/libjpeg-turbo-12bit/extern/libjpeg-turbo"]
 	path = packages/libjpeg-turbo-12bit/extern/libjpeg-turbo
 	url = https://github.com/cornerstonejs/libjpeg-turbo.git
+[submodule "packages/openjphjs/extern/openjph"]
+	path = packages/openjphjs/extern/openjph
+	url = https://github.com/cornerstonejs/OpenJPH.git
