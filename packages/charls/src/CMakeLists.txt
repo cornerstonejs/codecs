@@ -31,7 +31,7 @@ set_target_properties(
       -s DISABLE_EXCEPTION_CATCHING=1 \
       -s MALLOC=emmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s TOTAL_MEMORY=50mb \
+      -s TOTAL_MEMORY=1000mb \
       -s ASSERTIONS=0 \
       -s FILESYSTEM=0 \
       -s ERROR_ON_UNDEFINED_SYMBOLS=0 \
