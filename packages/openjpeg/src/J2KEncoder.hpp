@@ -56,11 +56,11 @@ class J2KEncoder {
     frameInfo_ = frameInfo;
     const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
     const size_t decodedSize = frameInfo_.width * frameInfo_.height * frameInfo_.componentCount * bytesPerPixel;
+    downSamples_.resize(frameInfo_.componentCount);
     for (int c = 0; c < frameInfo_.componentCount; ++c) {
         downSamples_[c].x = 1;
         downSamples_[c].y = 1;
     }
-
     decoded_.resize(decodedSize);
     return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
   }
@@ -83,6 +83,7 @@ class J2KEncoder {
   /// </summary>
  std::vector<uint8_t>& getDecodedBytes(const FrameInfo& frameInfo) {
     frameInfo_ = frameInfo;
+    downSamples_.resize(frameInfo_.componentCount);
     for (int c = 0; c < frameInfo_.componentCount; ++c) {
         downSamples_[c].x = 1;
         downSamples_[c].y = 1;
@@ -282,7 +283,7 @@ class J2KEncoder {
     l_codec = opj_create_compress(OPJ_CODEC_J2K);
 
     /* catch events using our callbacks and give a local context */
-    opj_set_info_handler(l_codec, info_callback, 00);
+    //opj_set_info_handler(l_codec, info_callback, 00);
     opj_set_warning_handler(l_codec, warning_callback, 00);
     opj_set_error_handler(l_codec, error_callback, 00);
 

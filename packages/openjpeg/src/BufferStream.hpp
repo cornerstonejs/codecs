@@ -11,9 +11,6 @@ typedef struct opj_buffer_info {
     OPJ_SIZE_T len;
 } opj_buffer_info_t;
 
-/* ---------------------------------------------------------------------- */
-/* Buffer-based */
-
 static OPJ_SIZE_T
 opj_read_from_buffer (void* pdst, OPJ_SIZE_T len, opj_buffer_info_t* psrc)
 {
@@ -40,35 +37,6 @@ opj_write_to_buffer (void* p_buffer, OPJ_SIZE_T p_nb_bytes,
     OPJ_BYTE* pcur = p_source_buffer->cur;
 
     OPJ_SIZE_T len = p_source_buffer->len;
-
-    // HACK: buffer resizing code removed because we will replace with std::vector impl later
-    /*
-    if (0 == len)
-        len = 1;
-
-    OPJ_SIZE_T dist = pcur - pbuf, n = len - dist;
-    assert (dist <= len);
-
-    while (n < p_nb_bytes) {
-        len *= 2;
-        n = len - dist;
-    }
-
-    if (len != p_source_buffer->len) {
-        pbuf = opj_malloc (len);
-
-        if (0 == pbuf)
-            return (OPJ_SIZE_T)-1;
-
-        if (p_source_buffer->buf) {
-            memcpy (pbuf, p_source_buffer->buf, dist);
-            opj_free (p_source_buffer->buf);
-        }
-
-        p_source_buffer->buf = pbuf;
-        p_source_buffer->cur = pbuf + dist;
-        p_source_buffer->len = len;
-    }*/
 
     memcpy (p_source_buffer->cur, p_buffer, p_nb_bytes);
     p_source_buffer->cur += p_nb_bytes;
@@ -135,5 +103,3 @@ opj_stream_create_buffer_stream (opj_buffer_info_t* psrc, OPJ_BOOL input)
 
     return ps;
 }
-
-/* ---------------------------------------------------------------------- */
