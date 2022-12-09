@@ -10,3 +10,6 @@
 [submodule "packages/openjpeg/extern/openjpeg"]
 	path = packages/openjpeg/extern/openjpeg
 	url = https://github.com/cornerstonejs/openjpeg.git
+[submodule "packages/charls/extern/charls"]
+	path = packages/charls/extern/charls
+	url = https://github.com/cornerstonejs/charls.git
