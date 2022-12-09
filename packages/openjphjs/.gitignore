@@ -1,2 +1,6 @@
-build/
-dist/
+build/*
+build-native/*
+dist/*
+!build/.gitpreserve
+!build-native/.gitpreserve
+!dist/.gitpreserve
