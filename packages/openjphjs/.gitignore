@@ -4,3 +4,4 @@ dist/*
 !build/.gitpreserve
 !build-native/.gitpreserve
 !dist/.gitpreserve
+bin/

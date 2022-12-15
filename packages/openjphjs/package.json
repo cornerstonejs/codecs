@@ -10,8 +10,9 @@
     "test": "test"
   },
   "scripts": {
-    "build": "echo \"TODO call build.sh\"",
+    "build": "bash build.sh",
     "build:ci": "yarn run build",
+    "build:ui": "webpack --config ./.webpack/webpack.config.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "exports": {
