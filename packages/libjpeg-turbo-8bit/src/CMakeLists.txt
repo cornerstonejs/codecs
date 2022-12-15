@@ -28,6 +28,7 @@
          -s ASSERTIONS=0 \
          -s NO_EXIT_RUNTIME=1 \
          -s MALLOC=emmalloc \
+         -s ALLOW_MEMORY_GROWTH=1 \
          -s TOTAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
@@ -38,7 +39,7 @@
 
    target_link_libraries(libjpegturbowasm PRIVATE turbojpeg-static)
 
-  #  target_compile_definitions(libjpegturbowasm PUBLIC WITH_SIMD=0)
+   target_compile_definitions(libjpegturbowasm PUBLIC WITH_SIMD=0)
    target_compile_features(libjpegturbowasm PUBLIC cxx_std_11)
    
    if (CMAKE_BUILD_TYPE STREQUAL Debug)
@@ -95,6 +96,7 @@
         -s ASSERTIONS=0 \
         -s NO_EXIT_RUNTIME=1 \
         -s MALLOC=emmalloc \
+        -s ALLOW_MEMORY_GROWTH=1 \
         -s TOTAL_MEMORY=50mb \
         -s FILESYSTEM=0 \
         -s EXPORTED_FUNCTIONS=[] \
@@ -106,7 +108,7 @@
 
   target_link_libraries(libjpegturbowasm_decode PRIVATE turbojpeg-static)
   
-  # target_compile_definitions(libjpegturbowasm_decode PUBLIC WITH_SIMD=0 WITH_ARITH_ENC=0)
+  target_compile_definitions(libjpegturbowasm_decode PUBLIC WITH_SIMD=0 WITH_ARITH_ENC=0)
   target_compile_features(libjpegturbowasm_decode PUBLIC cxx_std_11)
   
   if (CMAKE_BUILD_TYPE STREQUAL Debug)

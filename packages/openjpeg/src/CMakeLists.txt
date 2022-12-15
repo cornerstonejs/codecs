@@ -17,7 +17,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
 
-# -s ALLOW_MEMORY_GROWTH=1 \
 # https://stackoverflow.com/a/53384917
 set_target_properties(
     openjpegjs
@@ -94,7 +93,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
 
-# -s ALLOW_MEMORY_GROWTH=1 \
 # https://stackoverflow.com/a/53384917
 set_target_properties(
     openjpegjs_decode
