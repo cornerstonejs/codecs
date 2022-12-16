@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjpeg",
-  "version": "0.2.1",
+  "version": "1.0.0",
   "description": "JS/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg)",
   "main": "dist/openjpegjs.js",
   "publishConfig": {
