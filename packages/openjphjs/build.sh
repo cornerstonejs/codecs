@@ -6,4 +6,4 @@ mkdir -p dist
 (cd build && emmake make VERBOSE=1 -j ${nprocs})
 cp ./build/src/openjphjs.js ./dist
 cp ./build/src/openjphjs.wasm ./dist
-#(cd test/node; npm run test)
+(cd test/node; npm run test)

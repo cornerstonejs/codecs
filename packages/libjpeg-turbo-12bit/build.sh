@@ -22,3 +22,5 @@ echo "~~~ BUILD:"
 (cd build && dir)
 echo "~~~ DIST:"
 (cd dist && dir)
+echo "~~~ TEST:"
+(cd test/node; npm run test)
