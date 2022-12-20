@@ -21,7 +21,7 @@
     "./decodewasmjs": "./dist/openjpegwasm_decode.js"
   },
   "scripts": {
-    "test": "node test/node/index.js",
+    "test": "cd test/node; npm run test",
     "test:ci": "yarn run test",
     "build": "bash build.sh",
     "build:ci": "yarn run build",
