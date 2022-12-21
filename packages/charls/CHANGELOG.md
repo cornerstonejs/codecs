@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@0.2.0...@cornerstonejs/codec-charls@1.1.0) (2022-12-21)
+
+
+### Features
+
+* use upstream libs for wasm codec  ([#21](https://github.com/chafey/charls-js/issues/21)) ([0acfa47](https://github.com/chafey/charls-js/commit/0acfa47a8832bfd074c6735d1fd5757f580b6b02))
+
+
+
+
+
 # [0.2.0](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@0.1.1...@cornerstonejs/codec-charls@0.2.0) (2022-02-09)
 
 

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.1.0](https://localhost/compare/@cornerstonejs/codec-openjpeg@0.2.1...@cornerstonejs/codec-openjpeg@1.1.0) (2022-12-21)
+
+
+### Features
+
+* use upstream libs for wasm codec  ([#21](https://localhost/issues/21)) ([0acfa47](https://localhost/commits/0acfa47a8832bfd074c6735d1fd5757f580b6b02))
+
+
+
+
+
 ## [0.2.1](https://localhost/compare/@cornerstonejs/codec-openjpeg@0.2.0...@cornerstonejs/codec-openjpeg@0.2.1) (2022-10-11)
 
 **Note:** Version bump only for package @cornerstonejs/codec-openjpeg

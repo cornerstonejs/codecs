@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.4.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-12bit@0.2.0...@cornerstonejs/codec-libjpeg-turbo-12bit@0.4.0) (2022-12-21)
+
+
+### Features
+
+* use upstream libs for wasm codec  ([#21](https://github.com/cornerstonejs/codecs/issues/21)) ([0acfa47](https://github.com/cornerstonejs/codecs/commit/0acfa47a8832bfd074c6735d1fd5757f580b6b02))
+
+
+
+
+
 # [0.2.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-12bit@0.1.1...@cornerstonejs/codec-libjpeg-turbo-12bit@0.2.0) (2022-02-09)
 
 
