@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjph",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "JS/WebAssembly build of OpenJPH",
   "main": "dist/openjphjs.js",
   "publishConfig": {
@@ -10,9 +10,9 @@
     "test": "test"
   },
   "scripts": {
-    "build": "echo \"TODO call build.sh\"",
+    "build": "bash build.sh",
     "build:ci": "yarn run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build:ui": "webpack --config ./.webpack/webpack.config.js"
   },
   "exports": {
     ".": "./dist/openjphjs.js",

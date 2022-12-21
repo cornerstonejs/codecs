@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:2.0.28
+FROM emscripten/emsdk:3.1.28
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,7 +18,7 @@ RUN apt-get update \
     && apt-get -y install build-essential cppcheck valgrind kcachegrind \
 
     # Dependencies for libjpeg-turbo builds
-    && apt-get -y install nasm texinfo \
+    # && apt-get -y install nasm texinfo \
 
     # version 3.17 of cmake
     && wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local \

@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set(CMAKE_BUILD_TYPE "${default_build_type}")
 endif()
 
-if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/OpenJPH/CMakeLists.txt")
+if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/openjph/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
@@ -23,7 +23,7 @@ option(BUILD_SHARED_LIBS "" OFF)
 SET(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -fexceptions")
 
 # add the external library
-add_subdirectory(extern/OpenJPH EXCLUDE_FROM_ALL)
+add_subdirectory(extern/openjph EXCLUDE_FROM_ALL)
 
 # add the js wrapper
 if(EMSCRIPTEN)

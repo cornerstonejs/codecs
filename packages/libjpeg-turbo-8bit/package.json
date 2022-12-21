@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo-8bit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo)",
   "main": "dist/libjpegturbojs.js",
   "publishConfig": {
@@ -26,9 +26,10 @@
     "dist"
   ],
   "scripts": {
+    "test": "cd test/node; npm run test",
+    "test:ci": "yarn run test",
     "build": "bash build.sh",
     "build:ci": "yarn run build",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "yarn run build"
   },
   "author": "",

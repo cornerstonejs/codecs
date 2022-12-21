@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-charls",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "WASM Build of CharLS",
   "main": "dist/charlsjs.js",
   "publishConfig": {
@@ -26,10 +26,11 @@
     "test": "test"
   },
   "scripts": {
+    "test": "cd test/node; npm run test",
+    "test:ci": "yarn run test",
     "build": "bash build.sh",
     "build-debug": "bash build-debug.sh",
     "build:ci": "yarn run build && yarn run build-debug",
-    "test": "echo \"Error: no test specified\" && exit 1",
     "prepublishOnly": "yarn run build && yarn run build-debug"
   },
   "repository": {

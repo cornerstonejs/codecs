@@ -17,7 +17,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
 
-# -s ALLOW_MEMORY_GROWTH=1 \
 # https://stackoverflow.com/a/53384917
 set_target_properties(
     openjpegjs
@@ -32,7 +31,7 @@ set_target_properties(
       -s NO_EXIT_RUNTIME=1 \
       -s MALLOC=emmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s INITIAL_MEMORY=20mb \
+      -s TOTAL_MEMORY=50mb \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
@@ -69,7 +68,7 @@ set_target_properties(
          -s NO_EXIT_RUNTIME=1 \
          -s MALLOC=emmalloc \
          -s ALLOW_MEMORY_GROWTH=1 \
-	 -s INITIAL_MEMORY=20mb \
+	       -s TOTAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
          -s EXPORTED_RUNTIME_METHODS=[ccall] \
@@ -94,7 +93,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
 
-# -s ALLOW_MEMORY_GROWTH=1 \
 # https://stackoverflow.com/a/53384917
 set_target_properties(
     openjpegjs_decode
@@ -109,7 +107,7 @@ set_target_properties(
       -s NO_EXIT_RUNTIME=1 \
       -s MALLOC=emmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s INITIAL_MEMORY=20mb  \
+      -s TOTAL_MEMORY=50mb  \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \
@@ -146,7 +144,7 @@ set_target_properties(
          -s NO_EXIT_RUNTIME=1 \
          -s MALLOC=emmalloc \
          -s ALLOW_MEMORY_GROWTH=1 \
-	 -s INITIAL_MEMORY=20mb \
+	       -s TOTAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
          -s EXPORTED_RUNTIME_METHODS=[ccall] \

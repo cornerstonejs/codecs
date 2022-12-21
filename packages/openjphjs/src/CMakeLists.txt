@@ -13,10 +13,11 @@ set_target_properties(
       --bind \
       -s DISABLE_EXCEPTION_CATCHING=1 \
       -s ASSERTIONS=0 \
+      -s MODULARIZE=1 \
       -s NO_EXIT_RUNTIME=1 \
       -s MALLOC=emmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s TOTAL_MEMORY=536870912 \
+      -s TOTAL_MEMORY=50mb \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
       -s EXPORTED_RUNTIME_METHODS=[ccall] \

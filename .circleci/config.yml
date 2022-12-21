@@ -1,6 +1,6 @@
 version: 2.1
 
-# 
+#
 ## https://github.com/cypress-io/circleci-orb
 # orbs:
 #   codecov: codecov/codecov@1.0.5
@@ -11,7 +11,7 @@ executors:
   emscripten-porter:
     docker:
       # @see https://hub.docker.com/repository/r/emscripten/emsdk
-      - image: emscripten/emsdk:1.39.5
+      - image: emscripten/emsdk:3.1.28
         environment:
           # Enable colors in term
           TERM: xterm
@@ -40,44 +40,8 @@ executors:
   #     # Primary container image where all steps run.
   #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
   #     - image: 'ohif/viewer-testdata:0.1-test'
-      
+
 jobs:
-
-  # UNIT_TESTS:
-  #   steps:
-  #     - run: yarn -v
-  #     - checkout:
-  #         post:
-  #           - git fetch --all
-  #     - restore_cache:
-  #         name: Restore Yarn and Cypress Package Cache
-  #         keys:
-  #           # when lock file changes, use increasingly general patterns to restore cache
-  #           - yarn-packages-{{ checksum "yarn.lock" }}
-  #           - yarn-packages-
-  #     - run:
-  #         name: Install Dependencies
-  #         command: yarn install --frozen-lockfile
-  #     - save_cache:
-  #         name: Save Yarn Package Cache
-  #         paths:
-  #           - ~/.cache ## Cache yarn and Cypress
-  #         key: yarn-packages-{{ checksum "yarn.lock" }}
-      # - run:
-      #     name: 'JavaScript Test Suite'
-      #     command: yarn run test:unit:ci
-      # - run:
-      #     name: 'Combine report output'
-      #     command: |
-      #       coverateDir="/home/circleci/repo/coverage"
-      #       touch "${coverateDir}/reports"
-      #       cat "${coverateDir}/clover.xml" >> "${coverateDir}/reports"
-      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
-      #       cat "${coverateDir}/lcov.info" >>"${coverateDir}/reports"
-      #       echo "\<<\<<\<< EOF" >> "${coverateDir}/reports"
-      # - codecov/upload:
-      #     file: '/home/circleci/repo/coverage/reports'
-
   # Run build since main
   # Run test since main
   # Upload test results to CircleCI
@@ -98,30 +62,30 @@ jobs:
 
             apt-get update
             apt install yarn -y
-            
+
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
 
             # Dependencies for libjpeg-turbo builds
-            apt-get -y install nasm texinfo
-            
+            # apt-get -y install nasm texinfo
+
             # version 3.17 of cmake
             wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
-            
+
             # [Optional] Update UID/GID if needed
             if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
                 groupmod --gid $USER_GID $USERNAME
                 usermod --uid $USER_UID --gid $USER_GID $USERNAME
                 chown -R $USER_UID:$USER_GID /home/$USERNAME;
             fi
-            
+
             # Clean up
             apt-get autoremove -y
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
       - run: gcc --version
       - checkout
-      - run: git submodule update --init
+      - run: git submodule update --init --recursive --remote
       - run:
           name: Install Dependencies
           command: yarn install --frozen-lockfile
@@ -130,7 +94,7 @@ jobs:
           root: ~/repo
           paths:
             - .
-  
+
   TEST:
     executor: node
     working_directory: ~/repo
@@ -162,20 +126,20 @@ jobs:
 
             apt-get update
             apt install yarn -y
-            
+
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
-            
+
             # version 3.17 of cmake
             wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
-            
+
             # [Optional] Update UID/GID if needed
             if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
                 groupmod --gid $USER_GID $USERNAME
                 usermod --uid $USER_UID --gid $USER_GID $USERNAME
                 chown -R $USER_UID:$USER_GID /home/$USERNAME;
             fi
-            
+
             # Clean up
             apt-get autoremove -y
             apt-get clean -y
@@ -228,8 +192,7 @@ jobs:
       # The value is determined by out `NPM_TOKEN` environment variable
       - run:
           name: Authenticate with NPM registry
-          command:
-            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/repo/.npmrc
+          command: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/repo/.npmrc
       #
       # This step is configured in `/lerna.json`.
       # Only runs on `main` branch. Walks all commits since last tagged release.
@@ -244,7 +207,7 @@ jobs:
       # present in the registry. This command ignores changes to files w/ specific extensions.
       # @see https://github.com/lerna/lerna/tree/main/commands/publish
       - run: npx lerna publish from-package
-      
+
 workflows:
   version: 2
 
@@ -264,3 +227,4 @@ workflows:
           filters:
             branches:
               only: main
+# VS Code Extension Version: 1.4.0

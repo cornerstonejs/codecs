@@ -6,4 +6,5 @@ mkdir -p dist
 (cd build && emmake make VERBOSE=1 -j ${nprocs})
 cp ./build/src/openjphjs.js ./dist
 cp ./build/src/openjphjs.wasm ./dist
-#(cd test/node; npm run test)
+# disable tests for now since CI doesn't like to run with SIMD
+# (cd test/node; npm run test)

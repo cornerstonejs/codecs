@@ -133,6 +133,7 @@ class J2KDecoder {
   /// method, see getEncodedBuffer() and getEncodedBytes() above.
   /// </summary>
   void decode() {
+    decodeLayer_ = 0;
     decode_i(0);
   }
 
