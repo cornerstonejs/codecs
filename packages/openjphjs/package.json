@@ -9,18 +9,23 @@
   "directories": {
     "test": "test"
   },
+  "engines": {
+    "node": ">=0.14"
+  },
+  "exports": {
+    ".": "./dist/openjphjs.js",
+    "./wasm": "./dist/openjphjs.wasm",
+    "./wasmjs": "./dist/openjphjs.js"
+  },
   "scripts": {
     "build": "bash build.sh",
     "build:ci": "yarn run build",
     "build:ui": "webpack --config ./.webpack/webpack.config.js"
   },
-  "exports": {
-    ".": "./dist/openjphjs.js",
-    "./dist/openjphjs.wasm": "./dist/openjphjs.wasm",
-    "./dist/openjphjs.js": "./dist/openjphjs.js"
-  },
   "files": [
-    "dist/**"
+    "package.json",
+    "README.md",
+    "dist"
   ],
   "repository": {
     "type": "git",
