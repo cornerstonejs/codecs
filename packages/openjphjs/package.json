@@ -20,7 +20,10 @@
   "scripts": {
     "build": "bash build.sh",
     "build:ci": "yarn run build",
-    "build:ui": "webpack --config ./.webpack/webpack.config.js"
+    "build:ui": "webpack --config ./.webpack/webpack.config.js",
+    "start": " webpack-dev-server --config ./.webpack/webpack.config.js",
+    "prepublishOnly": "bash build.sh",
+    "postpublish": "node -p -e \"require('./package.json').version\" > success_version.txt"
   },
   "files": [
     "package.json",
