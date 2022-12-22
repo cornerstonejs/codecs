@@ -13,7 +13,6 @@ endif()
 
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
-# add include path to openjpeg
 include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
 
@@ -74,6 +73,7 @@ set_target_properties(
          -s EXPORTED_RUNTIME_METHODS=[ccall] \
       ")
 
+### DECODE-ONLY version
 ### DECODE-ONLY version
 add_executable(openjpegjs_decode jslib-decode.cpp)
 

@@ -1,6 +1,7 @@
 
 add_executable(openjphjs jslib.cpp)
 
+# openjph
 target_link_libraries(openjphjs PRIVATE openjphsimd)
 target_compile_options(openjphjs PRIVATE -DOJPH_ENABLE_WASM_SIMD -msimd128)
 target_compile_features(openjphjs PUBLIC cxx_std_11)

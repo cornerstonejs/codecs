@@ -70,6 +70,7 @@
 
 
   # Decode-only version
+  # Decode-only version
   add_executable(libjpegturbojs_decode jslib-decode.cpp)
 
   target_link_libraries(libjpegturbojs_decode PRIVATE turbojpeg-static)
