@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://localhost/compare/@cornerstonejs/codec-openjpeg@1.1.0...@cornerstonejs/codec-openjpeg@1.2.0) (2022-12-22)
+
+
+### Features
+
+* build in ci was not building correctly ([#25](https://localhost/issues/25)) ([656ef4e](https://localhost/commits/656ef4e296889cae915a1134bbb33d47c2e9313a))
+
+
+
+
+
 # [1.1.0](https://localhost/compare/@cornerstonejs/codec-openjpeg@0.2.1...@cornerstonejs/codec-openjpeg@1.1.0) (2022-12-21)
 
 

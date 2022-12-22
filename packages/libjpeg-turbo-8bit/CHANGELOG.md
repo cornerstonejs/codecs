@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-8bit@1.1.0...@cornerstonejs/codec-libjpeg-turbo-8bit@1.2.0) (2022-12-22)
+
+
+### Features
+
+* build in ci was not building correctly ([#25](https://github.com/cornerstonejs/codecs/issues/25)) ([656ef4e](https://github.com/cornerstonejs/codecs/commit/656ef4e296889cae915a1134bbb33d47c2e9313a))
+
+
+
+
+
 # [1.1.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-8bit@0.1.0...@cornerstonejs/codec-libjpeg-turbo-8bit@1.1.0) (2022-12-21)
 
 
