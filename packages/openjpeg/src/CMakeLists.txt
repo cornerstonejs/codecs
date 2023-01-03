@@ -74,7 +74,6 @@ set_target_properties(
       ")
 
 ### DECODE-ONLY version
-### DECODE-ONLY version
 add_executable(openjpegjs_decode jslib-decode.cpp)
 
 target_link_libraries(openjpegjs_decode PRIVATE openjp2)
