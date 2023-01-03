@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.1](https://github.com/chafey/openjphjs/compare/@cornerstonejs/codec-openjph@2.4.0...@cornerstonejs/codec-openjph@2.4.1) (2023-01-03)
+
+
+### Bug Fixes
+
+* add proper lerna command to fix the build ([#26](https://github.com/chafey/openjphjs/issues/26)) ([ecc3861](https://github.com/chafey/openjphjs/commit/ecc3861a22676221a3a94c1245000b1b6967223f))
+
+
+
+
+
 # [2.4.0](https://github.com/chafey/openjphjs/compare/@cornerstonejs/codec-openjph@2.3.0...@cornerstonejs/codec-openjph@2.4.0) (2022-12-22)
 
 
