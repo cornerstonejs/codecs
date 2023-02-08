@@ -1,6 +1,5 @@
 // Copyright (c) Team CharLS.
 // SPDX-License-Identifier: MIT
-// #include <sanitizer/lsan_interface.h>
 
 #include "JpegLSDecoder.hpp"
 #include "JpegLSEncoder.hpp"
@@ -9,6 +8,16 @@
 #include <emscripten/bind.h>
 
 using namespace emscripten;
+
+static std::string getVersion() {
+  std::string version = charls_get_version_string();
+  return version;
+}
+
+
+EMSCRIPTEN_BINDINGS(charlsjs) {
+    function("getVersion", &getVersion);
+}
 
 EMSCRIPTEN_BINDINGS(FrameInfo) {
   value_object<FrameInfo>("FrameInfo")
@@ -40,13 +49,4 @@ EMSCRIPTEN_BINDINGS(JpegLSEncoder) {
     .function("setInterleaveMode", &JpegLSEncoder::setInterleaveMode)
     .function("encode", &JpegLSEncoder::encode)
    ;
-}
-
-std::string getExceptionMessage(intptr_t exceptionPtr) {
-  return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
-}
-
-EMSCRIPTEN_BINDINGS(JpegLS) {
-  function("getExceptionMessage", &getExceptionMessage);
-  // function("doLeakCheck", &__lsan_do_recoverable_leak_check);
 }
