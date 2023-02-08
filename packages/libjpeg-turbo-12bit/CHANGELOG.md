@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.1](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-12bit@0.4.0...@cornerstonejs/codec-libjpeg-turbo-12bit@0.4.1) (2023-02-08)
+
+
+### Bug Fixes
+
+* charls codecs performance issue ([#28](https://github.com/cornerstonejs/codecs/issues/28)) ([b9c08f6](https://github.com/cornerstonejs/codecs/commit/b9c08f660dec5e6a1d92202c45364793f9cfd317))
+
+
+
+
+
 # [0.4.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjpeg-turbo-12bit@0.2.0...@cornerstonejs/codec-libjpeg-turbo-12bit@0.4.0) (2022-12-21)
 
 
