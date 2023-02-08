@@ -27,6 +27,7 @@
   },
   "scripts": {
     "test": "cd test/node; npm run test",
+    "test:benchmark": "cd test/node; node index.js -- --iterations=200",
     "test:ci": "yarn run test",
     "build": "bash build.sh",
     "build-debug": "bash build-debug.sh",
