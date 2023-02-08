@@ -30,9 +30,8 @@
     "test:benchmark": "cd test/node; node index.js -- --iterations=200",
     "test:ci": "yarn run test",
     "build": "bash build.sh",
-    "build-debug": "bash build-debug.sh",
-    "build:ci": "yarn run build && yarn run build-debug",
-    "prepublishOnly": "yarn run build && yarn run build-debug"
+    "build:ci": "yarn run build",
+    "prepublishOnly": "yarn run build"
   },
   "repository": {
     "type": "git",
