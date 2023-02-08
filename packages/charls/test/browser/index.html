@@ -4,38 +4,22 @@
 <head>
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">   
     <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-    <script type="text/javascript" src="../../dist/charlsjs.js"></script>
+    <script type="text/javascript" src="../../dist/charlswasm_decode.js"></script>
 </head>
 <body>
 <div class="container">
     <div class="page-header">
-        <h1>JPEG-LS Decoding with WebAssembly</h1>
+        <h1>JPEG-LS Decoding with WebAssembly (v<span id="version"></span>)</div></h1>
         <p class="lead">
           Select an image or drag and drop a JPEG-LS file.  Files dropped here remain local in your browser, they are not uploaded anywhere.
       </p>
+      <div>
       <select id="imageSelector">
         <option value="../../test/fixtures/CT1.JLS" selected>CT1</option>
         <option value="../../test/fixtures/CT2.JLS">CT2</option>
-        <!--<option value="../../test/fixtures/MG1.JLS">MG1</option>-->
-        <option value="../../extern/charls/test/conformance/T8C0E0.JLS">T8C0E0</option>
-        <option value="../../extern/charls/test/conformance/T8C0E3.JLS">T8C0E3</option>
-        <option value="../../extern/charls/test/conformance/T8C1E0.JLS">T8C1E0</option>
-        <option value="../../extern/charls/test/conformance/T8C1E3.JLS">T8C1E3</option>
-        <option value="../../extern/charls/test/conformance/T8C2E0.JLS">T8C2E0</option>
-        <option value="../../extern/charls/test/conformance/T8C2E3.JLS">T8C2E3</option>
-        <option value="../../extern/charls/test/conformance/T8NDE3.JLS">T8NDE3</option>
-        <option value="../../extern/charls/test/conformance/T16E0.JLS">T16E0</option>
-        <option value="../../extern/charls/test/conformance/T16E3.JLS">T16E3</option>
-        <option value="../../extern/charls/test/lena8b.jls">lena8b</option>
-        <option value="../../extern/charls/test/jlsimage/banny_HP1.jls">banny_HP1</option>
-        <option value="../../extern/charls/test/jlsimage/banny_HP2.jls">banny_HP2</option>
-        <option value="../../extern/charls/test/jlsimage/banny_HP3.jls">banny_HP3</option>
-        <option value="../../extern/charls/test/jlsimage/banny_normal.jls">banny_normal</option>
-        <!--
-        <option value="../../test/fixtures/artificial-line.jls">16Bit RGB - line</option>
-        <option value="../../test/fixtures/artificial-none.jls">16Bit RGB - none</option>
-        <option value="../../test/fixtures/artificial-sample.jls">16Bit RGB - sample</option>
-        --> 
+        <option value="../../test/fixtures/MG1.JLS">MG1</option>
+        <option value="../../test/fixtures/SC1.JLS">SC1</option>
+
       </select>
       <button id="benchmark">Benchmark</button>
       <label><input id="signed" type="checkbox" value="">Signed Data - check to properly display signed DICOM images</label>   
@@ -135,13 +119,9 @@
   }
 
   function colorToCanvas(frameInfo, pixelData, imageData, interleaveMode) {
+    const planeSize = frameInfo.width * frameInfo.height;
+    const shift = frameInfo.bitsPerSample > 8 ? frameInfo.bitsPerSample - 8 : 0;
     let outOffset = 0;
-    const bytesPerSample = (frameInfo.bitsPerSample <= 8) ? 1 : 2;
-    let planeSize = frameInfo.width * frameInfo.height * bytesPerSample;
-    let shift = 0;
-    if(frameInfo.bitsPerSample >8) {
-      shift = 8;
-    }
     let inOffset = 0;
    
     for(var y=0; y < frameInfo.height; y++) {
@@ -255,7 +235,8 @@
   }
 
   function display(frameInfo, decodedBuffer, interleaveMode) {
-    const signed = $('#signed').is(":checked"); 
+    // Use the signed option for monochrome (1 component) image. Multi component images are always unsigned.
+    const signed = $('#signed').is(":checked") && frameInfo.componentCount === 1; 
 
     const pixelData = getPixelData(frameInfo, decodedBuffer, signed);
 
@@ -379,9 +360,10 @@
     $('#nearLossless').text('');
   }
 
-  Module.onRuntimeInitialized = async _ => {
-    decoder = new Module.JpegLSDecoder();
-    encoder = new Module.JpegLSEncoder();
+  CharLSWASM().then(function (charls) {
+    // $("#version").text(charls.getVersion())
+    decoder = new charls.JpegLSDecoder();
+    // encoder = new charls.JpegLSEncoder();
     
     load('../../test/fixtures/CT1.JLS');
     //load('../../test/fixtures/artificial-line.jls');
@@ -473,6 +455,6 @@
       window.open(url);
       window.URL.revokeObjectURL(url);
     });
-  }
+  })
 </script>
 </html>

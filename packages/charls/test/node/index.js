@@ -1,4 +1,4 @@
-let charlsjs = require("../../dist/charlsjs.js")
+let charlsjs = require("../../dist/charlswasm_decode.js")
 
 const fs = require("fs")
 
@@ -69,25 +69,30 @@ function encode(
 }
 
 if (charlsjs) {
-  console.log("testing charls...")
+  let iterations = process.argv.find((arg) => arg.startsWith("--iterations="))
+  if (iterations) {
+    iterations = parseInt(iterations.split("=")[1])
+  } else {
+    iterations = 1
+  }
+
   charlsjs().then(function (charls) {
-    main(charls)
+    console.log("testing charls version", charls.getVersion())
+
+    main(charls, iterations)
   })
 }
 
-function main(charls) {
-  decode(charls, "../fixtures/CT1.JLS")
-  decode(charls, "../fixtures/CT2.JLS")
-  decode(charls, "../../extern/charls/test/test.jls")
+function main(charls, iterations) {
+  decode(charls, "../fixtures/CT1.JLS", iterations)
+  decode(charls, "../fixtures/CT2.JLS", iterations)
+  decode(charls, "../fixtures/SC1.JLS", iterations)
+  // decode(charls, "../../extern/charls/test/test.jls", iterations)
 
-  encode(
-    charls,
-    "../fixtures/CT2.RAW",
-    {
-      width: 512,
-      height: 512,
-      bitsPerSample: 16,
-      componentCount: 1,
-    },
-  )
+  // encode(charls, "../fixtures/CT2.RAW", {
+  //   width: 512,
+  //   height: 512,
+  //   bitsPerSample: 16,
+  //   componentCount: 1,
+  // })
 }
