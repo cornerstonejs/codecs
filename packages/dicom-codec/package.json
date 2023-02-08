@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@cornerstonejs/codec-big-endian": "^0.1.0",
-    "@cornerstonejs/codec-charls": "^1.2.2",
+    "@cornerstonejs/codec-charls": "^1.2.1",
     "@cornerstonejs/codec-libjpeg-turbo-8bit": "^1.2.2",
     "@cornerstonejs/codec-little-endian": "^0.0.6",
     "@cornerstonejs/codec-openjpeg": "^1.2.2",
