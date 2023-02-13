@@ -91,6 +91,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 ##
 ## https://emscripten.org/docs/getting_started/FAQ.html#how-can-i-tell-when-the-page-is-fully-loaded-and-it-is-safe-to-call-compiled-functions
+# 
 #   -s MODULARIZE=1 \
 #   -s WASM=0 \
 #
