@@ -37,7 +37,7 @@ set_target_properties(
    ")
 #-s EXPORTED_FUNCTIONS=[___lsan_do_recoverable_leak_check] \
 
-## WASM BUILD
+## WASM BUILD 
 add_executable(charlswasm jslib.cpp)
 
 target_link_libraries(charlswasm PRIVATE charls)
@@ -91,7 +91,6 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
 ##
 ## https://emscripten.org/docs/getting_started/FAQ.html#how-can-i-tell-when-the-page-is-fully-loaded-and-it-is-safe-to-call-compiled-functions
-#   
 #   -s MODULARIZE=1 \
 #   -s WASM=0 \
 #

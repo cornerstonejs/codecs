@@ -1,15 +1,14 @@
-const codecs = require("./codecs");
-const logger = require("./utils/logger");
+const codecs = require("./codecs")
+const logger = require("./utils/logger")
 
 function assertCodec(codec, transferSyntaxUID) {
   if (!codec) {
-    throw Error("Codec not found:" + transferSyntaxUID);
+    throw Error("Codec not found:" + transferSyntaxUID)
   }
 }
 
 /**
  *  Decode/encode operations' returning type
- *
  * @typedef OperationResult
  * @type {object}
  * @property {TypedArray} imageFrame - image frame data from operatation's result.
@@ -44,10 +43,10 @@ function assertCodec(codec, transferSyntaxUID) {
  * @throws Will throw an error if there is an exception when decoding.
  */
 async function decode(imageFrame, imageInfo, decoderTransferSyntaxUID) {
-  const codec = codecs.getCodec(decoderTransferSyntaxUID);
-  assertCodec(codec, decoderTransferSyntaxUID);
+  const codec = codecs.getCodec(decoderTransferSyntaxUID)
+  assertCodec(codec, decoderTransferSyntaxUID)
 
-  return codec.decode(imageFrame, codecs.adaptImageInfo(imageInfo));
+  return codec.decode(imageFrame, codecs.adaptImageInfo(imageInfo))
 }
 
 /**
@@ -69,10 +68,10 @@ async function encode(
   encoderTransferSyntaxUID,
   options
 ) {
-  const codec = codecs.getCodec(encoderTransferSyntaxUID);
-  assertCodec(codec, encoderTransferSyntaxUID);
+  const codec = codecs.getCodec(encoderTransferSyntaxUID)
+  assertCodec(codec, encoderTransferSyntaxUID)
 
-  return codec.encode(imageFrame, codecs.adaptImageInfo(imageInfo), options);
+  return codec.encode(imageFrame, codecs.adaptImageInfo(imageInfo), options)
 }
 
 /**
@@ -98,13 +97,13 @@ async function transcode(
   targetTransferSyntaxUID,
   encodeOptions
 ) {
-  const decoded = await decode(imageFrame, imageInfo, sourceTransferSyntaxUID);
+  const decoded = await decode(imageFrame, imageInfo, sourceTransferSyntaxUID)
   return encode(
     decoded.imageFrame,
     decoded.imageInfo,
     targetTransferSyntaxUID,
     encodeOptions
-  );
+  )
 }
 
 /**
@@ -119,10 +118,10 @@ async function transcode(
  * @throws Will throw an error if there is an exception when getting pixelData.
  */
 function getPixelData(imageFrame, imageInfo, transferSyntaxUID) {
-  const codec = codecs.getCodec(transferSyntaxUID);
-  assertCodec(codec, transferSyntaxUID);
+  const codec = codecs.getCodec(transferSyntaxUID)
+  assertCodec(codec, transferSyntaxUID)
 
-  return codec.getPixelData(imageFrame, codecs.adaptImageInfo(imageInfo));
+  return codec.getPixelData(imageFrame, codecs.adaptImageInfo(imageInfo))
 }
 
 /**
@@ -132,7 +131,7 @@ function getPixelData(imageFrame, imageInfo, transferSyntaxUID) {
  * @returns {boolean}
  */
 function hasCodec(transferSyntaxUID) {
-  return codecs.hasCodec(transferSyntaxUID);
+  return codecs.hasCodec(transferSyntaxUID)
 }
 
 /**
@@ -143,7 +142,7 @@ function hasCodec(transferSyntaxUID) {
  */
 function setConfig(options = {}) {
   if (options.verbose) {
-    logger.setVerbose();
+    logger.setVerbose()
   }
 }
 
@@ -157,6 +156,6 @@ const dicomCodec = {
   hasCodec,
   setConfig,
   transcode,
-};
+}
 
-module.exports = dicomCodec;
+module.exports = dicomCodec
