@@ -9,6 +9,7 @@ function assertCodec(codec, transferSyntaxUID) {
 
 /**
  *  Decode/encode operations' returning type
+ *
  * @typedef OperationResult
  * @type {object}
  * @property {TypedArray} imageFrame - image frame data from operatation's result.
