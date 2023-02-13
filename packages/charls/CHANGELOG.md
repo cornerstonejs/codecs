@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.3](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@1.2.2...@cornerstonejs/codec-charls@1.2.3) (2023-02-13)
+
+
+### Bug Fixes
+
+* **build:** try to build again ([#30](https://github.com/chafey/charls-js/issues/30)) ([0ba4126](https://github.com/chafey/charls-js/commit/0ba41263f3fe98f2028907778f1355173ce31b07))
+
+
+
+
+
 ## [1.2.2](https://github.com/chafey/charls-js/compare/@cornerstonejs/codec-charls@1.2.1...@cornerstonejs/codec-charls@1.2.2) (2023-02-08)
 
 

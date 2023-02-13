@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/dicom-codec",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "",
   "main": "src/index.js",
   "publishConfig": {
@@ -24,7 +24,7 @@
   },
   "dependencies": {
     "@cornerstonejs/codec-big-endian": "^0.1.0",
-    "@cornerstonejs/codec-charls": "^1.2.2",
+    "@cornerstonejs/codec-charls": "^1.2.3",
     "@cornerstonejs/codec-libjpeg-turbo-8bit": "^1.2.2",
     "@cornerstonejs/codec-little-endian": "^0.0.6",
     "@cornerstonejs/codec-openjpeg": "^1.2.2",
