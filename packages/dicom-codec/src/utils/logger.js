@@ -26,8 +26,8 @@ const logger = (() => {
     }
   }
 
-  function setVerbose() {
-    verbose = true;
+  function setVerbose(newVerbose = true) {
+    verbose = newVerbose;
   }
 
   return {

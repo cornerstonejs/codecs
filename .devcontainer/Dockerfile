@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.28
+FROM emscripten/emsdk:3.1.46
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive

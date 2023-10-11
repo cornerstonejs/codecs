@@ -6,7 +6,7 @@ module.exports = (env, argv) => {
     return {
         mode: isProdBuild ? 'production':  'development' ,
         entry: {
-            app: './app.js'
+            app: './dist/app.js'
         },
         output: {
             filename: isProdBuild ? '[name].[hash].js': '[name].js'
