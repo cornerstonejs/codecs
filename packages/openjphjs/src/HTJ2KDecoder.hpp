@@ -12,6 +12,7 @@
 #include <ojph_mem.h>
 #include <ojph_params.h>
 #include <ojph_codestream.h>
+#include <ojph_message.h>
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
@@ -32,6 +33,8 @@ public:
   /// </summary>
   HTJ2KDecoder()
   {
+    // Use the following for debugging to ensure updated version info
+    OJPH_INFO(0x00010002, "v1 of HTJ2K Encoder");
   }
 
 #ifdef __EMSCRIPTEN__

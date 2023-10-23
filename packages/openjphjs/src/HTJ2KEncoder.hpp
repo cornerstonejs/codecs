@@ -18,6 +18,7 @@
 
 #include "EncodedBuffer.hpp"
 #include "FrameInfo.hpp"
+#include "ojph_message.h"
 
 /// <summary>
 /// JavaScript API for encoding images to HTJ2K bitstreams with OpenJPH
@@ -37,6 +38,8 @@ public:
                    progressionOrder_(2), // RPCL
                    blockDimensions_(64, 64)
   {
+    // Use for debugging to ensure that correct encoder is being used
+    OJPH_INFO(0x00010001, "Hello HTJ2K Encoder - v1");
   }
 
 #ifdef __EMSCRIPTEN__
