@@ -37,7 +37,8 @@ public:
 
   {
     // Use the following for debugging to ensure updated version info
-    OJPH_INFO(0x00010002, "v1a HTJ2K Encoder");
+    // Update the XX to check that reload has completed
+    // OJPH_INFO(0x00010002, "vXX HTJ2K Encoder");
   }
 
 #ifdef __EMSCRIPTEN__
