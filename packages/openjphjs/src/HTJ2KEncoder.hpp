@@ -39,7 +39,7 @@ public:
                    blockDimensions_(64, 64)
   {
     // Use for debugging to ensure that correct encoder is being used
-    OJPH_INFO(0x00010001, "Hello HTJ2K Encoder - v1");
+    // OJPH_INFO(0x00010001, "v1 - HTJ2K Encoder");
   }
 
 #ifdef __EMSCRIPTEN__

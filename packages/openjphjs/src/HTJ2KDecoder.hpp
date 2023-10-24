@@ -34,7 +34,7 @@ public:
   HTJ2KDecoder()
   {
     // Use the following for debugging to ensure updated version info
-    // OJPH_INFO(0x00010002, "v1b of HTJ2K Encoder");
+    // OJPH_INFO(0x00010002, "v1 HTJ2K Encoder");
   }
 
 #ifdef __EMSCRIPTEN__
