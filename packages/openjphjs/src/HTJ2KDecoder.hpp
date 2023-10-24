@@ -32,9 +32,12 @@ public:
   /// Constructor for decoding a HTJ2K image from JavaScript.
   /// </summary>
   HTJ2KDecoder()
+  : pEncoded_(&encodedInternal_),
+    pDecoded_(&decodedInternal_)
+
   {
     // Use the following for debugging to ensure updated version info
-    // OJPH_INFO(0x00010002, "v1 HTJ2K Encoder");
+    OJPH_INFO(0x00010002, "v1a HTJ2K Encoder");
   }
 
 #ifdef __EMSCRIPTEN__
@@ -47,8 +50,8 @@ public:
   /// </summary>
   emscripten::val getEncodedBuffer(size_t encodedSize)
   {
-    encoded_.resize(encodedSize);
-    return emscripten::val(emscripten::typed_memory_view(encoded_.size(), encoded_.data()));
+    pEncoded_->resize(encodedSize);
+    return emscripten::val(emscripten::typed_memory_view(pEncoded_->size(), pEncoded_->data()));
   }
 
   /// <summary>
@@ -57,7 +60,7 @@ public:
   /// </summary>
   emscripten::val getDecodedBuffer()
   {
-    return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
+    return emscripten::val(emscripten::typed_memory_view(pDecoded_->size(), pDecoded_->data()));
   }
 #else
   /// <summary>
@@ -66,7 +69,20 @@ public:
   /// </summary>
   std::vector<uint8_t> &getEncodedBytes()
   {
-    return encoded_;
+    return *pEncoded_;
+  }
+
+  /// <summary>
+  /// Sets a pointer to a vector containing the encoded bytes.  This can be used to avoid having to copy the encoded.  Set to 0
+  /// to reset to the internal buffer
+  /// </summary>
+  void setEncodedBytes(std::vector<uint8_t>* pEncoded)
+  {
+    if(pEncoded == 0) {
+      pEncoded_ = &encodedInternal_;
+    } else {
+      pEncoded_ = pEncoded;
+    }
   }
 
   /// <summary>
@@ -75,8 +91,23 @@ public:
   /// </summary>
   const std::vector<uint8_t> &getDecodedBytes() const
   {
-    return decoded_;
+    return *pDecoded_;
   }
+
+  /// <summary>
+  /// Sets a pointer to a vector containing the encoded bytes.  This can be used to avoid having to copy the encoded.  Set to 0
+  /// to reset to the internal buffer
+  /// </summary>
+  void setDecodedBytes(std::vector<uint8_t>* pDecoded)
+  {
+    if(pDecoded == 0) {
+      pDecoded_ = &decodedInternal_;
+    } else {
+      pDecoded_ = pDecoded;
+    }
+  }
+
+
 #endif
 
   /// <summary>
@@ -88,7 +119,7 @@ public:
   {
     ojph::codestream codestream;
     ojph::mem_infile mem_file;
-    mem_file.open(encoded_.data(), encoded_.size());
+    mem_file.open(pEncoded_->data(), pEncoded_->size());
     readHeader_(codestream, mem_file);
   }
 
@@ -118,7 +149,7 @@ public:
   {
     ojph::codestream codestream;
     ojph::mem_infile mem_file;
-    mem_file.open(encoded_.data(), encoded_.size());
+    mem_file.open(pEncoded_->data(), pEncoded_->size());
     readHeader_(codestream, mem_file);
     decode_(codestream, frameInfo_, 0);
   }
@@ -133,7 +164,7 @@ public:
   {
     ojph::codestream codestream;
     ojph::mem_infile mem_file;
-    mem_file.open(encoded_.data(), encoded_.size());
+    mem_file.open(pEncoded_->data(), pEncoded_->size());
     readHeader_(codestream, mem_file);
     decode_(codestream, frameInfo_, decompositionLevel);
   }
@@ -231,14 +262,6 @@ public:
     return numLayers_;
   }
 
-  /// <summary>
-  /// returns whether or not a color transform is used
-  /// </summary>
-  bool getIsUsingColorTransform() const
-  {
-    return isUsingColorTransform_;
-  }
-
 private:
   void readHeader_(ojph::codestream &codestream, ojph::mem_infile &mem_file)
   {
@@ -279,7 +302,7 @@ private:
       precincts_[i].height = cod.get_precinct_size(i).h;
     }
     numLayers_ = cod.get_num_layers();
-    isUsingColorTransform_ = cod.is_using_color_transform();
+    frameInfo_.isUsingColorTransform = cod.is_using_color_transform();
   }
 
   void decode_(ojph::codestream &codestream, const FrameInfo &frameInfo, size_t decompositionLevel)
@@ -291,7 +314,7 @@ private:
     int resolutionLevel = numDecompositions_ - decompositionLevel;
     const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
     const size_t destinationSize = sizeAtDecompositionLevel.width * sizeAtDecompositionLevel.height * frameInfo.componentCount * bytesPerPixel;
-    decoded_.resize(destinationSize);
+    pDecoded_->resize(destinationSize);
 
     // set the level to read to and reconstruction level to the specified decompositionLevel
     codestream.restrict_input_resolution(decompositionLevel, decompositionLevel);
@@ -303,7 +326,7 @@ private:
     }
     else
     {
-      if (isUsingColorTransform_)
+      if (frameInfo_.isUsingColorTransform)
       {
         codestream.set_planar(false);
       }
@@ -328,7 +351,7 @@ private:
         ojph::line_buf *line = codestream.pull(comp_num);
         if (frameInfo.bitsPerSample <= 8)
         {
-          unsigned char *pOut = (unsigned char *)&decoded_[lineStart];
+          unsigned char *pOut = (unsigned char *)&(*pDecoded_)[lineStart];
           for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
           {
             int val = line->i32[x];
@@ -339,7 +362,7 @@ private:
         {
           if (frameInfo.isSigned)
           {
-            short *pOut = (short *)&decoded_[lineStart];
+            short *pOut = (short *)&(*pDecoded_)[lineStart];
             for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
             {
               int val = line->i32[x];
@@ -348,7 +371,7 @@ private:
           }
           else
           {
-            unsigned short *pOut = (unsigned short *)&decoded_[lineStart];
+            unsigned short *pOut = (unsigned short *)&(*pDecoded_)[lineStart];
             for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
             {
               int val = line->i32[x];
@@ -364,7 +387,7 @@ private:
           ojph::line_buf *line = codestream.pull(comp_num);
           if (frameInfo.bitsPerSample <= 8)
           {
-            uint8_t *pOut = &decoded_[lineStart] + c;
+            uint8_t *pOut = &(*pDecoded_)[lineStart] + c;
             for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
             {
               int val = line->i32[x];
@@ -376,7 +399,7 @@ private:
             // This should work but has not been tested yet
             if (frameInfo.isSigned)
             {
-              short *pOut = (short *)&decoded_[lineStart] + c;
+              short *pOut = (short *)&(*pDecoded_)[lineStart] + c;
               for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
               {
                 int val = line->i32[x];
@@ -385,7 +408,7 @@ private:
             }
             else
             {
-              unsigned short *pOut = (unsigned short *)&decoded_[lineStart] + c;
+              unsigned short *pOut = (unsigned short *)&(*pDecoded_)[lineStart] + c;
               for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++)
               {
                 int val = line->i32[x];
@@ -398,8 +421,10 @@ private:
     }
   }
 
-  std::vector<uint8_t> encoded_;
-  std::vector<uint8_t> decoded_;
+  std::vector<uint8_t>* pEncoded_;
+  std::vector<uint8_t>* pDecoded_;
+  std::vector<uint8_t> encodedInternal_; 
+  std::vector<uint8_t> decodedInternal_;
   FrameInfo frameInfo_;
   std::vector<Point> downSamples_;
   size_t numDecompositions_;
@@ -411,5 +436,4 @@ private:
   Size blockDimensions_;
   std::vector<Size> precincts_;
   int32_t numLayers_;
-  bool isUsingColorTransform_;
 };

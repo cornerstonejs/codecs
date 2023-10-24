@@ -18,7 +18,6 @@
 
 #include "EncodedBuffer.hpp"
 #include "FrameInfo.hpp"
-#include "ojph_message.h"
 
 /// <summary>
 /// JavaScript API for encoding images to HTJ2K bitstreams with OpenJPH
@@ -26,21 +25,6 @@
 class HTJ2KEncoder
 {
 public:
-  /// <summary>
-  /// Constructor for encoding a HTJ2K image from JavaScript.
-  /// </summary>
-  HTJ2KEncoder() : decompositions_(5),
-                   request_tlm_marker_(false),
-                   set_tilepart_divisions_at_resolutions_(false),
-                   set_tilepart_divisions_at_components_(false),
-                   lossless_(true),
-                   quantizationStep_(-1.0),
-                   progressionOrder_(2), // RPCL
-                   blockDimensions_(64, 64)
-  {
-    // Use for debugging to ensure that correct encoder is being used
-    // OJPH_INFO(0x00010001, "v1 - HTJ2K Encoder");
-  }
 
 #ifdef __EMSCRIPTEN__
   /// <summary>
@@ -61,6 +45,7 @@ public:
     frameInfo_ = frameInfo;
     const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
     const size_t decodedSize = frameInfo_.width * frameInfo_.height * frameInfo_.componentCount * bytesPerPixel;
+    downSamples_.resize(frameInfo_.componentCount);
     for (int c = 0; c < frameInfo_.componentCount; ++c)
     {
       downSamples_[c].x = 1;
@@ -91,6 +76,7 @@ public:
   std::vector<uint8_t> &getDecodedBytes(const FrameInfo &frameInfo)
   {
     frameInfo_ = frameInfo;
+    downSamples_.resize(frameInfo_.componentCount);
     for (int c = 0; c < frameInfo_.componentCount; ++c)
     {
       downSamples_[c].x = 1;
@@ -147,6 +133,9 @@ public:
   /// </summary>
   void setDownSample(size_t component, Point downSample)
   {
+    if(downSamples_.size() <= component) {
+      downSamples_.resize(component + 1);
+    }
     downSamples_[component] = downSample;
   }
 
@@ -200,14 +189,6 @@ public:
   }
 
   /// <summary>
-  /// Sets whether or not the color transform is used
-  /// </summary>
-  void setIsUsingColorTransform(bool isUsingColorTransform)
-  {
-    isUsingColorTransform_ = isUsingColorTransform;
-  }
-
-  /// <summary>
   /// Sets whether to add TLM at beginning of file
   /// </summary>
   void setTLMMarker(bool set_tlm_marker)
@@ -246,6 +227,7 @@ public:
     ojph::param_siz siz = codestream.access_siz();
     siz.set_image_extent(ojph::point(frameInfo_.width, frameInfo_.height));
     int num_comps = frameInfo_.componentCount;
+    downSamples_.resize(num_comps);
     siz.set_num_components(num_comps);
     for (int c = 0; c < num_comps; ++c)
       siz.set_component(c, ojph::point(downSamples_[c].x, downSamples_[c].y), frameInfo_.bitsPerSample, frameInfo_.isSigned);
@@ -268,7 +250,7 @@ public:
 
     const char *progOrders[] = {"LRCP", "RLCP", "RPCL", "PCRL", "CPRL"};
     cod.set_progression_order(progOrders[progressionOrder_]);
-    cod.set_color_transform(isUsingColorTransform_);
+    cod.set_color_transform(frameInfo_.isUsingColorTransform);
     cod.set_reversible(lossless_);
     if (!lossless_)
     {
@@ -276,8 +258,8 @@ public:
     }
     codestream.set_tilepart_divisions(set_tilepart_divisions_at_resolutions_, set_tilepart_divisions_at_components_);
     codestream.request_tlm_marker(request_tlm_marker_);
-    codestream.set_planar(isUsingColorTransform_ == false);
-    codestream.write_headers(&encoded_, NULL, 0);
+    codestream.set_planar(frameInfo_.isUsingColorTransform == false);
+    codestream.write_headers(&encoded_);
 
     // Encode the image
     const size_t bytesPerPixel = frameInfo_.bitsPerSample / 8;
@@ -331,19 +313,18 @@ private:
   std::vector<uint8_t> decoded_;
   EncodedBuffer encoded_;
   FrameInfo frameInfo_;
-  size_t decompositions_;
-  bool lossless_;
-  bool request_tlm_marker_;
-  bool set_tilepart_divisions_at_components_;
-  bool set_tilepart_divisions_at_resolutions_;
-  float quantizationStep_;
-  size_t progressionOrder_;
+  size_t decompositions_ = 5;
+  bool lossless_ = true;
+  bool request_tlm_marker_ = false;
+  bool set_tilepart_divisions_at_components_ = false;
+  bool set_tilepart_divisions_at_resolutions_ = false;
+  float quantizationStep_ = -1.0f;
+  size_t progressionOrder_ = 2; // RPCL
 
   std::vector<Point> downSamples_;
   Point imageOffset_;
   Size tileSize_;
   Point tileOffset_;
-  Size blockDimensions_;
+  Size blockDimensions_ = Size(64,64);
   std::vector<Size> precincts_;
-  bool isUsingColorTransform_;
 };

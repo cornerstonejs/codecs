@@ -42,6 +42,7 @@ EMSCRIPTEN_BINDINGS(FrameInfo) {
     .field("bitsPerSample", &FrameInfo::bitsPerSample)
     .field("componentCount", &FrameInfo::componentCount)
     .field("isSigned", &FrameInfo::isSigned)
+    .field("isUsingColorTransform", &FrameInfo::isUsingColorTransform)
        ;
 }
 
@@ -79,7 +80,6 @@ EMSCRIPTEN_BINDINGS(HTJ2KDecoder) {
     .function("getBlockDimensions", &HTJ2KDecoder::getBlockDimensions)
     .function("getPrecinct", &HTJ2KDecoder::getPrecinct)
     .function("getNumLayers", &HTJ2KDecoder::getNumLayers)
-    .function("getIsUsingColorTransform", &HTJ2KDecoder::getIsUsingColorTransform)
    ;
 }
 
@@ -102,6 +102,5 @@ EMSCRIPTEN_BINDINGS(HTJ2KEncoder) {
     .function("setBlockDimensions", &HTJ2KEncoder::setBlockDimensions)
     .function("setNumPrecincts", &HTJ2KEncoder::setNumPrecincts)
     .function("setPrecinct", &HTJ2KEncoder::setPrecinct)
-    .function("setIsUsingColorTransform", &HTJ2KEncoder::setIsUsingColorTransform)
    ;
 }
