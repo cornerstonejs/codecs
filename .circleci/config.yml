@@ -85,7 +85,7 @@ jobs:
             rm -rf /var/lib/apt/lists/*
       - run: gcc --version
       - checkout
-      - run: git submodule update --init --recursive --remote
+      - run: git submodule update --init --recursive
       - run:
           name: Install Dependencies
           command: yarn install --frozen-lockfile
@@ -154,7 +154,7 @@ jobs:
       # Where submodules are the C/C++ libraries we intend to port
       # using emscripten
       - checkout
-      - run: git submodule update --init --recursive --remote
+      - run: git submodule update --init --recursive
       #
       # Caches dependencies between CI runs. We use the `yarn.lock` file as our
       # "cache key". We then restore dependencies from lockfile and update our

@@ -99,4 +99,6 @@ if (typeof openjphjs !== "undefined") {
   openjphjs().then(function (openjphwasm) {
     main(openjphwasm)
   })
+} else {
+  console.warn("openjphjs isn't defined");
 }
