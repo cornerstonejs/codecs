@@ -26,7 +26,7 @@
     "@cornerstonejs/codec-big-endian": ">=0.1.0",
     "@cornerstonejs/codec-charls": ">=1.2.3",
     "@cornerstonejs/codec-libjpeg-turbo-8bit": ">=1.2.2",
-    "@cornerstonejs/codec-little-endian": ">=1.2.2",
+    "@cornerstonejs/codec-little-endian": ">=0.0.6",
     "@cornerstonejs/codec-openjpeg": ">=1.2.2",
     "@cornerstonejs/codec-openjph": ">=2.4.3",
     "browser-or-node": "^2.0.0",
