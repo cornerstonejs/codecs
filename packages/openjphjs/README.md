@@ -8,7 +8,8 @@ Try it in your browser [here](https://chafey.github.io/openjphjs/test/browser/in
 
 ## Building
 
-This project uses Visual Studio Remote Containers to simplify setup and running (everything is contained in a docker image)
+This project uses Visual Studio Remote Containers to simplify setup and running (everything is contained in a docker image).  Use the devconvtainer from the
+root codecs packages for the @cornerstonejs/codecs version.
 
 This project uses git submodules to pull in OpenJPH.  If developing, initialize the git submodules first (do this outside the container):
 

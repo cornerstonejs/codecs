@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/dicom-codec",
-  "version": "0.1.11",
+  "version": "1.0.0",
   "description": "",
   "main": "src/index.js",
   "publishConfig": {
