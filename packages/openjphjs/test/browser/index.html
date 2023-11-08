@@ -438,7 +438,6 @@ var calccrc32 = function(str) {
     }
     $('#precincts').text('' + precints);
     $('#numLayers').text('' + decoder.getNumLayers());
-    $('#colorTransform').text('' + decoder.getIsUsingColorTransform());
 
     $('#progessionOrder').text(['LRCP', 'RLCP', 'RPCL', 'PCRL', 'CPRL'][decoder.getProgressionOrder()]);
     progressionOrder = decoder.getProgressionOrder();
@@ -476,7 +475,6 @@ var calccrc32 = function(str) {
     }
     encoder.setDecompositions(numDecompositionsToEncode);
     encoder.setBlockDimensions({ width: blockDimensions, height: blockDimensions });
-    encoder.setIsUsingColorTransform(decoder.getFrameInfo().componentCount === 3);
     encoder.setProgressionOrder(progressionOrder);
 
     // Do the encode

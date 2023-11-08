@@ -25,6 +25,12 @@
 class HTJ2KEncoder
 {
 public:
+  HTJ2KEncoder() {
+    // Use the following for debugging to ensure updated version info
+    // Update the XX to check that reload has completed
+    // OJPH_INFO(0x00010002, "vXX HTJ2K Encoder");
+  }
+
 
 #ifdef __EMSCRIPTEN__
   /// <summary>
