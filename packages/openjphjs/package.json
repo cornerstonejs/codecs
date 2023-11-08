@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjph",
-  "version": "2.4.4",
+  "version": "2.4.5",
   "description": "JS/WebAssembly build of OpenJPH",
   "main": "dist/openjphjs.js",
   "publishConfig": {

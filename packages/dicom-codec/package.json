@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/dicom-codec",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "src/index.js",
   "publishConfig": {
@@ -28,7 +28,7 @@
     "@cornerstonejs/codec-libjpeg-turbo-8bit": ">=1.2.2",
     "@cornerstonejs/codec-little-endian": ">=0.0.6",
     "@cornerstonejs/codec-openjpeg": ">=1.2.2",
-    "@cornerstonejs/codec-openjph": "^2.4.4",
+    "@cornerstonejs/codec-openjph": "^2.4.5",
     "browser-or-node": "^2.0.0",
     "jpeg-lossless-decoder-js": "^2.0.4"
   }
