@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.4](https://github.com/chafey/openjphjs/compare/@cornerstonejs/codec-openjph@2.4.3...@cornerstonejs/codec-openjph@2.4.4) (2023-11-08)
+
+
+### Bug Fixes
+
+* **openjph:** HTJ2K encoding was missing a variable ([#37](https://github.com/chafey/openjphjs/issues/37)) ([2900ae9](https://github.com/chafey/openjphjs/commit/2900ae92b10de00a254ba6323e3b2235320d997f))
+* update openjph 20231006 ([#35](https://github.com/chafey/openjphjs/issues/35)) ([e15fae9](https://github.com/chafey/openjphjs/commit/e15fae9f1e188b084b3dcd6761ffb990fd031650))
+
+
+
+
+
 ## [2.4.3](https://github.com/chafey/openjphjs/compare/@cornerstonejs/codec-openjph@2.4.2...@cornerstonejs/codec-openjph@2.4.3) (2023-10-25)
 
 

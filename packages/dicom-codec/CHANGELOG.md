@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.1.11](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.10...@cornerstonejs/dicom-codec@0.1.11) (2023-11-08)
+
+
+### Bug Fixes
+
+* **openjph:** HTJ2K encoding was missing a variable ([#37](https://github.com/cornerstonejs/codecs/issues/37)) ([2900ae9](https://github.com/cornerstonejs/codecs/commit/2900ae92b10de00a254ba6323e3b2235320d997f))
+
+
+
+
+
 ## [0.1.10](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.9...@cornerstonejs/dicom-codec@0.1.10) (2023-10-25)
 
 
