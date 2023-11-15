@@ -13,6 +13,7 @@ DICOM Codecs for JavaScript (browser and node support).
 | Jpegls            	| 1.2.840.10008.1.2.4.80 1.2.840.10008.1.2.4.81                	|    X   	|    X   	|        X        	|       X       	|
 | Jpeg2000          	| 1.2.840.10008.1.2.4.90 1.2.840.10008.1.2.4.91                	|    X   	|    X   	|        X        	|       X       	|
 | RleLossless       	| 1.2.840.10008.1.2.5                                          	|    X   	|    -   	|        -        	|       -       	|
+| HTJ2K             	| 1.2.840.10008.1.2.202 (201,203 as well)                      	|    X   	|    X   	|        X        	|       X       	|
 
 ### Next releases planning
 v0.0.11: support for LibjpegTurbo12Bit.
