@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.2](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.1...@cornerstonejs/dicom-codec@1.0.2) (2023-11-15)
+
+
+### Bug Fixes
+
+* Final HTJ2K transfer syntaxes ([#39](https://github.com/cornerstonejs/codecs/issues/39)) ([7763759](https://github.com/cornerstonejs/codecs/commit/7763759a9284e1595fc7af20e1a83f38c17d4fe6))
+* Fixing the build credentials to allow release ([#38](https://github.com/cornerstonejs/codecs/issues/38)) ([8fcc8f7](https://github.com/cornerstonejs/codecs/commit/8fcc8f7c8044e4d36c0e1405c0eaa3e159ca0597))
+
+
+
+
+
 ## [1.0.1](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@0.1.11...@cornerstonejs/dicom-codec@1.0.1) (2023-11-08)
 
 
