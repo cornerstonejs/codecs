@@ -37,8 +37,12 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
-  // TODO - update to final ID when released by WG-06
+  // Private Transfer Syntax - update to final ID when released by WG-06
   "3.2.840.10008.1.2.4.96": htj2kCodec,
+  // The three official HTJ2K transfer syntaxes
+  "1.2.840.10008.1.2.4.201": htj2kCodec,
+  "1.2.840.10008.1.2.4.202": htj2kCodec,
+  "1.2.840.10008.1.2.4.203": htj2kCodec,
   "1.2.840.10008.1.2.5": rleLosslessCodec,
 };
 
