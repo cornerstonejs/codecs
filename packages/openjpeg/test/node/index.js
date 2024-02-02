@@ -103,6 +103,9 @@ function main(openjpeg) {
   // encode(openjpeg, '../fixtures/raw/RG3.RAW', {width: 1760, height: 1760, bitsPerSample: 16, componentCount: 1, isSigned: false}, '../fixtures/j2c/RG3.j2c');
   // encode(openjpeg, '../fixtures/raw/SC1.RAW', {width: 2048, height: 2487, bitsPerSample: 16, componentCount: 1, isSigned: false}, '../fixtures/j2c/SC1.j2c');
   // encode(openjpeg, '../fixtures/raw/XA1.RAW', {width: 1024, height: 1024, bitsPerSample: 16, componentCount: 1, isSigned: false}, '../fixtures/j2c/XA1.j2c');
+
+  decode(openjpeg, './../fixtures/j2k/EE0E3825_1003good_dat.j2k');
+  decode(openjpeg, "./../fixtures/j2k/EE60E32E_dat.j2k");
 }
 
 if (openjpegjs) {
