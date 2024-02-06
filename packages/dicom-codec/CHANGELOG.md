@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.3](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.2...@cornerstonejs/dicom-codec@1.0.3) (2024-02-06)
+
+
+### Bug Fixes
+
+* Update readme to include HTJ2K to force build ([2f2d155](https://github.com/cornerstonejs/codecs/commit/2f2d1556fc713345b3cef68414418d98e86ac3ac))
+
+
+
+
+
 ## [1.0.2](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.1...@cornerstonejs/dicom-codec@1.0.2) (2023-11-15)
 
 
