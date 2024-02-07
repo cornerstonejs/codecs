@@ -28,7 +28,6 @@ set_target_properties(
       -s DISABLE_EXCEPTION_CATCHING=1 \
       -s ASSERTIONS=0 \
       -s NO_EXIT_RUNTIME=1 \
-      -s MALLOC=dlmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
       -s INITIAL_MEMORY=50mb \
       -s FILESYSTEM=0 \
@@ -65,7 +64,6 @@ set_target_properties(
          -s DISABLE_EXCEPTION_CATCHING=1 \
          -s ASSERTIONS=0 \
          -s NO_EXIT_RUNTIME=1 \
-         -s MALLOC=dlmalloc \
          -s ALLOW_MEMORY_GROWTH=1 \
 	       -s INITIAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
@@ -104,7 +102,6 @@ set_target_properties(
       -s DISABLE_EXCEPTION_CATCHING=1 \
       -s ASSERTIONS=0 \
       -s NO_EXIT_RUNTIME=1 \
-      -s MALLOC=dlmalloc \
       -s ALLOW_MEMORY_GROWTH=1 \
       -s INITIAL_MEMORY=50mb  \
       -s FILESYSTEM=0 \
@@ -141,7 +138,6 @@ set_target_properties(
          -s DISABLE_EXCEPTION_CATCHING=1 \
          -s ASSERTIONS=0 \
          -s NO_EXIT_RUNTIME=1 \
-         -s MALLOC=dlmalloc \
          -s ALLOW_MEMORY_GROWTH=1 \
 	       -s INITIAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
