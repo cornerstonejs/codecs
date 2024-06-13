@@ -1,6 +1,6 @@
 argv= [
   '/emsdk/node/16.20.0_64bit/bin/node',
-  '/workspaces/libjxl-js-clone/test/node/index.js',
+  '/workspaces/codecs/packages/libjxl/test/node/index.js',
   '--experimental-wasm-simd',
   '1'
 ]

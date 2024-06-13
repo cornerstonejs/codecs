@@ -1,9 +1,10 @@
 add_executable(libjxljs jslib.cpp)
 
-target_link_libraries(libjxljs jxl-static
-)
+target_link_libraries(libjxljs jxl-static)
 
 target_compile_features(libjxljs PUBLIC cxx_std_11)
+
+include_directories(../build/extern/libjxl/lib/include/)
 
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
 	SET(linkFlags "-g4")
