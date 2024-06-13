@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.5](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.4...@cornerstonejs/dicom-codec@1.0.5) (2024-06-13)
+
+
+### Bug Fixes
+
+* Import JPEG lossless library correctly ([#43](https://github.com/cornerstonejs/codecs/issues/43)) ([321d3d8](https://github.com/cornerstonejs/codecs/commit/321d3d897c4a261c10732744f0e5da0485afaa62))
+
+
+
+
+
 ## [1.0.4](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.3...@cornerstonejs/dicom-codec@1.0.4) (2024-03-25)
 
 **Note:** Version bump only for package @cornerstonejs/dicom-codec
