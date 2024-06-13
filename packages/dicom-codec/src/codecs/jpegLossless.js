@@ -1,4 +1,4 @@
-const codecModule = require("jpeg-lossless-decoder-js/release/current/lossless-min");
+const codecModule = require("jpeg-lossless-decoder-js");
 const codecWasmModule = {};
 const codecFactory = require("./codecFactory");
 
