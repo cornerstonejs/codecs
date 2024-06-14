@@ -13,3 +13,6 @@
 [submodule "packages/charls/extern/charls"]
 	path = packages/charls/extern/charls
 	url = https://github.com/cornerstonejs/charls.git
+[submodule "packages/libjxl/extern/libjxl"]
+	path = packages/libjxl/extern/libjxl
+	url = https://github.com/libjxl/libjxl.git

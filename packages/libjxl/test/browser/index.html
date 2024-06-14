@@ -1,0 +1,516 @@
+<!DOCTYPE HTML>
+
+<html>
+
+<head>
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
+  <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+  <script type="text/javascript" src="../../dist/libjxljs.js"></script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="page-header">
+      <h1>JPEG-XL Decoding with WebAssembly</h1>
+      <p class="lead">
+        Select an image or drag and drop a JPEG-XL file. Files dropped here remain local in your browser, they are not
+        uploaded anywhere.
+      </p>
+      <select id="imageSelector">
+
+        <option value="../../test/fixtures/jxl-progressive/CT1.j2k.png.jxl" selected>CT1</option>
+        <option value="../../test/fixtures/jxl-progressive/CT2.j2k.png.jxl">CT2</option>
+        <option value="../../test/fixtures/jxl-progressive/MG1.j2k.png.jxl">MG1</option>
+        <option value="../../test/fixtures/jxl-progressive/MR1.j2k.png.jxl">MR1</option>
+        <option value="../../test/fixtures/jxl-progressive/MR2.j2k.png.jxl">MR2</option>
+        <option value="../../test/fixtures/jxl-progressive/MR3.j2k.png.jxl">MR3</option>
+        <option value="../../test/fixtures/jxl-progressive/MR4.j2k.png.jxl">MR4</option>
+        <option value="../../test/fixtures/jxl-progressive/NM1.j2k.png.jxl">NM1</option>
+        <option value="../../test/fixtures/jxl-progressive/RG1.j2k.png.jxl">RG1</option>
+        <option value="../../test/fixtures/jxl-progressive/RG2.j2k.png.jxl">RG2</option>
+        <option value="../../test/fixtures/jxl-progressive/RG3.j2k.png.jxl">RG3</option>
+        <option value="../../test/fixtures/jxl-progressive/SC1.j2k.png.jxl">SC1</option>
+        <option value="../../test/fixtures/jxl-progressive/US1.j2k.png.jxl">US1</option>
+        <option value="../../test/fixtures/jxl-progressive/VL1.j2k.png.jxl">VL1</option>
+        <option value="../../test/fixtures/jxl-progressive/VL2.j2k.png.jxl">VL2</option>
+        <option value="../../test/fixtures/jxl-progressive/VL3.j2k.png.jxl">VL3</option>
+        <option value="../../test/fixtures/jxl-progressive/VL4.j2k.png.jxl">VL4</option>
+        <option value="../../test/fixtures/jxl-progressive/VL5.j2k.png.jxl">VL5</option>
+        <option value="../../test/fixtures/jxl-progressive/VL6.j2k.png.jxl">VL6</option>
+        <option value="../../test/fixtures/jxl-progressive/XA1.j2k.png.jxl">XA1</option>
+      </select>
+      <button id="benchmark">Benchmark</button>
+    </div>
+    <div class="row">
+      <label><input id="visualizeDeltas" type="checkbox" value="">Visualize Deltas</label>
+    </div>
+    <div class="row">
+      <div class="col-md-4">Status:<span id="status"></span></div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">Encode Time: <span id="encodeTime"></span></div>
+      <div class="col-md-4">Decode Time: <span id="decodeTime"></span></div>
+      <div class="col-md-4">Display Time: <span id="displayTime"></span></div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">Encoded Size: <span id="encodedSize"></span></div>
+      <div class="col-md-4">Decoded Size: <span id="decodedSize"></span></div>
+      <div class="col-md-4">Compression Ratio: <span id="compressionRatio"></span></div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">Resolution: <span id="resolution"></span></div>
+      <div class="col-md-4">Pixel Format: <span id="pixelFormat"></span></div>
+      <div class="col-md-4">Component Count: <span id="componentCount"></span></div>
+    </div>
+    <div class="row">
+      <div class="col-md-4">Min Pixel: <span id="minPixel"></span></div>
+      <div class="col-md-4">Max Pixel: <span id="maxPixel"></span></div>
+      <div class="col-md-4">Dynamic Range: <span id="dynamicRange"></span></div>
+    </div>
+    <hr>
+    <div class="row">
+      <div class="col-md-12">
+        <b>Decoding Parameters</b>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <span>Encoded Bytes Read: </span><span id="encodedBytesRead">0</span>
+        <input type="range" class="custom-range" id="encodedBytesReadRange" min="0" max="5" value="0">
+      </div>
+    </div>
+    <hr>
+    <div class="row">
+      <div class="col-md-12">
+        <b>Encoding Parameters</b>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-12">
+        <select id="effortSelector">
+          <option value="1">1 - lightning (fastest/largest)</option>
+          <option value="2">2 - thunder</option>
+          <option value="3" selected>3 - falcon (default)</option>
+          <option value="4">4 - cheetah</option>
+          <option value="5">5 - hare</option>
+          <option value="6">6 - wombat</option>
+          <option value="7">7 - squirrel </option>
+          <option value="8">8 - kitten</option>
+          <option value="9">9 - tortoise (slowest/smallest)</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <span>Distance: </span><span id="distanceParameter">0</span>
+        <input type="range" class="custom-range" id="distanceParameterRange" min="0" max="1500" value="0">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-12">
+        <button id="download">Download</button>
+      </div>
+    </div>
+    <hr>
+
+    <div class="row">
+      <div class="col-md-6">
+        <canvas id='myCanvas' width="512" height="512" />
+      </div>
+    </div>
+</body>
+
+<script>
+
+  let decoder = undefined;
+  let encoder = undefined;
+  let encodedBitStream = undefined; // this is the updated encoded bitstream based on adjusting encoding parameters
+  let fullEncodedBitStream = undefined; // this is the originally loaded encoded bitstream
+  let uncompressedImageFrame = undefined;
+  let frameInfo = undefined;
+  let minMax = undefined;
+  let effort = 3; // falcon - good for medical images (as per Jon Snyers)
+  let distance = 0; // lossless
+
+  function getMinMax(frameInfo, pixelData) {
+    const numPixels = frameInfo.width * frameInfo.height * frameInfo.componentCount;
+    let min = pixelData[0];
+    let max = pixelData[0];
+    for (let i = 0; i < numPixels; i++) {
+      if (pixelData[i] < min) {
+        min = pixelData[i];
+      }
+      if (pixelData[i] > max) {
+        max = pixelData[i];
+      }
+    }
+    return { min, max };
+  }
+
+  function getPixelData(frameInfo, decodedBuffer, signed) {
+    if (frameInfo.bitsPerSample > 8) {
+      if (signed) {
+        return new Int16Array(decodedBuffer.buffer, decodedBuffer.byteOffset, decodedBuffer.byteLength / 2);
+      } else {
+        return new Uint16Array(decodedBuffer.buffer, decodedBuffer.byteOffset, decodedBuffer.byteLength / 2);
+      }
+    } else {
+      return decodedBuffer;
+    }
+  }
+
+  function colorToCanvas(frameInfo, pixelData, imageData) {
+    let outOffset = 0;
+    const bytesPerSample = (frameInfo.bitsPerSample <= 8) ? 1 : 2;
+    let planeSize = frameInfo.width * frameInfo.height * bytesPerSample;
+    let shift = 0;
+    if (frameInfo.bitsPerSample > 8) {
+      shift = 8;
+    }
+    let inOffset = 0;
+
+    minMax = getMinMax(frameInfo, pixelData);
+    $('#minPixel').text('' + minMax.min);
+    $('#maxPixel').text('' + minMax.max);
+
+    for (var y = 0; y < frameInfo.height; y++) {
+      for (var x = 0; x < frameInfo.width; x++) {
+        imageData.data[outOffset++] = pixelData[inOffset++] >> shift;
+        imageData.data[outOffset++] = pixelData[inOffset++] >> shift;
+        imageData.data[outOffset++] = pixelData[inOffset++] >> shift;
+        imageData.data[outOffset++] = 255;
+      }
+    }
+  }
+
+  function grayToCanvas(frameInfo, pixelData, imageData, signed) {
+    var outOffset = 0;
+    var planeSize = frameInfo.width * frameInfo.height;
+    var inOffset = 0;
+
+    minMax = getMinMax(frameInfo, pixelData);
+    $('#minPixel').text('' + minMax.min);
+    $('#maxPixel').text('' + minMax.max);
+
+    //console.log(minMax);
+    let dynamicRange = minMax.max - minMax.min;
+    $('#dynamicRange').text('' + dynamicRange);
+    //console.log('dynamicRange=', dynamicRange);
+    let bitsOfData = 1;
+    while (dynamicRange > 1) {
+      dynamicRange = dynamicRange >> 1;
+      bitsOfData++;
+    }
+    //console.log('bitsOfData = ', bitsOfData);
+    let bitShift = bitsOfData - 8;
+    const offset = -minMax.min;
+    //console.log('bitShift=', bitShift);
+    //console.log('offset=', offset);
+
+    for (var y = 0; y < frameInfo.height; y++) {
+      for (var x = 0; x < frameInfo.width; x++) {
+        if (frameInfo.bitsPerSample <= 8) {
+          const value = pixelData[inOffset++];
+          imageData.data[outOffset] = value;
+          imageData.data[outOffset + 1] = value;
+          imageData.data[outOffset + 2] = value;
+          imageData.data[outOffset + 3] = 255;
+          outOffset += 4;
+        }
+        else // bitsPerSample > 8 
+        {
+          // Do a simple transformation to display 16 bit data:
+          //  * Offset the pixels so the smallest value is 0
+          //  * Shift the pixels to display the most significant 8 bits
+          const fullPixel = pixelData[inOffset++] + offset;
+          const value = (fullPixel >> bitShift);
+          imageData.data[outOffset] = value;
+          imageData.data[outOffset + 1] = value;
+          imageData.data[outOffset + 2] = value;
+          imageData.data[outOffset + 3] = 255;
+          outOffset += 4;
+        }
+      }
+    }
+  }
+
+  function deltasToCanvas(frameInfo, pixelData, imageData, signed) {
+    if (!uncompressedImageFrame) {
+      return;
+    }
+    const deltas = new Int32Array(frameInfo.height * frameInfo.width);
+    const uif = getPixelData(frameInfo, uncompressedImageFrame, signed);
+    let inOffset = 0;
+    let outOffset = 0;
+    for (var y = 0; y < frameInfo.height; y++) {
+      for (var x = 0; x < frameInfo.width; x++) {
+        const unc = uif[inOffset];
+        const comp = pixelData[inOffset];
+        deltas[inOffset++] = Math.abs(comp - unc);
+      }
+    }
+    inOffset = 0;
+
+    for (var y = 0; y < frameInfo.height; y++) {
+      for (var x = 0; x < frameInfo.width; x++) {
+        if (uncompressedImageFrame) {
+          const delta = deltas[inOffset];
+          inOffset++;
+          imageData.data[outOffset] = delta;
+          imageData.data[outOffset + 1] = delta;
+          imageData.data[outOffset + 2] = delta;
+          imageData.data[outOffset + 3] = 255;
+          outOffset += 4;
+        }
+      }
+    }
+  }
+
+  function display(frameInfo, decodedBuffer) {
+    const signed = $('#signed').is(":checked");
+
+    const pixelData = getPixelData(frameInfo, decodedBuffer, signed);
+
+    const begin = performance.now(); // performance.now() returns value in milliseconds
+    var c = document.getElementById("myCanvas");
+    var ctx = c.getContext("2d");
+
+    c.width = frameInfo.width;
+    c.height = frameInfo.height;
+    var myImageData = ctx.createImageData(frameInfo.width, frameInfo.height);
+
+    const visualizeDeltas = $('#visualizeDeltas').is(":checked");
+
+    if (frameInfo.componentCount > 1) {
+      colorToCanvas(frameInfo, pixelData, myImageData);
+    } else {
+      if (visualizeDeltas) {
+        deltasToCanvas(frameInfo, pixelData, myImageData, signed);
+      } else {
+        grayToCanvas(frameInfo, pixelData, myImageData, signed);
+      }
+    }
+
+    ctx.putImageData(myImageData, 0, 0);
+    const end = performance.now();
+    $('#displayTime').text((end - begin).toFixed(2) + ' ms');
+  }
+
+  function decode(iterations = 1) {
+    $('#encodedSize').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
+
+    // Setup
+    const encodedBuffer = decoder.getEncodedBuffer(encodedBitStream.length);
+    let begin = performance.now(); // performance.now() returns value in milliseconds
+    encodedBuffer.set(encodedBitStream);
+    let end = performance.now();
+
+    // Decode
+    begin = performance.now(); // performance.now() returns value in milliseconds
+    let result = undefined
+    for (let i = 0; i < iterations; i++) {
+      result = decoder.decode();
+      if (result != 0) {
+        $('#status').text('decode() returned error ' + result);
+      }
+    }
+    end = performance.now();
+    const timePerFrame = (end - begin) / iterations
+    frameInfo = decoder.getFrameInfo();
+    const mps = frameInfo.width * frameInfo.height / timePerFrame / 1024 / 1024 * 1000
+    const fps = 1000 / timePerFrame
+    $('#decodeTime').text((timePerFrame).toFixed(2) + ' ms (' + mps.toFixed(2) + " MP/s; " + fps.toFixed(0) + " fps)");
+
+
+    // Display image properties
+    $('#resolution').text('' + frameInfo.width + 'x' + frameInfo.height);
+    $('#pixelFormat').text('' + frameInfo.bitsPerSample + ' bpp');
+    $('#componentCount').text('' + frameInfo.componentCount);
+
+    // Display Image
+    var decodedBuffer = decoder.getDecodedBuffer();
+    $('#decodedSize').text('' + decodedBuffer.length.toLocaleString() + " bytes");
+    $('#compressionRatio').text('' + (decodedBuffer.length / encodedBitStream.length).toFixed(2) + ":1");
+    display(frameInfo, decodedBuffer);
+  }
+
+  function encode(effort, distance, iterations = 1) {
+    // Setup buffer
+    const decodedBytes = encoder.getDecodedBuffer(frameInfo);
+    decodedBytes.set(uncompressedImageFrame);
+    encoder.setEffort(effort);
+    const lossless = distance === 0.0
+    encoder.setQuality(lossless, distance);
+    // Do the encode
+    begin = performance.now(); // performance.now() returns value in milliseconds
+    for (let i = 0; i < iterations; i++) {
+      encoder.encode();
+    }
+    end = performance.now();
+    const timePerFrame = (end - begin) / iterations
+    const mps = frameInfo.width * frameInfo.height / timePerFrame / 1024 / 1024 * 1000
+    const fps = 1000 / timePerFrame
+    $('#encodeTime').text((timePerFrame).toFixed(2) + ' ms (' + mps.toFixed(2) + " MP/s; " + fps.toFixed(0) + " fps)");
+  }
+
+  function loadPixelData(arrayBuffer) {
+    fullEncodedBitStream = new Uint8Array(arrayBuffer);
+    encodedBitStream = new Uint8Array(arrayBuffer);
+    $('#encodedBytesRead').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
+    $('#encodedBytesReadRange').attr('max', encodedBitStream.length - 1);
+    decode();
+    uncompressedImageFrame = new Uint8Array(decoder.getDecodedBuffer().length);
+    uncompressedImageFrame.set(decoder.getDecodedBuffer());
+  }
+
+  function load(url) {
+    fetch(url)
+      .then((response) => {
+        return response.arrayBuffer();
+      })
+      .then((arrayBuffer) => {
+        loadPixelData(arrayBuffer)
+      });
+  }
+
+  function reset() {
+    minMax = undefined;
+    const c = document.getElementById("myCanvas");
+    const ctx = c.getContext("2d");
+    ctx.fillRect(0, 0, c.width, c.height);
+    $('#status').text('');
+    $('#encodedSize').text('');
+    $('#decodedSize').text('');
+    $('#compressionRatio').text('');
+    $('#decodeTime').text('');
+    $('#displayTime').text('');
+    $('#resolution').text('');
+    $('#pixelFormat').text('');
+    $('#componentCount').text('');
+  }
+
+  Module.onRuntimeInitialized = async _ => {
+    reset();
+    decoder = new Module.JpegXLDecoder();
+    encoder = new Module.JpegXLEncoder();
+    $('#imageSelector').val('../../test/fixtures/jxl-progressive/CT1.j2k.png.jxl');
+    $('#effortSelector').val('3');
+
+    load('../../test/fixtures/jxl-progressive/CT1.j2k.png.jxl');
+
+    $('#imageSelector').change(function (e) {
+      reset();
+      load(e.target.options[e.target.selectedIndex].value);
+    });
+
+    $('#effortSelector').change(function (e) {
+      effort = parseFloat(e.target.options[e.target.selectedIndex].value);
+      encode(effort, distance);
+      // Get the encoded bytes and display them
+      const encodedBytes = encoder.getEncodedBuffer();
+      encodedBitStream = encodedBytes;
+      $('#encodedBytesRead').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
+      $('#encodedBytesReadRange').attr('max', encodedBitStream.length - 1);
+      decode();
+    });
+
+    $('#distanceParameterRange').on('input', function (e) {
+      distance = parseFloat($(this).val()) / 100
+      if (distance === 0) {
+        $('#distanceParameter').text('' + distance + ' (lossless)');
+      } else {
+        $('#distanceParameter').text('' + distance + ' (lossy)');
+      }
+      encode(effort, distance);
+      // Get the encoded bytes and display them
+      const encodedBytes = encoder.getEncodedBuffer();
+      encodedBitStream = encodedBytes;
+      $('#encodedBytesRead').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
+      $('#encodedBytesReadRange').attr('max', encodedBitStream.length - 1);
+      decode();
+    });
+
+    $('#benchmark').click(function (e) {
+      $('#status').text('Please wait while benchmark runs....');
+      setTimeout(() => {
+        decode(10)
+        encode(effort, distance, 10)
+        $('#status').text('');
+      }, 1);
+    });
+
+    $('#encodedBytesReadRange').on('input', function (e) {
+      numBytes = parseInt($(this).val());
+      let length = fullEncodedBitStream.length - numBytes;
+      encodedBitStream = new Uint8Array(length);
+      for (let i = 0; i < length; i++) {
+        encodedBitStream[i] = fullEncodedBitStream[i];
+      }
+      $('#encodedBytesRead').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
+      try {
+        decode();
+      } catch (ex) {
+        $('#status').text('Exception thrown while parsing ' + ex);
+      } finally {
+      }
+    });
+
+    $('#visualizeDeltas').change(function () {
+      // this will contain a reference to the checkbox   
+      if (this.checked) {
+        decode();
+      } else {
+        decode();
+      }
+    });
+
+    // this function gets called once the user drops the file onto the div
+    function handleFileSelect(evt) {
+      evt.stopPropagation();
+      evt.preventDefault();
+
+      // Get the FileList object that contains the list of files that were dropped
+      var files = evt.dataTransfer.files;
+
+      // this UI is only built for a single file so just dump the first one
+      var file = files[0];
+
+      var fileReader = new FileReader();
+      fileReader.onload = function (e) {
+        var fileAsArrayBuffer = e.target.result;
+        loadPixelData(fileAsArrayBuffer)
+        reset();
+        try {
+          decode();
+        }
+        catch (ex) {
+          $('#status').text('Exception thrown while parsing ' + ex);
+        }
+      };
+      fileReader.readAsArrayBuffer(file);
+    }
+
+    function handleDragOver(evt) {
+      evt.stopPropagation();
+      evt.preventDefault();
+      evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+    }
+
+    // Setup the dnd listeners.
+    var dropZone = document.getElementById('myCanvas');
+    dropZone.addEventListener('dragover', handleDragOver, false);
+    dropZone.addEventListener('drop', handleFileSelect, false);
+
+    $('#download').click(function () {
+      var blob = new Blob([encodedBitStream], { type: "image/jxl" });
+      var url = window.URL.createObjectURL(blob);
+      window.open(url);
+      window.URL.revokeObjectURL(url);
+    });
+  }
+</script>
+
+</html>
