@@ -35,7 +35,9 @@ yarn
 yarn run build
 ```
 # How to use
+
 Commonjs
+
 ```
 const dicomCodec = require('@cornerstonejs/dicom-codec');
 ....
