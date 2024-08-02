@@ -32,9 +32,9 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chafey/openjphjs.git"
+    "url": "git+https://github.com/cornerstonejs/codecs.git"
   },
-  "author": "Chris Hafey",
+  "author": "CornerstoneJS (original Chris Hafey)",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/chafey/openjphjs/issues"
