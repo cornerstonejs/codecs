@@ -38,7 +38,7 @@ public:
   {
     // Use the following for debugging to ensure updated version info
     // Update the XX to check that reload has completed
-    // OJPH_INFO(0x00010002, "vXX HTJ2K Decoder");
+    OJPH_INFO(0x00010002, "v06 HTJ2K Decoder");
   }
 
 #ifdef __EMSCRIPTEN__
