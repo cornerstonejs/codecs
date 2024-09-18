@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.7](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjph@2.4.6...@cornerstonejs/codec-openjph@2.4.7) (2024-09-18)
+
+
+### Bug Fixes
+
+* **publish:** try to publish jph debug ([#47](https://github.com/cornerstonejs/codecs/issues/47)) ([f08ccac](https://github.com/cornerstonejs/codecs/commit/f08ccac0410edb336ca02029af3adf736ecca0ba))
+
+
+
+
+
 ## [2.4.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjph@2.4.5...@cornerstonejs/codec-openjph@2.4.6) (2024-09-18)
 
 

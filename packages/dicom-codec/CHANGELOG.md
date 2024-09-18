@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.7](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.6...@cornerstonejs/dicom-codec@1.0.7) (2024-09-18)
+
+
+### Bug Fixes
+
+* **publish:** try to publish jph debug ([#47](https://github.com/cornerstonejs/codecs/issues/47)) ([f08ccac](https://github.com/cornerstonejs/codecs/commit/f08ccac0410edb336ca02029af3adf736ecca0ba))
+
+
+
+
+
 ## [1.0.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.5...@cornerstonejs/dicom-codec@1.0.6) (2024-09-18)
 
 
