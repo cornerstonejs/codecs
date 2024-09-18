@@ -15,6 +15,7 @@
 #include <vector>
 
 /**
+ * *
  * EncodedBuffer implements the ojph::outfile_base using a 
  * std::vector<uint8_t>.  This allows OpenJPEG to write
  * directly to std::vector<> and avoid a memory copy that
