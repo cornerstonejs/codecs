@@ -14,7 +14,6 @@ function assertCodec(codec, transferSyntaxUID) {
  * @property {TypedArray} imageFrame - image frame data from operatation's result.
  * @property {ExtendedImageInfo} imageInfo - image information. Some properties key belongs to codec and some others are generic information.
  * @property {Object} processInfo - process information.
- *
  */
 
 /**
