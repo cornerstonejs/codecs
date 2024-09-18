@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjph@2.4.5...@cornerstonejs/codec-openjph@2.4.6) (2024-09-18)
+
+
+### Bug Fixes
+
+* Fixing the build credentials to allow release ([#38](https://github.com/cornerstonejs/codecs/issues/38)) ([8fcc8f7](https://github.com/cornerstonejs/codecs/commit/8fcc8f7c8044e4d36c0e1405c0eaa3e159ca0597))
+* OpenJPH compression issues - temporarily publish debug ([#46](https://github.com/cornerstonejs/codecs/issues/46)) ([e1addb6](https://github.com/cornerstonejs/codecs/commit/e1addb67beecca8cc41e9eebaa5b4aae06a252e1))
+
+
+
+
+
 ## [2.4.5](https://github.com/chafey/openjphjs/compare/@cornerstonejs/codec-openjph@2.4.4...@cornerstonejs/codec-openjph@2.4.5) (2023-11-08)
 
 

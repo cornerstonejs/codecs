@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.5...@cornerstonejs/dicom-codec@1.0.6) (2024-09-18)
+
+
+### Bug Fixes
+
+* OpenJPH compression issues - temporarily publish debug ([#46](https://github.com/cornerstonejs/codecs/issues/46)) ([e1addb6](https://github.com/cornerstonejs/codecs/commit/e1addb67beecca8cc41e9eebaa5b4aae06a252e1))
+* **jpeg:** try to publish ([#45](https://github.com/cornerstonejs/codecs/issues/45)) ([5c2187e](https://github.com/cornerstonejs/codecs/commit/5c2187e62c1b1d30f37ce3aa3126e39732159f92))
+
+
+
+
+
 ## [1.0.5](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.4...@cornerstonejs/dicom-codec@1.0.5) (2024-06-13)
 
 
