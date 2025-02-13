@@ -7,6 +7,7 @@ const rleLosslessCodec = require("./rleLossless");
 const bigEndianCodec = require("./bigEndian");
 const libjpegTurbo8BitCodec = require("./libjpegTurbo8bit");
 const libjpegTurbo12BitCodec = require("./libjpegTurbo12bit");
+const libjxl = require("./jpegx");
 
 /**
  * Wrapper to codec. It holds current codec, encoder, decoder, name for each.
@@ -37,13 +38,18 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
-  // Private Transfer Syntax - update to final ID when released by WG-06
-  "3.2.840.10008.1.2.4.96": htj2kCodec,
+  "1.2.840.10008.1.2.​4.​110": libjxl,
+  "1.2.840.10008.1.2.​4.​111": libjxl,
+  "1.2.840.10008.1.2.​4.​112": libjxl,
+
   // The three official HTJ2K transfer syntaxes
   "1.2.840.10008.1.2.4.201": htj2kCodec,
   "1.2.840.10008.1.2.4.202": htj2kCodec,
   "1.2.840.10008.1.2.4.203": htj2kCodec,
   "1.2.840.10008.1.2.5": rleLosslessCodec,
+
+  // Private Transfer Syntax - update to final ID when released by WG-06
+  "3.2.840.10008.1.2.4.96": htj2kCodec,
 };
 
 function hasCodec(transferSyntaxUID) {
