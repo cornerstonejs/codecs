@@ -208,7 +208,7 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
 
   const { beforeEncode = () => {} } = options;
 
-    beforeEncode(encoderInstance);
+  beforeEncode(encoderInstance, codecConfig);
 
   context.timer.init("To encode length: " + imageFrame.length);
   for (let i = 0; i < iterations; i++) {

@@ -1,5 +1,4 @@
 const codecModule = require("@cornerstonejs/codec-libjxl");
-const codecWasmModule = require("@cornerstonejs/codec-libjxl/wasm");
 const codecFactory = require("./codecFactory");
 
 /**
@@ -24,7 +23,8 @@ async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
     codecWrapper,
     codecModule,
-    codecWasmModule,
+    // Base module loads it's own codecModule
+    undefined,
     codecWrapper.decoderName,
     (context) => {
       return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
