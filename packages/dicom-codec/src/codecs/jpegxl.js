@@ -8,7 +8,7 @@ const codecWrapper = {
   codec: undefined,
   Decoder: undefined,
   Encoder: undefined,
-  encoderName: "JpegXLDecoder",
+  encoderName: "JpegXLEncoder",
   decoderName: "JpegXLDecoder",
 };
 
@@ -44,7 +44,7 @@ async function encode(imageFrame, imageInfo, options = {}) {
   return codecFactory.runProcess(
     codecWrapper,
     codecModule,
-    codecWasmModule,
+    undefined,
     codecWrapper.encoderName,
     (context) => {
       function beforeEncode(encoderInstance) {

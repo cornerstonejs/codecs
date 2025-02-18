@@ -38,9 +38,9 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
-  "1.2.840.10008.1.2.​4.​110": libjxl,
-  "1.2.840.10008.1.2.​4.​111": libjxl,
-  "1.2.840.10008.1.2.​4.​112": libjxl,
+  "1.2.840.10008.1.2.4.110": libjxl,
+  "1.2.840.10008.1.2.4.111": libjxl,
+  "1.2.840.10008.1.2.4.112": libjxl,
 
   // The three official HTJ2K transfer syntaxes
   "1.2.840.10008.1.2.4.201": htj2kCodec,
@@ -59,6 +59,7 @@ function hasCodec(transferSyntaxUID) {
 function getCodec(transferSyntaxUID) {
   const codec = codecsMap[transferSyntaxUID];
   if (!codec) {
+    console.log("codecsMap=", codecsMap);
     throw new Error("unknown transfer syntax UID " + transferSyntaxUID);
   }
   return codec;
