@@ -1,5 +1,4 @@
 const codecModule = require("@cornerstonejs/codec-libjxl");
-const codecWasmModule = require("@cornerstonejs/codec-libjxl/wasm");
 const codecFactory = require("./codecFactory");
 
 /**
@@ -9,7 +8,7 @@ const codecWrapper = {
   codec: undefined,
   Decoder: undefined,
   Encoder: undefined,
-  encoderName: "JpegXLDecoder",
+  encoderName: "JpegXLEncoder",
   decoderName: "JpegXLDecoder",
 };
 
@@ -24,7 +23,8 @@ async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
     codecWrapper,
     codecModule,
-    codecWasmModule,
+    // Base module loads it's own codecModule
+    undefined,
     codecWrapper.decoderName,
     (context) => {
       return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
@@ -44,7 +44,7 @@ async function encode(imageFrame, imageInfo, options = {}) {
   return codecFactory.runProcess(
     codecWrapper,
     codecModule,
-    codecWasmModule,
+    undefined,
     codecWrapper.encoderName,
     (context) => {
       function beforeEncode(encoderInstance) {

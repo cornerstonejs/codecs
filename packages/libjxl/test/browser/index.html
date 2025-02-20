@@ -300,6 +300,7 @@
   function decode(iterations = 1) {
     $('#encodedSize').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
 
+    debugger;
     // Setup
     const encodedBuffer = decoder.getEncodedBuffer(encodedBitStream.length);
     let begin = performance.now(); // performance.now() returns value in milliseconds
