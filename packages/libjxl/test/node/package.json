@@ -1,11 +1,11 @@
 {
-    "name": "node",
+    "name": "node test libjxl",
     "version": "1.0.0",
     "description": "",
-    "main": "index.js",
+    "main": "index.mjs",
     "scripts": {
-      "test": "node index.js",
-      "test16": "node index.js --experimental-wasm-simd"
+      "test": "node index.mjs",
+      "test16": "node index.mjs"
     },
     "keywords": [],
     "author": "",

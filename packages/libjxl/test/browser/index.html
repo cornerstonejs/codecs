@@ -6,7 +6,6 @@
   <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
   <script src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
-  <script type="text/javascript" src="../../dist/libjxljs.js"></script>
 </head>
 
 <body>
@@ -123,8 +122,7 @@
     </div>
 </body>
 
-<script>
-
+<script type="module">
   let decoder = undefined;
   let encoder = undefined;
   let encodedBitStream = undefined; // this is the updated encoded bitstream based on adjusting encoding parameters
@@ -357,6 +355,7 @@
   }
 
   function loadPixelData(arrayBuffer) {
+    console.log("loadPixelData");
     fullEncodedBitStream = new Uint8Array(arrayBuffer);
     encodedBitStream = new Uint8Array(arrayBuffer);
     $('#encodedBytesRead').text('' + encodedBitStream.length.toLocaleString() + ' bytes');
@@ -367,8 +366,10 @@
   }
 
   function load(url) {
+    console.log("Loading url", url);
     fetch(url)
       .then((response) => {
+        console.log("Loaded data as buffer", url);
         return response.arrayBuffer();
       })
       .then((arrayBuffer) => {
@@ -392,10 +393,11 @@
     $('#componentCount').text('');
   }
 
-  Module.onRuntimeInitialized = async _ => {
+  function onLoad(libjxl) {
+    console.log("Loaded module", libjxl);
     reset();
-    decoder = new Module.JpegXLDecoder();
-    encoder = new Module.JpegXLEncoder();
+    decoder = new libjxl.JpegXLDecoder();
+    encoder = new libjxl.JpegXLEncoder();
     $('#imageSelector').val('../../test/fixtures/jxl-progressive/CT1.j2k.png.jxl');
     $('#effortSelector').val('3');
 
@@ -510,7 +512,13 @@
       window.open(url);
       window.URL.revokeObjectURL(url);
     });
-  }
+  };
+import('../../dist/libjxljs.js').then(libjxl => {
+  console.log("libjxl=", libjxl);
+  onLoad(libjxl.default());
+})
+
+console.log("Loading index.html");
 </script>
 
 </html>

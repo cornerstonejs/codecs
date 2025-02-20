@@ -10,7 +10,7 @@ function decodeFile(codec, imageName, iterations = 1) {
   const encodedBitStream = fs.readFileSync(encodedImagePath)
   const decoder = new codec.JpegXLDecoder()
   const result = codecHelper.decode(decoder, encodedBitStream, iterations)
-  console.log("WASM-decode   " + imageName + " " +  result.decodeTimeMS);
+  console.log("WASM-decode  ", imageName, result.decodeTimeMS, result.pixels.length, result.frameInfo );
   decoder.delete();
   return result
 }

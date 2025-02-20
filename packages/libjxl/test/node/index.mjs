@@ -11,7 +11,7 @@ function decodeFile(codec, imageName, iterations = 1) {
   const encodedBitStream = fs.readFileSync(encodedImagePath)
   const decoder = new codec.JpegXLDecoder()
   const result = codecHelper.decode(decoder, encodedBitStream, iterations)
-  console.log("WASM-decode   " + imageName + " " +  result.decodeTimeMS);
+  console.log("WASM-decode  ", imageName, result.decodeTimeMS, result.pixels.length, result.frameInfo );
   decoder.delete();
   return result
 }
@@ -27,9 +27,30 @@ function encodeFile(codec, imageName, imageFrame, iterations = 1) {
   return result
 }
 
+function recodeFile(codec, imageName, imageFrame, iterations = 1) {
+  const pathToUncompressedImageFrame = '../fixtures/raw/' + imageName + ".RAW"
+  const uncompressedImageFrame = fs.readFileSync(pathToUncompressedImageFrame);
+  for(let iteration = 0; iteration < iterations; iteration++) {
+    //encoder.setQuality(false, 0.001);
+  const encoder = new codec.JpegXLEncoder();
+  const decoder = new codec.JpegXLDecoder()
+    const result = codecHelper.encode(encoder, uncompressedImageFrame, imageFrame, 1)
+    const { encodedBytes } = result;
+    console.log("WASM-recode  ", imageName, encodedBytes.length, imageFrame);
+    const decodeResult = codecHelper.decode(decoder, encodedBytes, 1)
+    console.log("WASM-recode  ", imageName, decodeResult.frameInfo, decodeResult.pixels.length);
+    if( decodeResult.pixels.length!==uncompressedImageFrame.length ) {
+      throw new Error(`Expected original (${uncompressedImageFrame.length}) and recoded lengths (${decodeResult.pixels.length}) to be the same`);
+    }
+    encoder.delete();
+    decoder.delete();
+  }
+}
+
 function main(codec) {
   console.log("Starting main");
   const iterations = (process.argv.length > 2) ? parseInt(process.argv[2]) : 1
+  recodeFile(codec, 'CT1', {width: 512, height: 512, bitsPerSample: 16, componentCount: 1, isSigned: true}, iterations)
   encodeFile(codec, 'CT1', {width: 512, height: 512, bitsPerSample: 16, componentCount: 1, isSigned: true}, iterations)
   encodeFile(codec, 'CT2', {width: 512, height: 512, bitsPerSample: 16, componentCount: 1, isSigned: true}, iterations);
   encodeFile(codec, 'MG1', {width: 3064, height: 4774, bitsPerSample: 16, componentCount: 1, isSigned: false}, iterations);

@@ -22,9 +22,9 @@
     "dist"
   ],
   "scripts": {
-    "build": "bash build.sh",
+    "build": "./scripts/wasm-build.sh",
     "build:ci": "yarn run build",
-    "test": "cd test && cd node && node index.js",
+    "test": "cd test && cd node && node index.mjs",
     "prepublishOnly": "yarn run build"
   },
   "author": "",

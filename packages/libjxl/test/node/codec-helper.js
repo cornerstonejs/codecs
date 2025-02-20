@@ -9,7 +9,7 @@ function decode(decoder, encodedBitStream, iterations=1) {
 
     const decodeDuration = process.hrtime(beginDecode); // hrtime returns seconds/nanoseconds tuple
     const decodeDurationInSeconds = (decodeDuration[0] + (decodeDuration[1] / 1000000000));
-    const decodeTimeMS = ((decodeDurationInSeconds / iterations * 1000))
+    const decodeTimeMS = Math.round((decodeDurationInSeconds / iterations * 1000))
     const frameInfo = decoder.getFrameInfo()
     const pixels = decoder.getDecodedBuffer()
   
@@ -31,7 +31,7 @@ function encode(encoder, uncompressedImageFrame, imageFrame, iterations = 1) {
 
   const encodeDuration = process.hrtime(encodeBegin);
   const encodeDurationInSeconds = (encodeDuration[0] + (encodeDuration[1] / 1000000000));
-  const encodeTimeMS = ((encodeDurationInSeconds / iterations * 1000))
+  const encodeTimeMS = Math.round((encodeDurationInSeconds / iterations * 1000))
   const encodedBytes = encoder.getEncodedBuffer();
 
   return {
