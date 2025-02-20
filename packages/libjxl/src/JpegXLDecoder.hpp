@@ -5,6 +5,7 @@
 
 #include "FrameInfo.hpp"
 #include <vector>
+#include <cstdio>
 
 #include "jxl/decode.h"
 #include "jxl/decode_cxx.h"
@@ -42,6 +43,7 @@ class JpegXLDecoder {
   /// holds the decoded pixel data
   /// </summary>
   emscripten::val getDecodedBuffer() {
+    fprintf(stdout, "JPEG XL Decoder getDecodedBuffer %ld\n", decoded_.size());
     return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
   }
 #else
@@ -84,7 +86,7 @@ class JpegXLDecoder {
 
     for (;;) {
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
-        //printf("Status = %x\n", status);
+        fprintf(stdout, "Status = %x\n", status);
         if (status == JXL_DEC_ERROR) {
             return -2;
         } else if (status == JXL_DEC_NEED_MORE_INPUT) {

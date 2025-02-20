@@ -5,6 +5,7 @@
 
 #include "FrameInfo.hpp"
 #include <vector>
+#include <cstdio>
 
 #include "jxl/encode.h"
 #include "jxl/encode_cxx.h"
@@ -127,6 +128,7 @@ class JpegXLEncoder {
     basic_info.ysize = frameInfo_.height;
     basic_info.uses_original_profile = 1;
     if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
+      fprintf(stderr, "Encoding failed\n");
       return -1;
     }
 
@@ -139,6 +141,7 @@ class JpegXLEncoder {
       color_encoding.rendering_intent = JXL_RENDERING_INTENT_RELATIVE;
       color_encoding.white_point = JXL_WHITE_POINT_D65;
       if (JXL_ENC_SUCCESS != JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
+        fprintf(stderr, "Encoding monochrome failed\n");
         return -2;
       }
     } else {
@@ -147,6 +150,7 @@ class JpegXLEncoder {
                                 /*is_gray=*/pixel_format.num_channels < 3);
       if (JXL_ENC_SUCCESS !=
           JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
+        fprintf(stderr, "Encoding color failed\n");
         return -2;
       }
     }
@@ -161,14 +165,17 @@ class JpegXLEncoder {
     JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_MODULAR_GROUP_SIZE, 0);
 
     if(lossless_) {
+      fprintf(stdout, "Applying lossless\n");
       JxlEncoderOptionsSetLossless(options, true);
     } else {
+      fprintf(stdout, "Applying lossy\n");
       JxlEncoderOptionsSetDistance(options, distance_);
     }
 
     if (JXL_ENC_SUCCESS != JxlEncoderAddImageFrame(options,
                               &pixel_format, (void*)decoded_.data(),
                               decoded_.size())) {
+      fprintf(stdout, "Encoding failed add image frame\n");
       return -3;
     } 
 
@@ -179,6 +186,7 @@ class JpegXLEncoder {
     while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
       process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
       if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
+        fprintf(stdout, "Needs more data %ld\n", encoded_.size());
         size_t offset = next_out - encoded_.data();
         encoded_.resize(encoded_.size() * 2);
         next_out = encoded_.data() + offset;
@@ -186,6 +194,7 @@ class JpegXLEncoder {
       }
     }
     encoded_.resize(next_out - encoded_.data());
+    fprintf(stdout, "Encoding succeeded size %ld\n", encoded_.size());
     return 0;
   }
 
