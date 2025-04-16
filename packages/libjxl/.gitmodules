@@ -1,4 +1,3 @@
 [submodule "extern/libjxl"]
 	path = extern/libjxl
-	url = https://github.com/veluca93/libjxl.git
-    branch = for_chris
+	url = https://github.com/libjxl/libjxl.git

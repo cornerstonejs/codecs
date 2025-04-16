@@ -116,7 +116,7 @@ async function runProcess(
 function getTargetImageInfo(previousImageInfo, imageInfo) {
   const { bitsPerSample, componentCount } = imageInfo;
   const { height, width, signed } = imageInfo;
-  
+
   return {
     ...previousImageInfo,
     ...imageInfo,

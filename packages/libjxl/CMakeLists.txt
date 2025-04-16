@@ -35,6 +35,8 @@ option(BUILD_SHARED_LIBS "" OFF)
 
 # add the external library
 add_subdirectory(extern/libjxl EXCLUDE_FROM_ALL)
+#include_directories(extern/libjxl/lib/include)
+include_directories(build/extern/libjxl/lib/include)
 
 # add the js wrapper
 if(EMSCRIPTEN)

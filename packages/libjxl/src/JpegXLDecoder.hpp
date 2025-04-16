@@ -43,7 +43,6 @@ class JpegXLDecoder {
   /// holds the decoded pixel data
   /// </summary>
   emscripten::val getDecodedBuffer() {
-    fprintf(stdout, "JPEG XL Decoder getDecodedBuffer %ld\n", decoded_.size());
     return emscripten::val(emscripten::typed_memory_view(decoded_.size(), decoded_.data()));
   }
 #else
@@ -86,7 +85,6 @@ class JpegXLDecoder {
 
     for (;;) {
         JxlDecoderStatus status = JxlDecoderProcessInput(dec.get());
-        fprintf(stdout, "Status = %x\n", status);
         if (status == JXL_DEC_ERROR) {
             return -2;
         } else if (status == JXL_DEC_NEED_MORE_INPUT) {
@@ -104,18 +102,18 @@ class JpegXLDecoder {
             format = {frameInfo_.componentCount, dataType, JXL_NATIVE_ENDIAN, 0};
         } else if (status == JXL_DEC_COLOR_ENCODING) {
             // Get the ICC color profile of the pixel data
-            size_t icc_size;
-            if (JXL_DEC_SUCCESS !=
-                JxlDecoderGetICCProfileSize(
-                    dec.get(), &format, JXL_COLOR_PROFILE_TARGET_DATA, &icc_size)) {
+            size_t icc_size = 0;
+            JxlColorProfileTarget target = JXL_COLOR_PROFILE_TARGET_DATA;
+            if (JXL_DEC_SUCCESS != 
+                JxlDecoderGetICCProfileSize(dec.get(), target, &icc_size)) {
                 return -5;
             }
-            icc_profile.resize(icc_size);
-            if (JXL_DEC_SUCCESS != JxlDecoderGetColorAsICCProfile(
-                                 dec.get(), &format,
-                                 JXL_COLOR_PROFILE_TARGET_DATA,
-                                 icc_profile.data(), icc_profile.size())) {
-                return -6;
+            if (icc_size != 0) {
+                icc_profile.resize(icc_size);
+                if (JXL_DEC_SUCCESS != 
+                        JxlDecoderGetColorAsICCProfile(dec.get(), target, icc_profile.data(), icc_profile.size())) {
+                    return -6;
+                }
             }
         } else if (status == JXL_DEC_NEED_IMAGE_OUT_BUFFER) {
             size_t buffer_size;

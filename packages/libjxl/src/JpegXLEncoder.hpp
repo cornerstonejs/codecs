@@ -22,7 +22,7 @@ class JpegXLEncoder {
   /// <summary>
   /// Constructor for encoding a JPEG-XL image from JavaScript.  
   /// </summary>
-  JpegXLEncoder() : effort_(4), progressive_(true), lossless_(true), distance_(0.0f) {
+  JpegXLEncoder() : effort_(4), progressive_(false), lossless_(true), distance_(0.0f) {
   }
 #ifdef __EMSCRIPTEN__
   /// <summary>
@@ -55,6 +55,7 @@ class JpegXLEncoder {
   /// encoded pixel data.
   /// </returns>
   emscripten::val getEncodedBuffer() {
+    // fprintf(stdout,"Encoded buffer size %ld\n", encoded_.size());
     return emscripten::val(emscripten::typed_memory_view(encoded_.size(), encoded_.data()));
   }
 #else
@@ -126,50 +127,56 @@ class JpegXLEncoder {
     basic_info.exponent_bits_per_sample = 0;
     basic_info.xsize = frameInfo_.width;
     basic_info.ysize = frameInfo_.height;
-    basic_info.uses_original_profile = 1;
+    basic_info.num_color_channels = frameInfo_.componentCount;
+    basic_info.uses_original_profile = TO_JXL_BOOL(lossless_);
+    // fprintf(stdout,"Frame Info bits %d size %d,%d\n", frameInfo_.bitsPerSample, frameInfo_.width, frameInfo_.height);
     if (JXL_ENC_SUCCESS != JxlEncoderSetBasicInfo(enc.get(), &basic_info)) {
-      fprintf(stderr, "Encoding failed\n");
+      fprintf(stdout, "Encoding failed\n");
       return -1;
     }
 
-    if(frameInfo_.componentCount == 1) {
+    JXL_BOOL is_gray = TO_JXL_BOOL(frameInfo_.componentCount < 3);
+    if (is_gray==JXL_TRUE) {
       // grayscale path
+      // fprintf(stdout,"Grayscale coding %d\n", frameInfo_.componentCount);
       JxlColorEncoding color_encoding = {};
       color_encoding.transfer_function = JXL_TRANSFER_FUNCTION_GAMMA;
       color_encoding.gamma = 0.454550;
       color_encoding.color_space = JXL_COLOR_SPACE_GRAY;
       color_encoding.rendering_intent = JXL_RENDERING_INTENT_RELATIVE;
       color_encoding.white_point = JXL_WHITE_POINT_D65;
+      // JxlColorEncodingSetToSRGB(&color_encoding, is_gray);
       if (JXL_ENC_SUCCESS != JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
-        fprintf(stderr, "Encoding monochrome failed\n");
+        fprintf(stdout, "Encoding monochrome failed\n");
         return -2;
       }
     } else {
+      // fprintf(stdout,"RGB color encoding %d\n", frameInfo_.componentCount);
       JxlColorEncoding color_encoding = {};
-      JxlColorEncodingSetToSRGB(&color_encoding,
-                                /*is_gray=*/pixel_format.num_channels < 3);
+      JxlColorEncodingSetToSRGB(&color_encoding, is_gray);
       if (JXL_ENC_SUCCESS !=
           JxlEncoderSetColorEncoding(enc.get(), &color_encoding)) {
-        fprintf(stderr, "Encoding color failed\n");
+        fprintf(stdout, "Encoding color failed\n");
         return -2;
       }
     }
 
-    JxlEncoderOptions* options = JxlEncoderOptionsCreate(enc.get(), nullptr);
+    JxlEncoderFrameSettings* options = JxlEncoderFrameSettingsCreate(enc.get(), nullptr);
+    // fprintf(stdout, "Applying effort %d\n", effort_);
     JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_EFFORT, effort_);
     if(progressive_) {
+      // fprintf(stdout, "Applying progressive\n");
       JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_RESPONSIVE, 1);
       JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_QPROGRESSIVE_AC, true);
     }
-    JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_MODULAR_MA_TREE_LEARNING_PERCENT, 0);
     JxlEncoderFrameSettingsSetOption(options, JXL_ENC_FRAME_SETTING_MODULAR_GROUP_SIZE, 0);
 
     if(lossless_) {
-      fprintf(stdout, "Applying lossless\n");
-      JxlEncoderOptionsSetLossless(options, true);
+      // fprintf(stdout, "Applying lossless\n");
+      JxlEncoderSetFrameLossless(options, true);
     } else {
-      fprintf(stdout, "Applying lossy\n");
-      JxlEncoderOptionsSetDistance(options, distance_);
+      // fprintf(stdout, "Applying lossy %f\n", distance_);
+      JxlEncoderSetFrameDistance(options, distance_);
     }
 
     if (JXL_ENC_SUCCESS != JxlEncoderAddImageFrame(options,
@@ -178,15 +185,15 @@ class JpegXLEncoder {
       fprintf(stdout, "Encoding failed add image frame\n");
       return -3;
     } 
+    JxlEncoderCloseInput(enc.get());
 
-    encoded_.resize(64);
+    encoded_.resize(1024*1024);
     uint8_t* next_out = encoded_.data();
     size_t avail_out = encoded_.size() - (next_out - encoded_.data());
     JxlEncoderStatus process_result = JXL_ENC_NEED_MORE_OUTPUT;
     while (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
       process_result = JxlEncoderProcessOutput(enc.get(), &next_out, &avail_out);
       if (process_result == JXL_ENC_NEED_MORE_OUTPUT) {
-        fprintf(stdout, "Needs more data %ld\n", encoded_.size());
         size_t offset = next_out - encoded_.data();
         encoded_.resize(encoded_.size() * 2);
         next_out = encoded_.data() + offset;
@@ -194,8 +201,13 @@ class JpegXLEncoder {
       }
     }
     encoded_.resize(next_out - encoded_.data());
-    fprintf(stdout, "Encoding succeeded size %ld\n", encoded_.size());
-    return 0;
+    if (JXL_ENC_SUCCESS != process_result) {
+      fprintf(stdout, "JxlEncoderProcessOutput failed %d\n", process_result);
+      return process_result;
+    }
+
+    // fprintf(stdout, "Encoding status %d size %ld\n", process_result, encoded_.size());
+    return process_result;
   }
 
   private:

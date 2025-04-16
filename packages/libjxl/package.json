@@ -23,7 +23,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "./scripts/wasm-build.sh",
+    "build": "echo Run ./scripts/wasm-build.sh manually",
     "build:ci": "yarn run build",
     "test": "cd test && cd node && node index.mjs",
     "prepublishOnly": "yarn run build"

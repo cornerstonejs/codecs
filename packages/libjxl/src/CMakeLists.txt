@@ -1,7 +1,6 @@
 add_executable(libjxljs jslib.cpp)
 
-target_link_libraries(libjxljs jxl-static
-)
+target_link_libraries(libjxljs jxl)
 
 target_compile_features(libjxljs PUBLIC cxx_std_11)
 
@@ -20,7 +19,7 @@ set_target_properties(
       --bind \
       -s WASM=1 \
       -s DISABLE_EXCEPTION_CATCHING=1 \
-      -s ASSERTIONS=0 \
+      -s ASSERTIONS=1 \
       -s MODULARIZE=1 \
       -s NO_EXIT_RUNTIME=1 \
       -s MALLOC=emmalloc \
