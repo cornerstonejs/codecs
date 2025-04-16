@@ -1,5 +1,6 @@
 #!/bin/sh
 clear
+# source $OPT/emsdk/emsdk_env.sh
 rm -rf build
 rm -rf dist
 mkdir -p dist

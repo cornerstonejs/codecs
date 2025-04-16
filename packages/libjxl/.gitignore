@@ -1,5 +1,5 @@
-build/
 build-native/
+test/node/*.jxl
 
 .DS_Store
 

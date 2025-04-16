@@ -15,5 +15,5 @@
 	url = https://github.com/cornerstonejs/charls.git
 [submodule "packages/libjxl/extern/libjxl"]
 	path = packages/libjxl/extern/libjxl
-	url = https://github.com/veluca93/libjxl.git
-	branch = for_chris
+	url = https://github.com/libjxl/libjxl.git
+	branch = v0.11.x
