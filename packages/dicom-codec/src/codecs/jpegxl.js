@@ -47,16 +47,12 @@ async function encode(imageFrame, imageInfo, options = {}) {
     undefined,
     codecWrapper.encoderName,
     (context) => {
-      function beforeEncode(encoderInstance) {
-        encoderInstance.setNearLossless(0);
-      }
-
       return codecFactory.encode(
         context,
         codecWrapper,
         imageFrame,
         imageInfo,
-        Object.assign({}, options, { beforeEncode })
+        options
       );
     }
   );
