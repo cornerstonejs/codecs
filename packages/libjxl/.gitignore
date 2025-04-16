@@ -1,3 +1,4 @@
+build/
 build-native/
 test/node/*.jxl
 
