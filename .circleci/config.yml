@@ -60,7 +60,7 @@ jobs:
             #curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
             #echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 
-            apt-get update && apt install nodejs
+            # apt-get update && apt install nodejs -y
             npm install --global yarn@1.22.22
 
             # Install C++ tools
