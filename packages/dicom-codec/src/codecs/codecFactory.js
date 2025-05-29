@@ -98,9 +98,7 @@ async function runProcess(
       codecConfig.encoderName,
       codecConfig.decoderName
     );
-    const result = processCallback(context);
-    // console.log("Got result", result);
-    return result;
+    return processCallback(context);
   } catch (e) {
     throw getExceptionMessage(codecConfig, e);
   }
