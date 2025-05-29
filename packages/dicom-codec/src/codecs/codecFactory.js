@@ -39,7 +39,6 @@ async function initialize(
 
   return new Promise((resolve, reject) => {
     if (codecModule) {
-      console.log("codecModule=", codecConfig, codecModule);
       codecModule().then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
