@@ -11,7 +11,7 @@ executors:
   emscripten-porter:
     docker:
       # @see https://hub.docker.com/repository/r/emscripten/emsdk
-      - image: emscripten/emsdk:3.1.28
+      - image: emscripten/emsdk:3.1.53
         environment:
           # Enable colors in term
           TERM: xterm
@@ -57,11 +57,10 @@ jobs:
             apt-get install -y gnupg
 
             # Install & Setup Yarn
-            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-            echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+            #curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
+            #echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
 
-            apt-get update
-            apt install yarn -y
+            apt-get update && apt install yarn -y
 
             # Install C++ tools
             apt-get -y install build-essential cppcheck valgrind kcachegrind
