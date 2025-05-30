@@ -1,12 +1,11 @@
 const codecModule = require("jpeg-lossless-decoder-js");
-const codecWasmModule = {};
 const codecFactory = require("./codecFactory");
 
 /**
  * @type {CodecWrapper}
  */
 const codecWrapper = {
-  codec: codecModule["lossless"],
+  codec: codecModule,
   Decoder: undefined,
   Encoder: undefined,
   encoderName: "",
@@ -23,8 +22,8 @@ const codecWrapper = {
 async function decode(imageFrame, imageInfo) {
   return codecFactory.runProcess(
     codecWrapper,
-    codecModule,
-    codecWasmModule,
+    () => codecModule,
+    () => {},
     codecWrapper.decoderName,
     (context) => {
       const byteOutput = imageInfo.bitsAllocated <= 8 ? 1 : 2;
@@ -51,9 +50,14 @@ async function decode(imageFrame, imageInfo) {
         duration: context.timer.getDuration(),
       };
 
+      const targetImageInfo = codecFactory.getTargetImageInfo(
+        imageInfo,
+        imageInfo
+      );
+
       return {
         imageFrame: decodedTypedArray,
-        imageInfo: codecFactory.getTargetImageInfo(imageInfo, imageInfo),
+        imageInfo: targetImageInfo,
         processInfo,
       };
     }
@@ -68,7 +72,7 @@ async function decode(imageFrame, imageInfo) {
  * @param {Object} options encode option
  * @returns Object containing encoded image frame and imageInfo (current) data
  */
-async function encode(imageFrame, imageInfo, options = {}) {
+async function encode(_imageFrame, _imageInfo, _options = {}) {
   throw Error("Encoder not found for codec: jpeg/" + codecWrapper.encoderName);
 }
 

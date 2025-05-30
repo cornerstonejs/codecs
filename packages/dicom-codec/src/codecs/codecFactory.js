@@ -38,12 +38,12 @@ async function initialize(
   }
 
   return new Promise((resolve, reject) => {
-    if (typeof codecModule !== "undefined") {
+    if (codecModule) {
       codecModule().then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
-    } else if (typeof codecWasmModule !== "undefined") {
+    } else if (codecWasmModule) {
       codecWasmModule().then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
@@ -59,7 +59,7 @@ async function initialize(
  * @returns exception (current or processed from codec).
  */
 function getExceptionMessage(codecConfig, exception) {
-  return typeof exception === "number"
+  return typeof exception === "number" && codecConfig.codec.getExceptionMessage
     ? codecConfig.codec.getExceptionMessage(exception)
     : exception;
 }
@@ -116,7 +116,7 @@ async function runProcess(
 function getTargetImageInfo(previousImageInfo, imageInfo) {
   const { bitsPerSample, componentCount } = imageInfo;
   const { height, width, signed } = imageInfo;
-  
+
   return {
     ...previousImageInfo,
     ...imageInfo,
@@ -208,7 +208,7 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
 
   const { beforeEncode = () => {} } = options;
 
-    beforeEncode(encoderInstance);
+  beforeEncode(encoderInstance, codecConfig);
 
   context.timer.init("To encode length: " + imageFrame.length);
   for (let i = 0; i < iterations; i++) {
@@ -250,6 +250,9 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
  *
  */
 function decode(context, codecConfig, imageFrame, imageInfo) {
+  if (!imageFrame?.length) {
+    throw new Error("Image frame not defined for decoding");
+  }
   const decoderInstance = new codecConfig.Decoder();
 
   const { length } = imageFrame;
