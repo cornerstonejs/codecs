@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.8](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.7...@cornerstonejs/dicom-codec@1.0.8) (2025-06-10)
+
+
+### Bug Fixes
+
+* Decoding wasn't working with jls ([#52](https://github.com/cornerstonejs/codecs/issues/52)) ([c3d6235](https://github.com/cornerstonejs/codecs/commit/c3d62358396c28802662e167416efa841a1613e8))
+
+
+
+
+
 ## [1.0.7](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.6...@cornerstonejs/dicom-codec@1.0.7) (2024-09-18)
 
 
