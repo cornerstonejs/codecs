@@ -1,0 +1,13 @@
+{
+    "name": "node test libjxl",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.mjs",
+    "scripts": {
+      "test": "node index.mjs",
+      "test16": "node index.mjs"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC"
+  }

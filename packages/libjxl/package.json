@@ -1,0 +1,33 @@
+{
+  "name": "@cornerstonejs/codec-libjxl",
+  "version": "0.0.1",
+  "description": "JS/WASM Build of libjxl",
+  "main": "dist/libjxljs.js",
+  "publishConfig": {
+    "access": "public"
+  },
+  "directories": {
+    "test": "test",
+    "dist": "dist"
+  },
+  "exports": {
+    ".": "./dist/libjxljs.js",
+    "./wasm": "./dist/libjxljs.wasm"
+  },
+  "engines": {
+    "node": ">=0.18"
+  },
+  "files": [
+    "package.json",
+    "README.md",
+    "dist"
+  ],
+  "scripts": {
+    "build": "echo Run ./scripts/wasm-build.sh manually",
+    "build:ci": "yarn run build",
+    "test": "cd test && cd node && node index.mjs",
+    "prepublishOnly": "yarn run build"
+  },
+  "author": "",
+  "license": "ISC"
+}

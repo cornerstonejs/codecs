@@ -12,6 +12,11 @@ const codecWrapper = {
   Encoder: undefined,
   encoderName: "HTJ2KEncoder",
   decoderName: "HTJ2KDecoder",
+  setQuality: (encoder, {lossless=true, qualityFloat=-1}) => {
+    console.log("Setting HTJ2K quality to", lossless, qualityFloat);
+    encoder.setQuality(lossless, qualityFloat);
+  },
+  
 };
 
 /**

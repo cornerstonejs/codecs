@@ -11,6 +11,10 @@ const codecWrapper = {
   Encoder: undefined,
   encoderName: "JPEGEncoder",
   decoderName: "JPEGDecoder",
+  setQuality: (encoder, {qualityPercent=90}) => {
+    console.log("Setting JPEG quality to", qualityPercent);
+    encoder.setQuality(qualityPercent);
+  },
 };
 
 /**

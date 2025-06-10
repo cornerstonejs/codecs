@@ -11,6 +11,9 @@ const codecWrapper = {
   Encoder: undefined,
   encoderName: "JpegLSEncoder",
   decoderName: "JpegLSDecoder",
+  setQuality: (encoder, { lossless = true, delta = 3 }) => {
+    encoder.setNearLossless(lossless ? 0 : delta);
+  },
 };
 
 /**

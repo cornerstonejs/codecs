@@ -18,5 +18,9 @@
     "build:ci": "npx lerna@3.22.1 run build:ci --since main --parallel --stream",
     "test:ci": "npx lerna@3.22.1 run test:ci --since main --parallel --stream",
     "build:publish": "npx lerna@3.22.1 run build:ci --parallel --stream"
+  },
+  "resolutions": {
+    "parse-url": "8.1.0",
+    "cross-spawn": "7.0.5"
   }
 }

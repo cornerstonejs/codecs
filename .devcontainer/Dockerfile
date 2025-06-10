@@ -1,4 +1,4 @@
-FROM emscripten/emsdk:3.1.53
+FROM emscripten/emsdk:4.0.6
 
 # Avoid warnings by switching to noninteractive
 ENV DEBIAN_FRONTEND=noninteractive
@@ -38,6 +38,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+RUN apt-get install -y cmake ninja-build pkg-config doxygen graphviz 
 RUN apt-get install -y nodejs
 RUN npm install --global yarn
 
