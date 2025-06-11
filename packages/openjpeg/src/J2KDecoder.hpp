@@ -22,7 +22,7 @@ thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("
 
 #endif
 
-#include "BufferStream.hpp"
+#include "BufferStream.h"
 
 #include "FrameInfo.hpp"
 #include "Point.hpp"

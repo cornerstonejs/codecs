@@ -17,7 +17,7 @@
 #include <emscripten/val.h>
 #endif
 
-#include "BufferStream.hpp"
+#include "BufferStream.h"
 #include "FrameInfo.hpp"
 #include "Point.hpp"
 #include "Size.hpp"
