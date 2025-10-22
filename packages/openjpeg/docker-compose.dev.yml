@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  openjpeg-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: openjpeg-dev
+    volumes:
+      # Mount the entire openjpeg package directory
+      - .:/app
+      # Mount node_modules as a named volume to avoid conflicts
+      - openjpeg-node-modules:/app/node_modules
+    working_dir: /app
+    command: /bin/bash -c "chmod +x /app/watch-build.sh && /app/watch-build.sh"
+    stdin_open: true
+    tty: true
+    environment:
+      - NODE_ENV=development
+
+volumes:
+  openjpeg-node-modules:
