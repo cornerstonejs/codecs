@@ -812,7 +812,7 @@ class J2KDecoder {
         color_esycc_to_rgb(image);
       }
 
-      frameInfo_.width = image->x1; 
+      frameInfo_.width = image->x1;
       frameInfo_.height = image->y1;
       frameInfo_.componentCount = image->numcomps;
       frameInfo_.isSigned = image->comps[0].sgnd;
@@ -872,29 +872,33 @@ class J2KDecoder {
             }
           }
         } else {
+            // Multi-component (RGB) image
             if(frameInfo_.bitsPerSample <= 8) {
+              // 8-bit RGB
               uint8_t* pOut = &decoded_[lineStart];
               for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++) {
                 pOut[x*3+0] = image->comps[0].data[lineStartPixel + x];
                 pOut[x*3+1] = image->comps[1].data[lineStartPixel + x];
                 pOut[x*3+2] = image->comps[2].data[lineStartPixel + x];
               }
-            } /*else {
-              // This should work but has not been tested yet
-              if(frameInfo.isSigned) {
-                short* pOut = (short*)&decoded_[lineStart] + c;
+            } else {
+              // 16-bit RGB
+              if(frameInfo_.isSigned) {
+                short* pOut = (short*)&decoded_[lineStart];
                 for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++) {
-                  int val = line->i32[x];
-                  pOut[x * frameInfo.componentCount] = std::max(SHRT_MIN, std::min(val, SHRT_MAX));
+                  pOut[x*3+0] = std::max(SHRT_MIN, std::min((int)image->comps[0].data[lineStartPixel + x], SHRT_MAX));
+                  pOut[x*3+1] = std::max(SHRT_MIN, std::min((int)image->comps[1].data[lineStartPixel + x], SHRT_MAX));
+                  pOut[x*3+2] = std::max(SHRT_MIN, std::min((int)image->comps[2].data[lineStartPixel + x], SHRT_MAX));
                 }
               } else {
-                unsigned short* pOut = (unsigned short*)&decoded_[lineStart] + c;
+                unsigned short* pOut = (unsigned short*)&decoded_[lineStart];
                 for (size_t x = 0; x < sizeAtDecompositionLevel.width; x++) {
-                    int val = line->i32[x];
-                    pOut[x * frameInfo.componentCount] = std::max(0, std::min(val, USHRT_MAX));
+                  pOut[x*3+0] = std::max(0, std::min((int)image->comps[0].data[lineStartPixel + x], USHRT_MAX));
+                  pOut[x*3+1] = std::max(0, std::min((int)image->comps[1].data[lineStartPixel + x], USHRT_MAX));
+                  pOut[x*3+2] = std::max(0, std::min((int)image->comps[2].data[lineStartPixel + x], USHRT_MAX));
                 }
               }
-            }*/
+            }
         }
       }
 
