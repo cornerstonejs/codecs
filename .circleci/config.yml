@@ -226,7 +226,7 @@ jobs:
           at: ~/repo
       - install-deps
       - run:
-          name: Install valgrind (required by CodSpeed simulation mode)
+          name: Install valgrind (required by CodSpeed instrumentation mode)
           command: |
             sudo apt-get update
             sudo apt-get install -y valgrind
@@ -252,11 +252,13 @@ jobs:
               yarn run bench || true
             else
               # `codspeed run` wraps the inner command, instruments via
-              # valgrind, captures call graphs, and uploads to codspeed.io.
-              # CODSPEED_TOKEN is read from env automatically. Per-package
-              # vitest invocations (via lerna) avoid the workspace
-              # teardown-twice issue in @codspeed/vitest-plugin.
-              codspeed run -- yarn run bench || true
+              # valgrind/cachegrind (instrumentation mode = deterministic
+              # CPU-cycle counting, <1% variance, hardware-independent),
+              # and uploads to codspeed.io. CODSPEED_TOKEN is read from env
+              # automatically. Per-package vitest invocations (via lerna)
+              # avoid the workspace teardown-twice issue in
+              # @codspeed/vitest-plugin.
+              codspeed run --mode instrumentation -- yarn run bench || true
             fi
 
   # Aggregator: reads all benchmark JSONs and posts/updates one sticky comment
