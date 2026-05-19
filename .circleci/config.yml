@@ -212,6 +212,44 @@ jobs:
           path: .ci-benchmarks
           destination: benchmarks-test
 
+  # CodSpeed instrumented benchmarks. Runs `vitest bench` for each package
+  # under valgrind-based simulation (deterministic, hardware-independent
+  # timings). Uploads results to CodSpeed which then posts its own PR comment
+  # with per-bench deltas. Soft-failing: a missing CODSPEED_TOKEN, network
+  # blip, or CodSpeed-side issue should not block the workflow.
+  codspeed-bench:
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/repo
+      - install-deps
+      - run:
+          name: Install valgrind (required by CodSpeed simulation mode)
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y valgrind
+      - run:
+          name: Install CodSpeed CLI
+          command: |
+            curl -fsSL https://github.com/CodSpeedHQ/codspeed-rs/releases/latest/download/codspeed-installer.sh \
+              | bash
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> "$BASH_ENV"
+      - run:
+          name: Run instrumented benchmarks
+          command: |
+            if [ -z "$CODSPEED_TOKEN" ]; then
+              echo "CODSPEED_TOKEN not configured; running benchmarks locally without upload."
+              yarn run bench || true
+            else
+              # codspeed run wraps the inner command, instruments via valgrind,
+              # captures call graphs, and uploads to codspeed.io. Per-package
+              # vitest invocations avoid the workspace teardown-twice issue in
+              # @codspeed/vitest-plugin.
+              codspeed run --token "$CODSPEED_TOKEN" -- yarn run bench || true
+            fi
+
   # Aggregator: reads all benchmark JSONs and posts/updates one sticky comment
   # on the PR. Soft-failing — never blocks the gate.
   post-benchmark-comment:
@@ -339,9 +377,17 @@ workflows:
             branches:
               ignore:
                 - main
+      - codspeed-bench:
+          requires:
+            - build-package
+          filters:
+            branches:
+              ignore:
+                - main
       - post-benchmark-comment:
           requires:
             - test-package
+            - codspeed-bench
           filters:
             branches:
               ignore:

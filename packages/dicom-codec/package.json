@@ -11,7 +11,8 @@
     "build:ci": "yarn run build",
     "test": "vitest run",
     "test:ci": "yarn run test",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench": "vitest bench --run"
   },
   "engines": {
     "node": ">=0.14"

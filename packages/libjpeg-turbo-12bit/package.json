@@ -24,7 +24,8 @@
     "test:ci": "yarn run test",
     "test:watch": "vitest",
     "test:benchmark": "cd test/node; node index.js",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "bench": "vitest bench --run"
   },
   "author": "",
   "license": "ISC"

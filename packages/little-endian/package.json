@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:ci": "yarn run test",
     "test:watch": "vitest",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "bench": "vitest bench --run"
   },
   "devDependencies": {
     "@babel/core": "^7.12.16",

@@ -5,6 +5,7 @@
     "packages/*"
   ],
   "devDependencies": {
+    "@codspeed/vitest-plugin": "^5.4.0",
     "@vitest/coverage-v8": "^2.1.8",
     "dotenv": "^14.1.0",
     "lerna": "^8.0.0",
@@ -16,6 +17,8 @@
   "scripts": {
     "build:all": "lerna run build:ci --parallel --stream",
     "test:all": "lerna run test:ci --parallel --stream",
+    "bench": "lerna run bench --parallel --stream",
+    "bench:ci": "lerna run bench --parallel --stream",
     "build:ci": "lerna run build:ci --since main --parallel --stream",
     "test:ci": "lerna run test:ci --since main --include-dependents --parallel --stream",
     "build:publish": "lerna run build:ci --parallel --stream"

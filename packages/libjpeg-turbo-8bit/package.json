@@ -32,7 +32,8 @@
     "test:benchmark": "cd test/node; node index.js",
     "build": "bash build.sh",
     "build:ci": "yarn run build",
-    "prepublishOnly": "yarn run build"
+    "prepublishOnly": "yarn run build",
+    "bench": "vitest bench --run"
   },
   "author": "",
   "license": "ISC"
