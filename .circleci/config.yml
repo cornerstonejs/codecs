@@ -119,16 +119,25 @@ jobs:
             set +e
             mkdir -p .ci-benchmarks
             PR_SHA=$(git rev-parse HEAD)
-            if ! git checkout origin/main -- "packages/<< parameters.package >>" 2>/dev/null; then
+            PKG_DIR="packages/<< parameters.package >>"
+            # Stash the just-built PR dist so we can restore it without a
+            # second PR build. (Older configs rebuilt at the end, which
+            # tripled the wasm compile time of this job.)
+            if [ -d "$PKG_DIR/dist" ]; then
+              rm -rf /tmp/pr-dist
+              cp -a "$PKG_DIR/dist" /tmp/pr-dist
+            fi
+            if ! git checkout origin/main -- "$PKG_DIR" 2>/dev/null; then
               echo '{"package":"<< parameters.package >>","side":"main","error":"main checkout failed"}' \
                 > .ci-benchmarks/<< parameters.package >>-main.json
-              git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
+              git checkout "$PR_SHA" -- "$PKG_DIR" || true
+              [ -d /tmp/pr-dist ] && rm -rf "$PKG_DIR/dist" && mv /tmp/pr-dist "$PKG_DIR/dist"
               exit 0
             fi
-            if [ -d "packages/<< parameters.package >>/extern" ]; then
-              git submodule update --init --recursive "packages/<< parameters.package >>/extern" || true
+            if [ -d "$PKG_DIR/extern" ]; then
+              git submodule update --init --recursive "$PKG_DIR/extern" || true
             fi
-            (cd "packages/<< parameters.package >>" && yarn run build:ci) \
+            (cd "$PKG_DIR" && yarn run build:ci) \
               || echo '{"package":"<< parameters.package >>","side":"main","error":"main build failed"}' \
                 > .ci-benchmarks/<< parameters.package >>-main.json
             if [ ! -s .ci-benchmarks/<< parameters.package >>-main.json ]; then
@@ -137,9 +146,12 @@ jobs:
                 2>.ci-benchmarks/<< parameters.package >>-main.log || true
             fi
             cat .ci-benchmarks/<< parameters.package >>-main.json
-            # Restore PR dist for the workspace persist below.
-            git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
-            (cd "packages/<< parameters.package >>" && yarn run build:ci) || true
+            # Restore PR source + dist without a second build.
+            git checkout "$PR_SHA" -- "$PKG_DIR" || true
+            if [ -d /tmp/pr-dist ]; then
+              rm -rf "$PKG_DIR/dist"
+              mv /tmp/pr-dist "$PKG_DIR/dist"
+            fi
       - persist_to_workspace:
           root: ~/repo
           paths:
