@@ -261,6 +261,8 @@ async function main() {
 const ITERATIONS_NOTE = `iterations: ${process.env.BENCHMARK_ITERATIONS || 20}`
 
 main().catch((err) => {
-  console.error("post-benchmark-comment failed:", err)
-  process.exit(1)
+  console.error("post-benchmark-comment failed:", err?.message ?? err)
+  // The comment is a nice-to-have. Don't fail the workflow on token / network
+  // issues — the ci-gate job is what enforces test results.
+  process.exit(0)
 })

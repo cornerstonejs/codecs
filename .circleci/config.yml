@@ -1,15 +1,16 @@
 version: 2.1
 
-# Per-package parallel pipelines: each codec gets its own build → test →
-# benchmark job, all running in parallel via a matrix. CircleCI fails the
-# workflow if any matrix entry fails. After the matrix completes, a single
-# aggregator job posts (or updates) a sticky comment on the PR with main-vs-PR
-# benchmark numbers per codec.
+# Per-package parallel pipelines. Each codec gets its own build job + test job,
+# all running in parallel via matrices. Build jobs run inside the emsdk image,
+# persist their dist/ and benchmark JSON into a shared workspace. Test jobs
+# attach that workspace (so every package can see every other built dist —
+# this is what lets dicom-codec's integration tests find all wasm artifacts),
+# run vitest, and persist their test-status JSON. A final aggregator posts a
+# sticky PR comment with main-vs-PR benchmark deltas, and a ci-gate job runs
+# AFTER the comment so failures don't suppress the comment.
 #
-# The lerna --since main behaviour is preserved by an in-job `git diff` check:
-# packages that didn't change are skipped early. To force every package's
-# pipeline to exercise on a given PR, touch its README — that makes the diff
-# non-empty for that package.
+# To force every package's pipeline to exercise on a given PR, touch its README
+# — the in-job `git diff` skip is keyed on changes inside packages/<pkg>/.
 
 executors:
   emscripten-porter:
@@ -57,10 +58,11 @@ commands:
             - ~/.cache/yarn
 
 jobs:
-  # One matrix entry per package. Builds, tests, and benchmarks the package
-  # against both the PR version and the main baseline. Persists JSON to a
-  # shared workspace consumed by post-benchmark-comment.
-  build-and-test-package:
+  # Build phase, one matrix entry per package. Compiles dist/, benchmarks both
+  # PR and main, persists everything to the shared workspace. Never fails the
+  # job — capture status into .ci-benchmarks/<pkg>-build.json and let ci-gate
+  # decide.
+  build-package:
     parameters:
       package:
         type: string
@@ -76,7 +78,7 @@ jobs:
             git fetch --no-tags --depth=50 origin main || true
             BASE=$(git merge-base origin/main HEAD || echo "origin/main")
             if git diff --quiet "$BASE"..HEAD -- "packages/<< parameters.package >>/"; then
-              echo "packages/<< parameters.package >> unchanged since $BASE — skipping."
+              echo "packages/<< parameters.package >> unchanged since $BASE — skipping build."
               circleci-agent step halt
             fi
             echo "Detected changes in packages/<< parameters.package >>; proceeding."
@@ -93,50 +95,33 @@ jobs:
           name: Build PR version
           command: |
             set +e
-            mkdir -p /tmp/benchmarks
+            mkdir -p .ci-benchmarks
             (cd "packages/<< parameters.package >>" && yarn run build:ci)
             EXIT=$?
             if [ $EXIT -eq 0 ]; then
               echo '{"package":"<< parameters.package >>","buildStatus":"pass"}' \
-                > /tmp/benchmarks/<< parameters.package >>-build.json
+                > .ci-benchmarks/<< parameters.package >>-build.json
             else
               echo '{"package":"<< parameters.package >>","buildStatus":"fail","exitCode":'$EXIT'}' \
-                > /tmp/benchmarks/<< parameters.package >>-build.json
-            fi
-            exit 0
-      - run:
-          name: Test PR version
-          command: |
-            set +e
-            mkdir -p /tmp/benchmarks
-            (cd "packages/<< parameters.package >>" && yarn run test:ci)
-            EXIT=$?
-            if [ $EXIT -eq 0 ]; then
-              echo '{"package":"<< parameters.package >>","testStatus":"pass"}' \
-                > /tmp/benchmarks/<< parameters.package >>-test.json
-            else
-              echo '{"package":"<< parameters.package >>","testStatus":"fail","exitCode":'$EXIT'}' \
-                > /tmp/benchmarks/<< parameters.package >>-test.json
+                > .ci-benchmarks/<< parameters.package >>-build.json
             fi
             exit 0
       - run:
           name: Benchmark PR version
           command: |
-            mkdir -p /tmp/benchmarks
-            node scripts/ci/benchmark.js << parameters.package >> pr \
-              > /tmp/benchmarks/<< parameters.package >>-pr.json 2>/tmp/benchmarks/<< parameters.package >>-pr.log || true
-            cat /tmp/benchmarks/<< parameters.package >>-pr.json
+            mkdir -p .ci-benchmarks
+            BENCHMARK_DIR=.ci-benchmarks node scripts/ci/benchmark.js << parameters.package >> pr \
+              > .ci-benchmarks/<< parameters.package >>-pr.json 2>.ci-benchmarks/<< parameters.package >>-pr.log || true
+            cat .ci-benchmarks/<< parameters.package >>-pr.json
       - run:
           name: Build + benchmark main baseline (best-effort)
           command: |
             set +e
-            mkdir -p /tmp/benchmarks
+            mkdir -p .ci-benchmarks
             PR_SHA=$(git rev-parse HEAD)
-            # Move PR state aside; if anything fails here we just emit an
-            # `error` benchmark record so the comment renders gracefully.
-            if ! git checkout origin/main -- "packages/<< parameters.package >>" 2>/tmp/main-checkout.err; then
+            if ! git checkout origin/main -- "packages/<< parameters.package >>" 2>/dev/null; then
               echo '{"package":"<< parameters.package >>","side":"main","error":"main checkout failed"}' \
-                > /tmp/benchmarks/<< parameters.package >>-main.json
+                > .ci-benchmarks/<< parameters.package >>-main.json
               git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
               exit 0
             fi
@@ -145,40 +130,84 @@ jobs:
             fi
             (cd "packages/<< parameters.package >>" && yarn run build:ci) \
               || echo '{"package":"<< parameters.package >>","side":"main","error":"main build failed"}' \
-                > /tmp/benchmarks/<< parameters.package >>-main.json
-            if [ ! -s /tmp/benchmarks/<< parameters.package >>-main.json ]; then
+                > .ci-benchmarks/<< parameters.package >>-main.json
+            if [ ! -s .ci-benchmarks/<< parameters.package >>-main.json ]; then
               node scripts/ci/benchmark.js << parameters.package >> main \
-                > /tmp/benchmarks/<< parameters.package >>-main.json \
-                2>/tmp/benchmarks/<< parameters.package >>-main.log || true
+                > .ci-benchmarks/<< parameters.package >>-main.json \
+                2>.ci-benchmarks/<< parameters.package >>-main.log || true
             fi
-            cat /tmp/benchmarks/<< parameters.package >>-main.json
+            cat .ci-benchmarks/<< parameters.package >>-main.json
+            # Restore PR dist for the workspace persist below.
             git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
+            (cd "packages/<< parameters.package >>" && yarn run build:ci) || true
       - persist_to_workspace:
-          root: /tmp
+          root: ~/repo
           paths:
-            - benchmarks
+            - packages/<< parameters.package >>/dist
+            - .ci-benchmarks
       - store_artifacts:
-          path: /tmp/benchmarks
-          destination: benchmarks
+          path: .ci-benchmarks
+          destination: benchmarks-build
+
+  # Test phase, one matrix entry per package. Attaches the build workspace so
+  # every codec's dist/ is available — this is what lets dicom-codec's
+  # integration tests find sibling packages' wasm artifacts. Never fails the
+  # job; ci-gate enforces.
+  test-package:
+    parameters:
+      package:
+        type: string
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - checkout
+      - attach_workspace:
+          at: ~/repo
+      - install-deps
+      - run:
+          name: Test PR version
+          command: |
+            set +e
+            mkdir -p .ci-benchmarks
+            (cd "packages/<< parameters.package >>" && yarn run test:ci)
+            EXIT=$?
+            if [ $EXIT -eq 0 ]; then
+              echo '{"package":"<< parameters.package >>","testStatus":"pass"}' \
+                > .ci-benchmarks/<< parameters.package >>-test.json
+            else
+              echo '{"package":"<< parameters.package >>","testStatus":"fail","exitCode":'$EXIT'}' \
+                > .ci-benchmarks/<< parameters.package >>-test.json
+            fi
+            exit 0
+      - persist_to_workspace:
+          root: ~/repo
+          paths:
+            - .ci-benchmarks
+      - store_artifacts:
+          path: .ci-benchmarks
+          destination: benchmarks-test
 
   # Aggregator: reads all benchmark JSONs and posts/updates one sticky comment
-  # on the PR. Requires GITHUB_TOKEN to be configured as a CircleCI env var.
+  # on the PR. Soft-failing — never blocks the gate.
   post-benchmark-comment:
     executor: node
     working_directory: ~/repo
     steps:
       - checkout
       - attach_workspace:
-          at: /tmp
+          at: ~/repo
       - run:
           name: List benchmark artifacts
-          command: ls -la /tmp/benchmarks || echo "no benchmarks/"
+          command: ls -la .ci-benchmarks || echo "no .ci-benchmarks/"
       - run:
           name: Post / update sticky PR comment
           command: |
-            if [ -z "$GITHUB_TOKEN" ] && [ -n "$GH_TOKEN" ]; then
-              export GITHUB_TOKEN="$GH_TOKEN"
-            fi
+            # GH_TOKEN in this project is the npm-publish token and does not
+            # have GitHub API access — only use GITHUB_TOKEN if it is
+            # explicitly configured. Otherwise print the rendered body to the
+            # build log. The script always exits 0 so a missing/bad token can
+            # never block the ci-gate.
+            export BENCHMARK_DIR=.ci-benchmarks
             if [ -z "$GITHUB_TOKEN" ]; then
               echo "GITHUB_TOKEN not configured; printing comment body instead."
               DRY_RUN=1 node scripts/ci/post-benchmark-comment.js
@@ -187,21 +216,20 @@ jobs:
             fi
 
   # Gate job: runs after post-benchmark-comment so the comment is always posted
-  # before the workflow can fail. Reads the per-package build/test status JSON
-  # from the workspace and exits non-zero if any package failed.
+  # before the workflow can fail. Reads per-package status JSONs and exits 1
+  # if any package failed.
   ci-gate:
     executor: node
     working_directory: ~/repo
     steps:
       - attach_workspace:
-          at: /tmp
+          at: ~/repo
       - run:
           name: Fail workflow if any package build or test failed
           command: |
-            set -e
             shopt -s nullglob
             FAILED=0
-            for f in /tmp/benchmarks/*-build.json /tmp/benchmarks/*-test.json; do
+            for f in .ci-benchmarks/*-build.json .ci-benchmarks/*-test.json; do
               if grep -q '"\(buildStatus\|testStatus\)":"fail"' "$f"; then
                 echo "FAIL: $f"
                 cat "$f"
@@ -250,8 +278,8 @@ workflows:
 
   PR_CHECKS:
     jobs:
-      - build-and-test-package:
-          name: pkg-<< matrix.package >>
+      - build-package:
+          name: build-<< matrix.package >>
           matrix:
             parameters:
               package:
@@ -267,9 +295,28 @@ workflows:
             branches:
               ignore:
                 - main
+      - test-package:
+          name: test-<< matrix.package >>
+          matrix:
+            parameters:
+              package:
+                - charls
+                - libjpeg-turbo-8bit
+                - libjpeg-turbo-12bit
+                - openjpeg
+                - openjphjs
+                - little-endian
+                - big-endian
+                - dicom-codec
+          requires:
+            - build-package
+          filters:
+            branches:
+              ignore:
+                - main
       - post-benchmark-comment:
           requires:
-            - build-and-test-package
+            - test-package
           filters:
             branches:
               ignore:
