@@ -1,16 +1,13 @@
 version: 2.1
 
-# Per-package parallel pipelines. Each codec gets its own build job + test job,
-# all running in parallel via matrices. Build jobs run inside the emsdk image,
-# persist their dist/ and benchmark JSON into a shared workspace. Test jobs
-# attach that workspace (so every package can see every other built dist —
-# this is what lets dicom-codec's integration tests find all wasm artifacts),
-# run vitest, and persist their test-status JSON. A final aggregator posts a
-# sticky PR comment with main-vs-PR benchmark deltas, and a ci-gate job runs
-# AFTER the comment so failures don't suppress the comment.
+# Per-package parallel pipelines. Each codec gets its own build job + test
+# job + (workspace-wide) CodSpeed bench job, all running with matrix-style
+# parallelism. Tests and builds fail the workflow naturally; CodSpeed handles
+# benchmark tracking + its own PR comment.
 #
-# To force every package's pipeline to exercise on a given PR, touch its README
-# — the in-job `git diff` skip is keyed on changes inside packages/<pkg>/.
+# To force every package's pipeline to exercise on a given PR, touch its
+# README — the in-job `git diff` skip is keyed on changes inside
+# packages/<pkg>/.
 
 executors:
   emscripten-porter:
@@ -58,10 +55,8 @@ commands:
             - ~/.cache/yarn
 
 jobs:
-  # Build phase, one matrix entry per package. Compiles dist/, benchmarks both
-  # PR and main, persists everything to the shared workspace. Never fails the
-  # job — capture status into .ci-benchmarks/<pkg>-build.json and let ci-gate
-  # decide.
+  # Build phase, one matrix entry per package. Compiles dist/ and persists it
+  # to the shared workspace. Build failures fail the job → fail the workflow.
   build-package:
     parameters:
       package:
@@ -93,91 +88,19 @@ jobs:
       - install-deps
       - run:
           name: Build PR version
-          command: |
-            set +e
-            mkdir -p .ci-benchmarks
-            (cd "packages/<< parameters.package >>" && yarn run build:ci)
-            EXIT=$?
-            if [ $EXIT -eq 0 ]; then
-              echo '{"package":"<< parameters.package >>","buildStatus":"pass"}' \
-                > .ci-benchmarks/<< parameters.package >>-build.json
-            else
-              echo '{"package":"<< parameters.package >>","buildStatus":"fail","exitCode":'$EXIT'}' \
-                > .ci-benchmarks/<< parameters.package >>-build.json
-            fi
-            exit 0
-      - run:
-          name: Benchmark PR version
-          command: |
-            mkdir -p .ci-benchmarks
-            BENCHMARK_DIR=.ci-benchmarks node scripts/ci/benchmark.mjs << parameters.package >> pr \
-              > .ci-benchmarks/<< parameters.package >>-pr.json 2>.ci-benchmarks/<< parameters.package >>-pr.log || true
-            cat .ci-benchmarks/<< parameters.package >>-pr.json
-      - run:
-          name: Build + benchmark main baseline (best-effort)
-          command: |
-            set +e
-            mkdir -p .ci-benchmarks
-            PR_SHA=$(git rev-parse HEAD)
-            PKG_DIR="packages/<< parameters.package >>"
-            # Stash the just-built PR dist so we can restore it without a
-            # second PR build. (Older configs rebuilt at the end, which
-            # tripled the wasm compile time of this job.)
-            if [ -d "$PKG_DIR/dist" ]; then
-              rm -rf /tmp/pr-dist
-              cp -a "$PKG_DIR/dist" /tmp/pr-dist
-            fi
-            if ! git checkout origin/main -- "$PKG_DIR" 2>/dev/null; then
-              echo '{"package":"<< parameters.package >>","side":"main","error":"main checkout failed"}' \
-                > .ci-benchmarks/<< parameters.package >>-main.json
-              git checkout "$PR_SHA" -- "$PKG_DIR" || true
-              [ -d /tmp/pr-dist ] && rm -rf "$PKG_DIR/dist" && mv /tmp/pr-dist "$PKG_DIR/dist"
-              exit 0
-            fi
-            if [ -d "$PKG_DIR/extern" ]; then
-              git submodule update --init --recursive "$PKG_DIR/extern" || true
-            fi
-            (cd "$PKG_DIR" && yarn run build:ci) \
-              || echo '{"package":"<< parameters.package >>","side":"main","error":"main build failed"}' \
-                > .ci-benchmarks/<< parameters.package >>-main.json
-            if [ ! -s .ci-benchmarks/<< parameters.package >>-main.json ]; then
-              node scripts/ci/benchmark.mjs << parameters.package >> main \
-                > .ci-benchmarks/<< parameters.package >>-main.json \
-                2>.ci-benchmarks/<< parameters.package >>-main.log || true
-            fi
-            cat .ci-benchmarks/<< parameters.package >>-main.json
-            # Restore PR source + dist without a second build.
-            git checkout "$PR_SHA" -- "$PKG_DIR" || true
-            if [ -d /tmp/pr-dist ]; then
-              rm -rf "$PKG_DIR/dist"
-              mv /tmp/pr-dist "$PKG_DIR/dist"
-            fi
-      - run:
-          name: Ensure per-package benchmark stubs exist
-          command: |
-            # CircleCI fails persist_to_workspace if a listed path is missing.
-            # Touch placeholders so the persist below is deterministic even
-            # when an upstream step bailed early or produced no log.
-            mkdir -p .ci-benchmarks
-            touch \
-              .ci-benchmarks/<< parameters.package >>-build.json \
-              .ci-benchmarks/<< parameters.package >>-pr.json \
-              .ci-benchmarks/<< parameters.package >>-main.json
+          command: cd "packages/<< parameters.package >>" && yarn run build:ci
       - persist_to_workspace:
           root: ~/repo
           paths:
             - packages/<< parameters.package >>/dist
-            - .ci-benchmarks/<< parameters.package >>-build.json
-            - .ci-benchmarks/<< parameters.package >>-pr.json
-            - .ci-benchmarks/<< parameters.package >>-main.json
       - store_artifacts:
-          path: .ci-benchmarks
-          destination: benchmarks-build
+          path: packages/<< parameters.package >>/dist
+          destination: << parameters.package >>-dist
 
   # Test phase, one matrix entry per package. Attaches the build workspace so
   # every codec's dist/ is available — this is what lets dicom-codec's
-  # integration tests find sibling packages' wasm artifacts. Never fails the
-  # job; ci-gate enforces.
+  # integration tests find sibling packages' wasm artifacts. Test failures
+  # fail the job → fail the workflow.
   test-package:
     parameters:
       package:
@@ -191,32 +114,15 @@ jobs:
       - install-deps
       - run:
           name: Test PR version
-          command: |
-            set +e
-            mkdir -p .ci-benchmarks
-            (cd "packages/<< parameters.package >>" && yarn run test:ci)
-            EXIT=$?
-            if [ $EXIT -eq 0 ]; then
-              echo '{"package":"<< parameters.package >>","testStatus":"pass"}' \
-                > .ci-benchmarks/<< parameters.package >>-test.json
-            else
-              echo '{"package":"<< parameters.package >>","testStatus":"fail","exitCode":'$EXIT'}' \
-                > .ci-benchmarks/<< parameters.package >>-test.json
-            fi
-            exit 0
-      - persist_to_workspace:
-          root: ~/repo
-          paths:
-            - .ci-benchmarks/<< parameters.package >>-test.json
-      - store_artifacts:
-          path: .ci-benchmarks
-          destination: benchmarks-test
+          command: cd "packages/<< parameters.package >>" && yarn run test:ci
 
   # CodSpeed instrumented benchmarks. Runs `vitest bench` for each package
-  # under valgrind-based simulation (deterministic, hardware-independent
-  # timings). Uploads results to CodSpeed which then posts its own PR comment
-  # with per-bench deltas. Soft-failing: a missing CODSPEED_TOKEN, network
-  # blip, or CodSpeed-side issue should not block the workflow.
+  # under valgrind/cachegrind (instrumentation mode = deterministic CPU-cycle
+  # counting, <1% variance, hardware-independent) and uploads results to
+  # codspeed.io which posts its own PR comment with per-bench deltas.
+  # Soft-failing: a missing CODSPEED_TOKEN or CodSpeed-side issue does not
+  # block the workflow — perf regressions are reported by CodSpeed, not gated
+  # by us.
   codspeed-bench:
     executor: node
     working_directory: ~/repo
@@ -233,17 +139,12 @@ jobs:
       - run:
           name: Install CodSpeed CLI
           command: |
-            # Official installer from codspeed.io/install.sh — drops the
-            # `codspeed` binary onto PATH. The repo this serves from is
-            # github.com/CodSpeedHQ/codspeed (the runner used to be at
-            # CodSpeedHQ/codspeed-rs which 404s now).
+            # Official installer from codspeed.io/install.sh. Drops the
+            # `codspeed` binary at $HOME/.cargo/bin/codspeed.
             curl -fsSL https://codspeed.io/install.sh | bash
-            # The installer prints the install location; default is
-            # ~/.codspeed/bin. Add it to the persistent BASH_ENV so later
-            # steps see it.
             echo 'export PATH="$HOME/.codspeed/bin:$HOME/.cargo/bin:$PATH"' >> "$BASH_ENV"
             export PATH="$HOME/.codspeed/bin:$HOME/.cargo/bin:$PATH"
-            codspeed --version || echo "codspeed not on PATH yet — relying on BASH_ENV in next step"
+            codspeed --version
       - run:
           name: Run instrumented benchmarks
           command: |
@@ -251,71 +152,11 @@ jobs:
               echo "CODSPEED_TOKEN not configured; running benchmarks locally without upload."
               yarn run bench || true
             else
-              # `codspeed run` wraps the inner command, instruments via
-              # valgrind/cachegrind (instrumentation mode = deterministic
-              # CPU-cycle counting, <1% variance, hardware-independent),
-              # and uploads to codspeed.io. CODSPEED_TOKEN is read from env
-              # automatically. Per-package vitest invocations (via lerna)
-              # avoid the workspace teardown-twice issue in
-              # @codspeed/vitest-plugin.
+              # CODSPEED_TOKEN is read from env automatically by the CLI.
+              # Per-package vitest invocations (via lerna) avoid the
+              # workspace teardown-twice issue in @codspeed/vitest-plugin.
               codspeed run --mode instrumentation -- yarn run bench || true
             fi
-
-  # Aggregator: reads all benchmark JSONs and posts/updates one sticky comment
-  # on the PR. Soft-failing — never blocks the gate.
-  post-benchmark-comment:
-    executor: node
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/repo
-      - run:
-          name: List benchmark artifacts
-          command: ls -la .ci-benchmarks || echo "no .ci-benchmarks/"
-      - run:
-          name: Post / update sticky PR comment
-          command: |
-            # GH_TOKEN in this project is the npm-publish token and does not
-            # have GitHub API access — only use GITHUB_TOKEN if it is
-            # explicitly configured. Otherwise print the rendered body to the
-            # build log. The script always exits 0 so a missing/bad token can
-            # never block the ci-gate.
-            export BENCHMARK_DIR=.ci-benchmarks
-            if [ -z "$GITHUB_TOKEN" ]; then
-              echo "GITHUB_TOKEN not configured; printing comment body instead."
-              DRY_RUN=1 node scripts/ci/post-benchmark-comment.js
-            else
-              node scripts/ci/post-benchmark-comment.js
-            fi
-
-  # Gate job: runs after post-benchmark-comment so the comment is always posted
-  # before the workflow can fail. Reads per-package status JSONs and exits 1
-  # if any package failed.
-  ci-gate:
-    executor: node
-    working_directory: ~/repo
-    steps:
-      - attach_workspace:
-          at: ~/repo
-      - run:
-          name: Fail workflow if any package build or test failed
-          command: |
-            shopt -s nullglob
-            FAILED=0
-            for f in .ci-benchmarks/*-build.json .ci-benchmarks/*-test.json; do
-              if grep -q '"\(buildStatus\|testStatus\)":"fail"' "$f"; then
-                echo "FAIL: $f"
-                cat "$f"
-                FAILED=1
-              fi
-            done
-            if [ "$FAILED" -ne 0 ]; then
-              echo
-              echo "One or more package build/test steps failed (comment already posted)."
-              exit 1
-            fi
-            echo "All package builds and tests passed."
 
   NPM_PUBLISH:
     executor: emscripten-porter
@@ -391,21 +232,6 @@ workflows:
       - codspeed-bench:
           requires:
             - build-package
-          filters:
-            branches:
-              ignore:
-                - main
-      - post-benchmark-comment:
-          requires:
-            - test-package
-            - codspeed-bench
-          filters:
-            branches:
-              ignore:
-                - main
-      - ci-gate:
-          requires:
-            - post-benchmark-comment
           filters:
             branches:
               ignore:
