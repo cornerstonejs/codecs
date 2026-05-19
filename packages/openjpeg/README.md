@@ -129,3 +129,12 @@ It can be difficult to contribute if your environment is not setup correctly. I 
 - Run `git submodule update --init --recursive` in the main codecs folder to initiate submodules
 - Go to packages/openjpeg folder
 - Run `yarn build`
+
+## Testing
+
+```bash
+yarn run build   # compile wasm into dist/
+yarn run test    # run vitest against dist/
+```
+
+Tests skip cleanly when `dist/` is absent.

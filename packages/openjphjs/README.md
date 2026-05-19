@@ -32,3 +32,12 @@ To update to latest version of OpenJPH
 ```
 > git submodule update --remote --merge
 ```
+
+## Testing
+
+```bash
+yarn run build   # compile wasm into dist/
+yarn run test    # run vitest against dist/
+```
+
+Tests skip cleanly when `dist/` is absent.

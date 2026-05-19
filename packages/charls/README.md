@@ -82,3 +82,12 @@ Read about the design considerations that went into this library [here](DESIGN.m
 
 Read about the encode/decode performance of this library with NodeJS 14,
 Google Chrome and FireFox vs Native [here](PERFORMANCE.md)
+
+## Testing
+
+```bash
+yarn run build   # compile wasm into dist/
+yarn run test    # run vitest against dist/
+```
+
+Tests skip cleanly when `dist/` is absent.

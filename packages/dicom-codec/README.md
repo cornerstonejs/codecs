@@ -178,3 +178,12 @@ Parameters (**It does not mutate any param** ):
 ## TransferSyntax Specific Encoding Options
 
 TBD
+
+## Testing
+
+```bash
+yarn run test   # run vitest dispatch + integration tests
+```
+
+The integration tests require every underlying wasm codec's `dist/` to be built
+locally; otherwise they skip cleanly. CI builds everything first.

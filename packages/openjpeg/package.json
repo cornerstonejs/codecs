@@ -21,8 +21,10 @@
     "./decodewasmjs": "./dist/openjpegwasm_decode.js"
   },
   "scripts": {
-    "test": "cd test/node; npm run test",
+    "test": "vitest run",
     "test:ci": "yarn run test",
+    "test:watch": "vitest",
+    "test:benchmark": "cd test/node; node index.js",
     "build": "bash build.sh",
     "build:ci": "yarn run build",
     "build:ui": "webpack --config ./.webpack/webpack.config.js",

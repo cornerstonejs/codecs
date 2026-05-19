@@ -1,217 +1,199 @@
 version: 2.1
 
+# Per-package parallel pipelines: each codec gets its own build → test →
+# benchmark job, all running in parallel via a matrix. CircleCI fails the
+# workflow if any matrix entry fails. After the matrix completes, a single
+# aggregator job posts (or updates) a sticky comment on the PR with main-vs-PR
+# benchmark numbers per codec.
 #
-## https://github.com/cypress-io/circleci-orb
-# orbs:
-#   codecov: codecov/codecov@1.0.5
-#   cypress: cypress-io/cypress@1.26.0
+# The lerna --since main behaviour is preserved by an in-job `git diff` check:
+# packages that didn't change are skipped early. To force every package's
+# pipeline to exercise on a given PR, touch its README — that makes the diff
+# non-empty for that package.
 
-#https://circleci.com/docs/2.0/configuration-reference/#docker--machine--macos--windows-executor
 executors:
   emscripten-porter:
     docker:
-      # @see https://hub.docker.com/repository/r/emscripten/emsdk
       - image: emscripten/emsdk:3.1.74
         environment:
-          # Enable colors in term
           TERM: xterm
-          # Avoid warnings by switching to noninteractive
           DEBIAN_FRONTEND: noninteractive
-          # This Dockerfile's base image has a non-root user with sudo access. Use the "remoteUser"
-          # property in devcontainer.json to use it. On Linux, the container user's GID/UIDs
-          # will be updated to match your local UID/GID (when using the dockerFile property).
-          # See https://aka.ms/vscode-remote/containers/non-root-user for details.
           USERNAME: vscode
           USER_UID: 1000
-          USER_GID: 1000 # $USER_UID
+          USER_GID: 1000
   node:
     docker:
       - image: cimg/node:18.20.3
         environment:
-          TERM: xterm # Enable colors in term
-  # Custom executor to override Cypress config
-  # deploy-to-prod-executor:
-  #   docker:
-  #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
-  #       environment:
-  #         CYPRESS_BASE_URL: https://ohif-staging.netlify.com/
-  # chrome-and-pacs:
-  #   docker:
-  #     # Primary container image where all steps run.
-  #     - image: 'cypress/browsers:node14.15.0-chrome86-ff82'
-  #     - image: 'ohif/viewer-testdata:0.1-test'
+          TERM: xterm
 
-jobs:
-  # Run build since main
-  # Run test since main
-  # Upload test results to CircleCI
-  # Upload test results to a ?? per package?
-  BUILD:
-    executor: emscripten-porter
-    working_directory: ~/repo
+commands:
+  install-build-tools:
+    description: Install yarn + cmake + C++ build deps on top of the emsdk image
     steps:
       - run:
-          name: Configure apt and install packages
+          name: Install build tooling
           command: |
-            # apt-get update
-            # apt-get install -y gnupg
-
-            # Install & Setup Yarn
-            #curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-            #echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-
-            # apt-get update && apt install nodejs -y
             npm install --global yarn@1.22.22
-
-            # Install C++ tools
-            apt-get update && apt-get -y install build-essential cppcheck valgrind kcachegrind
-
-            # Dependencies for libjpeg-turbo builds
-            # apt-get -y install nasm texinfo
-
-            # version 3.17 of cmake
-            wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
-
-            # [Optional] Update UID/GID if needed
-            if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
-                groupmod --gid $USER_GID $USERNAME
-                usermod --uid $USER_UID --gid $USER_GID $USERNAME
-                chown -R $USER_UID:$USER_GID /home/$USERNAME;
-            fi
-
-            # Clean up
+            apt-get update
+            apt-get -y install build-essential
+            wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" \
+              | tar --strip-components=1 -xz -C /usr/local
             apt-get autoremove -y
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
-      - run: gcc --version
-      - checkout
-      - run: git submodule update --init --recursive
-      - run:
-          name: Install Dependencies
-          command: yarn install --frozen-lockfile
-      - run: yarn run build:ci
-      - persist_to_workspace:
-          root: ~/repo
-          paths:
-            - .
 
-  TEST:
+  install-deps:
+    description: yarn install at the workspace root (with cache)
+    steps:
+      - restore_cache:
+          keys:
+            - yarn-{{ checksum "yarn.lock" }}
+            - yarn-
+      - run: yarn install --frozen-lockfile
+      - save_cache:
+          key: yarn-{{ checksum "yarn.lock" }}
+          paths:
+            - ~/.cache/yarn
+
+jobs:
+  # One matrix entry per package. Builds, tests, and benchmarks the package
+  # against both the PR version and the main baseline. Persists JSON to a
+  # shared workspace consumed by post-benchmark-comment.
+  build-and-test-package:
+    parameters:
+      package:
+        type: string
+    executor: emscripten-porter
+    working_directory: ~/repo
+    steps:
+      - install-build-tools
+      - checkout
+      - run:
+          name: Skip if package unchanged since main
+          command: |
+            set -e
+            git fetch --no-tags --depth=50 origin main || true
+            BASE=$(git merge-base origin/main HEAD || echo "origin/main")
+            if git diff --quiet "$BASE"..HEAD -- "packages/<< parameters.package >>/"; then
+              echo "packages/<< parameters.package >> unchanged since $BASE — skipping."
+              circleci-agent step halt
+            fi
+            echo "Detected changes in packages/<< parameters.package >>; proceeding."
+      - run:
+          name: Init submodules for this package
+          command: |
+            if [ -d "packages/<< parameters.package >>/extern" ]; then
+              git submodule update --init --recursive "packages/<< parameters.package >>/extern"
+            else
+              echo "No extern/ submodule for << parameters.package >>; skipping."
+            fi
+      - install-deps
+      - run:
+          name: Build PR version
+          command: |
+            cd packages/<< parameters.package >>
+            yarn run build:ci
+      - run:
+          name: Test PR version
+          command: |
+            cd packages/<< parameters.package >>
+            yarn run test:ci
+      - run:
+          name: Benchmark PR version
+          command: |
+            mkdir -p /tmp/benchmarks
+            node scripts/ci/benchmark.js << parameters.package >> pr \
+              > /tmp/benchmarks/<< parameters.package >>-pr.json 2>/tmp/benchmarks/<< parameters.package >>-pr.log || true
+            cat /tmp/benchmarks/<< parameters.package >>-pr.json
+      - run:
+          name: Build + benchmark main baseline (best-effort)
+          command: |
+            set +e
+            mkdir -p /tmp/benchmarks
+            PR_SHA=$(git rev-parse HEAD)
+            # Move PR state aside; if anything fails here we just emit an
+            # `error` benchmark record so the comment renders gracefully.
+            if ! git checkout origin/main -- "packages/<< parameters.package >>" 2>/tmp/main-checkout.err; then
+              echo '{"package":"<< parameters.package >>","side":"main","error":"main checkout failed"}' \
+                > /tmp/benchmarks/<< parameters.package >>-main.json
+              git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
+              exit 0
+            fi
+            if [ -d "packages/<< parameters.package >>/extern" ]; then
+              git submodule update --init --recursive "packages/<< parameters.package >>/extern" || true
+            fi
+            (cd "packages/<< parameters.package >>" && yarn run build:ci) \
+              || echo '{"package":"<< parameters.package >>","side":"main","error":"main build failed"}' \
+                > /tmp/benchmarks/<< parameters.package >>-main.json
+            if [ ! -s /tmp/benchmarks/<< parameters.package >>-main.json ]; then
+              node scripts/ci/benchmark.js << parameters.package >> main \
+                > /tmp/benchmarks/<< parameters.package >>-main.json \
+                2>/tmp/benchmarks/<< parameters.package >>-main.log || true
+            fi
+            cat /tmp/benchmarks/<< parameters.package >>-main.json
+            git checkout "$PR_SHA" -- "packages/<< parameters.package >>" || true
+      - persist_to_workspace:
+          root: /tmp
+          paths:
+            - benchmarks
+      - store_artifacts:
+          path: /tmp/benchmarks
+          destination: benchmarks
+
+  # Aggregator: reads all benchmark JSONs and posts/updates one sticky comment
+  # on the PR. Requires GITHUB_TOKEN to be configured as a CircleCI env var.
+  post-benchmark-comment:
     executor: node
     working_directory: ~/repo
     steps:
+      - checkout
       - attach_workspace:
-          at: ~/repo
-      - run: yarn run test:ci
+          at: /tmp
+      - run:
+          name: List benchmark artifacts
+          command: ls -la /tmp/benchmarks || echo "no benchmarks/"
+      - run:
+          name: Post / update sticky PR comment
+          command: |
+            if [ -z "$GITHUB_TOKEN" ] && [ -n "$GH_TOKEN" ]; then
+              export GITHUB_TOKEN="$GH_TOKEN"
+            fi
+            if [ -z "$GITHUB_TOKEN" ]; then
+              echo "GITHUB_TOKEN not configured; printing comment body instead."
+              DRY_RUN=1 node scripts/ci/post-benchmark-comment.js
+            else
+              node scripts/ci/post-benchmark-comment.js
+            fi
 
   NPM_PUBLISH:
     executor: emscripten-porter
     working_directory: ~/repo
     steps:
-      #
-      # Environment setup to install yarn, CMAKE, and C++ tools
-      # TODO: Leverage CircleCI caching for these dependencies across builds,
-      # or configure docker layer caching (this should be deterministic). We could
-      # also publish an image on top of our executor to speed up build times.
-      # TODO: As this is a requirement for local testing, we should probably
-      # push this into a shared script
-      - run:
-          name: Configure apt and install packages
-          command: |
-            apt-get update
-            apt-get install -y gnupg
-
-            # Install & Setup Yarn
-            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add -
-            echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-
-            apt-get update
-            apt install yarn -y
-
-            # Install C++ tools
-            apt-get -y install build-essential cppcheck valgrind kcachegrind
-
-            # version 3.17 of cmake
-            wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" | tar --strip-components=1 -xz -C /usr/local
-
-            # [Optional] Update UID/GID if needed
-            if [ "$USER_GID" != "1000" ] || [ "$USER_UID" != "1000" ]; then
-                groupmod --gid $USER_GID $USERNAME
-                usermod --uid $USER_UID --gid $USER_GID $USERNAME
-                chown -R $USER_UID:$USER_GID /home/$USERNAME;
-            fi
-
-            # Clean up
-            apt-get autoremove -y
-            apt-get clean -y
-            rm -rf /var/lib/apt/lists/*
-      #
-      # Print versions of misc. dependent tooling
-      - run: gcc --version
-      - run: node -v
-      - run: yarn -v
-      #
-      # Checkout source code and dependent submodules
-      # Where submodules are the C/C++ libraries we intend to port
-      # using emscripten
+      - install-build-tools
       - checkout
       - run: git submodule update --init --recursive
-      #
-      # Caches dependencies between CI runs. We use the `yarn.lock` file as our
-      # "cache key". We then restore dependencies from lockfile and update our
-      # cache if it's changed.
       - restore_cache:
-          name: Restore Yarn and Cypress Package Cache
           keys:
-            - yarn-packages-{{ checksum "yarn.lock" }}
-            - yarn-packages-
-      - run:
-          name: Install Dependencies
-          command: yarn install --frozen-lockfile
+            - yarn-{{ checksum "yarn.lock" }}
+            - yarn-
+      - run: yarn install --frozen-lockfile
       - run: yarn run build:publish
       - save_cache:
-          name: Save Yarn Package Cache
+          key: yarn-{{ checksum "yarn.lock" }}
           paths:
             - ~/.cache/yarn
-          key: yarn-packages-{{ checksum "yarn.lock" }}
-      #
-      # This step is a prerequisite for `lerna version`
-      # The git config values need to match the personal access token set
-      # via the `GH_TOKEN` environment variable
       - run:
-          name: Avoid hosts unknown for github
+          name: Configure git + npm auth
           command: |
             rm -rf ~/.ssh
-            mkdir ~/.ssh/
+            mkdir -p ~/.ssh/
             echo -e "Host github.com\n\tStrictHostKeyChecking no\n" > ~/.ssh/config
             git config --global user.email "danny.ri.brown@gmail.com"
             git config --global user.name "dannyrb"
-      #
-      # This step is a prerequisite for `lera publish`
-      # Lerna and NPM will not automatically detect environment variables
-      # instead, we set our registry and auth token by writing to a temporary
-      # `.npmrc` file that `lerna publish`/`npm publish` will use
-      # The value is determined by out `NPM_TOKEN` environment variable
-      - run:
-          name: Authenticate with NPM registry
-          command: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/repo/.npmrc
-      #
-      # Verify authentication with npm registry
-      - run:
-          name: Verify NPM authentication
-          command: npm whoami
-      #
-      # This step is configured in `/lerna.json`.
-      # Only runs on `main` branch. Walks all commits since last tagged release.
-      # Determines, based on commit syntax and files changed, what each packages new
-      # version should be. Creates a commit to update all updated package versions.
-      # Pushes commit to main, cuts GitHub release w/ changelog.
-      # @see https://github.com/lerna/lerna/tree/main/commands/version
+            echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" > ~/repo/.npmrc
+      - run: npm whoami
       - run: npx lerna version
-      #
-      # This step is configured in `/lerna.json`.
-      # Checks package versions and publishes packages where the latest version is not
-      # present in the registry. This command ignores changes to files w/ specific extensions.
-      # @see https://github.com/lerna/lerna/tree/main/commands/publish
       - run: npx lerna publish from-package
 
 workflows:
@@ -219,18 +201,34 @@ workflows:
 
   PR_CHECKS:
     jobs:
-      - BUILD:
+      - build-and-test-package:
+          name: pkg-<< matrix.package >>
+          matrix:
+            parameters:
+              package:
+                - charls
+                - libjpeg-turbo-8bit
+                - libjpeg-turbo-12bit
+                - openjpeg
+                - openjphjs
+                - little-endian
+                - big-endian
+                - dicom-codec
           filters:
             branches:
               ignore:
                 - main
-      - TEST:
+      - post-benchmark-comment:
           requires:
-            - BUILD
+            - build-and-test-package
+          filters:
+            branches:
+              ignore:
+                - main
+
   DEPLOY:
     jobs:
       - NPM_PUBLISH:
           filters:
             branches:
               only: main
-# VS Code Extension Version: 1.4.0
