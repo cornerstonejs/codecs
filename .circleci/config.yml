@@ -152,11 +152,24 @@ jobs:
               rm -rf "$PKG_DIR/dist"
               mv /tmp/pr-dist "$PKG_DIR/dist"
             fi
+      - run:
+          name: Ensure per-package benchmark stubs exist
+          command: |
+            # CircleCI fails persist_to_workspace if a listed path is missing.
+            # Touch placeholders so the persist below is deterministic even
+            # when an upstream step bailed early or produced no log.
+            mkdir -p .ci-benchmarks
+            touch \
+              .ci-benchmarks/<< parameters.package >>-build.json \
+              .ci-benchmarks/<< parameters.package >>-pr.json \
+              .ci-benchmarks/<< parameters.package >>-main.json
       - persist_to_workspace:
           root: ~/repo
           paths:
             - packages/<< parameters.package >>/dist
-            - .ci-benchmarks
+            - .ci-benchmarks/<< parameters.package >>-build.json
+            - .ci-benchmarks/<< parameters.package >>-pr.json
+            - .ci-benchmarks/<< parameters.package >>-main.json
       - store_artifacts:
           path: .ci-benchmarks
           destination: benchmarks-build
@@ -194,7 +207,7 @@ jobs:
       - persist_to_workspace:
           root: ~/repo
           paths:
-            - .ci-benchmarks
+            - .ci-benchmarks/<< parameters.package >>-test.json
       - store_artifacts:
           path: .ci-benchmarks
           destination: benchmarks-test
