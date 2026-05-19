@@ -1,5 +1,5 @@
 import { defineWorkspace } from "vitest/config"
 
 export default defineWorkspace([
-  "packages/*/vitest.config.js",
+  "packages/*/vitest.config.mjs",
 ])
