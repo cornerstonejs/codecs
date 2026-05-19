@@ -77,6 +77,7 @@ describe("openjphjs HTJ2K encode + round-trip", () => {
         bitsPerSample: 16,
         componentCount: 1,
         isSigned: true,
+        isUsingColorTransform: false,
       }
       const encoder = new codec.HTJ2KEncoder()
       encoder.getDecodedBuffer(frameInfo).set(ct1Raw)

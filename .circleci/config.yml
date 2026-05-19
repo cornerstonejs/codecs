@@ -92,13 +92,33 @@ jobs:
       - run:
           name: Build PR version
           command: |
-            cd packages/<< parameters.package >>
-            yarn run build:ci
+            set +e
+            mkdir -p /tmp/benchmarks
+            (cd "packages/<< parameters.package >>" && yarn run build:ci)
+            EXIT=$?
+            if [ $EXIT -eq 0 ]; then
+              echo '{"package":"<< parameters.package >>","buildStatus":"pass"}' \
+                > /tmp/benchmarks/<< parameters.package >>-build.json
+            else
+              echo '{"package":"<< parameters.package >>","buildStatus":"fail","exitCode":'$EXIT'}' \
+                > /tmp/benchmarks/<< parameters.package >>-build.json
+            fi
+            exit 0
       - run:
           name: Test PR version
           command: |
-            cd packages/<< parameters.package >>
-            yarn run test:ci
+            set +e
+            mkdir -p /tmp/benchmarks
+            (cd "packages/<< parameters.package >>" && yarn run test:ci)
+            EXIT=$?
+            if [ $EXIT -eq 0 ]; then
+              echo '{"package":"<< parameters.package >>","testStatus":"pass"}' \
+                > /tmp/benchmarks/<< parameters.package >>-test.json
+            else
+              echo '{"package":"<< parameters.package >>","testStatus":"fail","exitCode":'$EXIT'}' \
+                > /tmp/benchmarks/<< parameters.package >>-test.json
+            fi
+            exit 0
       - run:
           name: Benchmark PR version
           command: |
@@ -166,6 +186,35 @@ jobs:
               node scripts/ci/post-benchmark-comment.js
             fi
 
+  # Gate job: runs after post-benchmark-comment so the comment is always posted
+  # before the workflow can fail. Reads the per-package build/test status JSON
+  # from the workspace and exits non-zero if any package failed.
+  ci-gate:
+    executor: node
+    working_directory: ~/repo
+    steps:
+      - attach_workspace:
+          at: /tmp
+      - run:
+          name: Fail workflow if any package build or test failed
+          command: |
+            set -e
+            shopt -s nullglob
+            FAILED=0
+            for f in /tmp/benchmarks/*-build.json /tmp/benchmarks/*-test.json; do
+              if grep -q '"\(buildStatus\|testStatus\)":"fail"' "$f"; then
+                echo "FAIL: $f"
+                cat "$f"
+                FAILED=1
+              fi
+            done
+            if [ "$FAILED" -ne 0 ]; then
+              echo
+              echo "One or more package build/test steps failed (comment already posted)."
+              exit 1
+            fi
+            echo "All package builds and tests passed."
+
   NPM_PUBLISH:
     executor: emscripten-porter
     working_directory: ~/repo
@@ -221,6 +270,13 @@ workflows:
       - post-benchmark-comment:
           requires:
             - build-and-test-package
+          filters:
+            branches:
+              ignore:
+                - main
+      - ci-gate:
+          requires:
+            - post-benchmark-comment
           filters:
             branches:
               ignore:

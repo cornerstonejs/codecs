@@ -70,34 +70,49 @@ function fmtPct(p) {
   return `${sign}${p.toFixed(1)}%${badge}`
 }
 
+function statusBadge(status) {
+  if (status === "pass") return ":white_check_mark:"
+  if (status === "fail") return ":x:"
+  return "—"
+}
+
 function buildTable() {
   const rows = []
-  rows.push("| Package | Operation | Fixture | Main (ms) | PR (ms) | Δ |")
-  rows.push("|---|---|---|---:|---:|---:|")
+  rows.push("| Package | Build | Test | Operation | Fixture | Main (ms) | PR (ms) | Δ |")
+  rows.push("|---|:---:|:---:|---|---|---:|---:|---:|")
 
   let anyData = false
+  let anyFail = false
   for (const pkg of PACKAGES) {
     const main = readJsonLine(path.join(BENCHMARK_DIR, `${pkg}-main.json`))
     const pr = readJsonLine(path.join(BENCHMARK_DIR, `${pkg}-pr.json`))
+    const buildStatus = readJsonLine(path.join(BENCHMARK_DIR, `${pkg}-build.json`))
+    const testStatus = readJsonLine(path.join(BENCHMARK_DIR, `${pkg}-test.json`))
 
-    if (!main && !pr) continue
+    const buildCell = statusBadge(buildStatus?.buildStatus)
+    const testCell = statusBadge(testStatus?.testStatus)
+    if (buildStatus?.buildStatus === "fail" || testStatus?.testStatus === "fail") {
+      anyFail = true
+    }
+
+    if (!main && !pr && !buildStatus && !testStatus) continue
     anyData = true
 
     const operation = pr?.operation ?? main?.operation ?? "—"
     const fixture = pr?.fixture ?? main?.fixture ?? "—"
 
     if (pr?.error && main?.error) {
-      rows.push(`| \`${pkg}\` | — | — | — | — | _${pr.error}_ |`)
+      rows.push(`| \`${pkg}\` | ${buildCell} | ${testCell} | — | — | — | — | _${pr.error}_ |`)
       continue
     }
     if (pr?.error) {
       rows.push(
-        `| \`${pkg}\` | ${operation} | ${fixture} | ${fmtMs(main?.meanMs)} | _error_ | _${pr.error}_ |`
+        `| \`${pkg}\` | ${buildCell} | ${testCell} | ${operation} | ${fixture} | ${fmtMs(main?.meanMs)} | _error_ | _${pr.error}_ |`
       )
       continue
     }
     if (operation === "noop") {
-      rows.push(`| \`${pkg}\` | _${operation}_ | ${fixture} | — | — | — |`)
+      rows.push(`| \`${pkg}\` | ${buildCell} | ${testCell} | _${operation}_ | ${fixture} | — | — | — |`)
       continue
     }
 
@@ -105,11 +120,11 @@ function buildTable() {
     const prMs = pr?.meanMs
     const delta = pctDelta(mainMs, prMs)
     rows.push(
-      `| \`${pkg}\` | ${operation} | ${fixture} | ${fmtMs(mainMs)} | ${fmtMs(prMs)} | ${fmtPct(delta)} |`
+      `| \`${pkg}\` | ${buildCell} | ${testCell} | ${operation} | ${fixture} | ${fmtMs(mainMs)} | ${fmtMs(prMs)} | ${fmtPct(delta)} |`
     )
   }
 
-  return { table: rows.join("\n"), anyData }
+  return { table: rows.join("\n"), anyData, anyFail }
 }
 
 function parsePrNumber() {
@@ -181,7 +196,7 @@ async function findExistingComment({ token, owner, repo, prNumber }) {
 }
 
 async function main() {
-  const { table, anyData } = buildTable()
+  const { table, anyData, anyFail } = buildTable()
   if (!anyData) {
     console.log("No benchmark JSON files found in", BENCHMARK_DIR)
     console.log("Skipping comment.")
@@ -190,9 +205,12 @@ async function main() {
 
   const sha = process.env.CIRCLE_SHA1 || "unknown"
   const buildUrl = process.env.CIRCLE_BUILD_URL || ""
+  const header = anyFail
+    ? "### :x: Codec CI — one or more packages failed"
+    : "### :white_check_mark: Codec CI — main vs PR"
   const body = [
     MARKER,
-    "### Codec benchmarks — main vs PR",
+    header,
     "",
     `_Commit \`${sha.slice(0, 7)}\` • ${ITERATIONS_NOTE} • [CI run](${buildUrl})_`,
     "",
