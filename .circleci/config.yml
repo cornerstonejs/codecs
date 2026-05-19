@@ -110,7 +110,7 @@ jobs:
           name: Benchmark PR version
           command: |
             mkdir -p .ci-benchmarks
-            BENCHMARK_DIR=.ci-benchmarks node scripts/ci/benchmark.js << parameters.package >> pr \
+            BENCHMARK_DIR=.ci-benchmarks node scripts/ci/benchmark.mjs << parameters.package >> pr \
               > .ci-benchmarks/<< parameters.package >>-pr.json 2>.ci-benchmarks/<< parameters.package >>-pr.log || true
             cat .ci-benchmarks/<< parameters.package >>-pr.json
       - run:
@@ -141,7 +141,7 @@ jobs:
               || echo '{"package":"<< parameters.package >>","side":"main","error":"main build failed"}' \
                 > .ci-benchmarks/<< parameters.package >>-main.json
             if [ ! -s .ci-benchmarks/<< parameters.package >>-main.json ]; then
-              node scripts/ci/benchmark.js << parameters.package >> main \
+              node scripts/ci/benchmark.mjs << parameters.package >> main \
                 > .ci-benchmarks/<< parameters.package >>-main.json \
                 2>.ci-benchmarks/<< parameters.package >>-main.log || true
             fi
