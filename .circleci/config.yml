@@ -1,13 +1,9 @@
 version: 2.1
 
-# Per-package parallel pipelines. Each codec gets its own build job + test
-# job + (workspace-wide) CodSpeed bench job, all running with matrix-style
-# parallelism. Tests and builds fail the workflow naturally; CodSpeed handles
-# benchmark tracking + its own PR comment.
-#
-# To force every package's pipeline to exercise on a given PR, touch its
-# README — the in-job `git diff` skip is keyed on changes inside
-# packages/<pkg>/.
+# PR checks (build/test/bench) live in GitHub Actions —
+# see .github/workflows/pr-checks.yml. CircleCI only handles the npm
+# publish on main now, since the existing GH_TOKEN/NPM_TOKEN env vars and
+# release flow are already wired up here.
 
 executors:
   emscripten-porter:
@@ -19,11 +15,6 @@ executors:
           USERNAME: vscode
           USER_UID: 1000
           USER_GID: 1000
-  node:
-    docker:
-      - image: cimg/node:18.20.3
-        environment:
-          TERM: xterm
 
 commands:
   install-build-tools:
@@ -41,130 +32,7 @@ commands:
             apt-get clean -y
             rm -rf /var/lib/apt/lists/*
 
-  install-deps:
-    description: yarn install at the workspace root (with cache)
-    steps:
-      - restore_cache:
-          keys:
-            - yarn-{{ checksum "yarn.lock" }}
-            - yarn-
-      - run: yarn install --frozen-lockfile
-      - save_cache:
-          key: yarn-{{ checksum "yarn.lock" }}
-          paths:
-            - ~/.cache/yarn
-
 jobs:
-  # Build phase, one matrix entry per package. Compiles dist/ and persists it
-  # to the shared workspace. Build failures fail the job → fail the workflow.
-  build-package:
-    parameters:
-      package:
-        type: string
-    executor: emscripten-porter
-    working_directory: ~/repo
-    steps:
-      - install-build-tools
-      - checkout
-      - run:
-          name: Skip if package unchanged since main
-          command: |
-            set -e
-            git fetch --no-tags --depth=50 origin main || true
-            BASE=$(git merge-base origin/main HEAD || echo "origin/main")
-            if git diff --quiet "$BASE"..HEAD -- "packages/<< parameters.package >>/"; then
-              echo "packages/<< parameters.package >> unchanged since $BASE — skipping build."
-              circleci-agent step halt
-            fi
-            echo "Detected changes in packages/<< parameters.package >>; proceeding."
-      - run:
-          name: Init submodules for this package
-          command: |
-            if [ -d "packages/<< parameters.package >>/extern" ]; then
-              git submodule update --init --recursive "packages/<< parameters.package >>/extern"
-            else
-              echo "No extern/ submodule for << parameters.package >>; skipping."
-            fi
-      - install-deps
-      - run:
-          name: Build PR version
-          command: cd "packages/<< parameters.package >>" && yarn run build:ci
-      - run:
-          name: Ensure dist exists for persist
-          # dicom-codec (and any other pure-JS package whose build:ci is a
-          # no-op) ships nothing in dist/. persist_to_workspace fails on
-          # missing paths, so create an empty dir to keep the workspace
-          # contract uniform across the matrix.
-          command: mkdir -p "packages/<< parameters.package >>/dist"
-      - persist_to_workspace:
-          root: ~/repo
-          paths:
-            - packages/<< parameters.package >>/dist
-      - store_artifacts:
-          path: packages/<< parameters.package >>/dist
-          destination: << parameters.package >>-dist
-
-  # Test phase, one matrix entry per package. Attaches the build workspace so
-  # every codec's dist/ is available — this is what lets dicom-codec's
-  # integration tests find sibling packages' wasm artifacts. Test failures
-  # fail the job → fail the workflow.
-  test-package:
-    parameters:
-      package:
-        type: string
-    executor: node
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/repo
-      - install-deps
-      - run:
-          name: Test PR version
-          command: cd "packages/<< parameters.package >>" && yarn run test:ci
-
-  # CodSpeed instrumented benchmarks. Runs `vitest bench` for each package
-  # under valgrind/cachegrind (instrumentation mode = deterministic CPU-cycle
-  # counting, <1% variance, hardware-independent) and uploads results to
-  # codspeed.io which posts its own PR comment with per-bench deltas.
-  # Soft-failing: a missing CODSPEED_TOKEN or CodSpeed-side issue does not
-  # block the workflow — perf regressions are reported by CodSpeed, not gated
-  # by us.
-  codspeed-bench:
-    executor: node
-    working_directory: ~/repo
-    steps:
-      - checkout
-      - attach_workspace:
-          at: ~/repo
-      - install-deps
-      - run:
-          name: Install valgrind (required by CodSpeed instrumentation mode)
-          command: |
-            sudo apt-get update
-            sudo apt-get install -y valgrind
-      - run:
-          name: Install CodSpeed CLI
-          command: |
-            # Official installer from codspeed.io/install.sh. Drops the
-            # `codspeed` binary at $HOME/.cargo/bin/codspeed.
-            curl -fsSL https://codspeed.io/install.sh | bash
-            echo 'export PATH="$HOME/.codspeed/bin:$HOME/.cargo/bin:$PATH"' >> "$BASH_ENV"
-            export PATH="$HOME/.codspeed/bin:$HOME/.cargo/bin:$PATH"
-            codspeed --version
-      - run:
-          name: Run instrumented benchmarks
-          command: |
-            if [ -z "$CODSPEED_TOKEN" ]; then
-              echo "CODSPEED_TOKEN not configured; running benchmarks locally without upload."
-              yarn run bench || true
-            else
-              # CODSPEED_TOKEN is read from env automatically by the CLI.
-              # Per-package vitest invocations (via lerna) avoid the
-              # workspace teardown-twice issue in @codspeed/vitest-plugin.
-              codspeed run --mode instrumentation -- yarn run bench || true
-            fi
-
   NPM_PUBLISH:
     executor: emscripten-porter
     working_directory: ~/repo
@@ -197,52 +65,6 @@ jobs:
 
 workflows:
   version: 2
-
-  PR_CHECKS:
-    jobs:
-      - build-package:
-          name: build-<< matrix.package >>
-          matrix:
-            parameters:
-              package:
-                - charls
-                - libjpeg-turbo-8bit
-                - libjpeg-turbo-12bit
-                - openjpeg
-                - openjphjs
-                - little-endian
-                - big-endian
-                - dicom-codec
-          filters:
-            branches:
-              ignore:
-                - main
-      - test-package:
-          name: test-<< matrix.package >>
-          matrix:
-            parameters:
-              package:
-                - charls
-                - libjpeg-turbo-8bit
-                - libjpeg-turbo-12bit
-                - openjpeg
-                - openjphjs
-                - little-endian
-                - big-endian
-                - dicom-codec
-          requires:
-            - build-package
-          filters:
-            branches:
-              ignore:
-                - main
-      - codspeed-bench:
-          requires:
-            - build-package
-          filters:
-            branches:
-              ignore:
-                - main
 
   DEPLOY:
     jobs:
