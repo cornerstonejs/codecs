@@ -1,12 +1,18 @@
-// Decoder/encoder construction is hoisted to module scope so the bench
-// body only measures the decode/encode kernel itself. Each fixture gets
-// its own pre-constructed instance because the underlying wasm
-// J2KDecoder advances internal state on decode() and can't be reused
-// across multiple bench bodies. A separate "instantiate+destroy" bench
-// measures the lifecycle cost that the old monolithic bench was
-// conflating with kernel time — the openjpeg encode CT1.RAW bench had
-// the worst variance in the suite (110% spread across 3 runs) and this
-// split is the fix.
+// Production-representative decoder/encoder reuse pattern: one shared
+// J2KDecoder/Encoder per codec, warmed up at module scope (untimed),
+// then every per-fixture bench refills the input buffer and calls the
+// kernel on the shared instance — mirroring how a real app drives
+// OpenJPEG across many frames.
+//
+// The warmup decode/encode is critical: under CodSpeed each bench body
+// runs exactly once, and the first call into a fresh wasm decoder pays
+// cold cost (allocator placement, JIT). Warming up at module scope
+// flattens that asymmetry so every measured bench sees a hot decoder.
+//
+// A separate "instantiate+destroy" bench measures the per-instance
+// lifecycle cost in isolation. openjpeg encode CT1.RAW had the worst
+// variance in the suite under the old conflated bench (110% spread
+// across 3 runs); this split is the fix.
 
 import { bench, describe } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
@@ -27,34 +33,28 @@ const ctLossy = !skip
   ? readFileSync(resolve(fixturesDir, "j2k/CT-512x512-lossy.j2k"))
   : null
 
+const encoderImageInfo = {
+  width: 512,
+  height: 512,
+  bitsPerSample: 16,
+  componentCount: 1,
+  isSigned: true,
+}
+
 let codec
-let decCT1
-let decCT2
-let decLossy
-let encCT1
+let decoder
+let encoder
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
   codec = await factory()
 
-  decCT1 = new codec.J2KDecoder()
-  decCT1.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+  decoder = new codec.J2KDecoder()
+  decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+  decoder.decode() // warmup
 
-  decCT2 = new codec.J2KDecoder()
-  decCT2.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
-
-  decLossy = new codec.J2KDecoder()
-  decLossy.getEncodedBuffer(ctLossy.length).set(ctLossy)
-
-  encCT1 = new codec.J2KEncoder()
-  encCT1
-    .getDecodedBuffer({
-      width: 512,
-      height: 512,
-      bitsPerSample: 16,
-      componentCount: 1,
-      isSigned: true,
-    })
-    .set(ct1Raw)
+  encoder = new codec.J2KEncoder()
+  encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+  encoder.encode() // warmup
 }
 
 describe.skipIf(skip)("openjpeg J2K (wasm)", () => {
@@ -68,19 +68,23 @@ describe.skipIf(skip)("openjpeg J2K (wasm)", () => {
     e.delete()
   })
 
-  bench("decode CT1.j2k (.90 lossless 5-3, 512x512x16bit) — kernel", () => {
-    decCT1.decode()
+  bench("decode CT1.j2k (.90 lossless 5-3, 512x512x16bit) — reused decoder", () => {
+    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    decoder.decode()
   })
 
-  bench("decode CT2.j2k (.90 lossless 5-3, 512x512x16bit) — kernel", () => {
-    decCT2.decode()
+  bench("decode CT2.j2k (.90 lossless 5-3, 512x512x16bit) — reused decoder", () => {
+    decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    decoder.decode()
   })
 
-  bench("decode CT-512x512-lossy.j2k (.91 irreversible 9-7) — kernel", () => {
-    decLossy.decode()
+  bench("decode CT-512x512-lossy.j2k (.91 irreversible 9-7) — reused decoder", () => {
+    decoder.getEncodedBuffer(ctLossy.length).set(ctLossy)
+    decoder.decode()
   })
 
-  bench("encode CT1.RAW (lossless) — kernel", () => {
-    encCT1.encode()
+  bench("encode CT1.RAW (lossless) — reused encoder", () => {
+    encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+    encoder.encode()
   })
 })

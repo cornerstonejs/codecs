@@ -1,7 +1,16 @@
-// Decoder/encoder construction is hoisted to module scope so the bench
-// body only measures the decode/encode kernel itself. A separate
-// "instantiate+destroy" bench measures the lifecycle cost that the old
-// monolithic bench was conflating with kernel time.
+// Production-representative decoder/encoder reuse pattern: one shared
+// HTJ2KDecoder/Encoder per codec, warmed up at module scope (untimed),
+// then every per-fixture bench refills the input buffer and calls the
+// kernel on the shared instance — mirroring how a real app drives
+// OpenJPH across many frames.
+//
+// The warmup decode/encode is critical: under CodSpeed each bench body
+// runs exactly once, and the first call into a fresh wasm decoder pays
+// cold cost (allocator placement, JIT). Warming up at module scope
+// flattens that asymmetry so every measured bench sees a hot decoder.
+//
+// A separate "instantiate+destroy" bench measures the per-instance
+// lifecycle cost in isolation.
 
 import { bench, describe } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
@@ -19,31 +28,29 @@ const ct1Encoded = !skip ? readFileSync(resolve(fixturesDir, "j2c/CT1.j2c")) : n
 const ct2Encoded = !skip ? readFileSync(resolve(fixturesDir, "j2c/CT2.j2c")) : null
 const ct1Raw = !skip ? readFileSync(resolve(fixturesDir, "raw/CT1.RAW")) : null
 
+const encoderImageInfo = {
+  width: 512,
+  height: 512,
+  bitsPerSample: 16,
+  componentCount: 1,
+  isSigned: true,
+  isUsingColorTransform: false,
+}
+
 let codec
-let decCT1
-let decCT2
-let encCT1
+let decoder
+let encoder
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
   codec = await factory()
 
-  decCT1 = new codec.HTJ2KDecoder()
-  decCT1.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+  decoder = new codec.HTJ2KDecoder()
+  decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+  decoder.decode() // warmup
 
-  decCT2 = new codec.HTJ2KDecoder()
-  decCT2.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
-
-  encCT1 = new codec.HTJ2KEncoder()
-  encCT1
-    .getDecodedBuffer({
-      width: 512,
-      height: 512,
-      bitsPerSample: 16,
-      componentCount: 1,
-      isSigned: true,
-      isUsingColorTransform: false,
-    })
-    .set(ct1Raw)
+  encoder = new codec.HTJ2KEncoder()
+  encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+  encoder.encode() // warmup
 }
 
 describe.skipIf(skip)("openjphjs HTJ2K (wasm)", () => {
@@ -57,15 +64,18 @@ describe.skipIf(skip)("openjphjs HTJ2K (wasm)", () => {
     e.delete()
   })
 
-  bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — kernel", () => {
-    decCT1.decode()
+  bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — reused decoder", () => {
+    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    decoder.decode()
   })
 
-  bench("decode CT2.j2c (.201 lossless, 512x512x16bit) — kernel", () => {
-    decCT2.decode()
+  bench("decode CT2.j2c (.201 lossless, 512x512x16bit) — reused decoder", () => {
+    decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    decoder.decode()
   })
 
-  bench("encode CT1.RAW (HTJ2K lossless) — kernel", () => {
-    encCT1.encode()
+  bench("encode CT1.RAW (HTJ2K lossless) — reused encoder", () => {
+    encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+    encoder.encode()
   })
 })
