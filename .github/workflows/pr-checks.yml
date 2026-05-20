@@ -11,8 +11,11 @@ name: PR checks
 on:
   pull_request:
   push:
-    branches-ignore:
-      - main
+    # Run on every branch including main so each merge to main seeds a
+    # fresh CodSpeed baseline. Without a main run, PR comments stay stuck
+    # on "Congrats! CodSpeed is installed" with no before/after deltas.
+    branches:
+      - "**"
   # workflow_dispatch lets CodSpeed trigger a backtest run from the
   # dashboard (to seed initial perf data after the repo is connected).
   workflow_dispatch:
@@ -43,11 +46,28 @@ jobs:
           fetch-depth: 0
       - id: list
         name: List changed packages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
         run: |
           set -e
+          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
+
+          # Baseline runs: on a manual dispatch or any commit landing on
+          # main, build/test/bench every package. The "diff vs main" trick
+          # only makes sense on PR/feature branches — when HEAD === main,
+          # `git diff origin/main..HEAD` is empty and would skip CodSpeed
+          # entirely, leaving the dashboard with no baseline data.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$REF" = "refs/heads/main" ]; then
+            json=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
+            echo "Baseline run ($EVENT_NAME on $REF): forcing all packages"
+            echo "packages=$json" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           git fetch --no-tags --depth=50 origin main || true
           BASE=$(git merge-base origin/main HEAD || echo "origin/main")
-          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
           changed=()
           for pkg in "${ALL[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "packages/$pkg/"; then
