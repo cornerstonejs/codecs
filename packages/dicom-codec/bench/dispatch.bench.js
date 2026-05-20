@@ -1,8 +1,8 @@
 // Integration benchmarks: dispatch through dicomCodec.decode() per transfer
-// syntax. These measure the full pipeline (UID lookup, codec init, decode,
-// imageInfo adapt) for each codec. They require every underlying wasm
-// package's dist/ to be present in the workspace; locally without builds,
-// the whole suite skips.
+// syntax. Measures the full pipeline (UID lookup, codec init, decode,
+// imageInfo adapt) for every codec we have a fixture for. Requires every
+// underlying wasm package's dist/ to be present in the workspace — locally
+// without builds, the whole suite skips.
 
 import { bench, describe } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
@@ -15,6 +15,7 @@ const packagesRoot = resolve(__dirname, "../..")
 const REQUIRED = [
   "charls/dist/charlsjs.js",
   "libjpeg-turbo-8bit/dist/libjpegturbojs.js",
+  "libjpeg-turbo-12bit/dist/libjpegturbo12js.js",
   "openjpeg/dist/openjpegjs.js",
   "openjphjs/dist/openjphjs.js",
 ]
@@ -26,80 +27,97 @@ if (!skip) {
   dicomCodec = mod.default ?? mod
 }
 
-const fixture = (rel) =>
-  skip ? null : readFileSync(resolve(packagesRoot, rel))
+const read = (rel) => (skip ? null : readFileSync(resolve(packagesRoot, rel)))
 
-const jpeg = !skip
-  ? fixture("libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg")
-  : null
-const jls = !skip
-  ? fixture("charls/test/fixtures/CT1.JLS")
-  : null
-const j2k = !skip
-  ? fixture("openjpeg/test/fixtures/j2k/CT1.j2k")
-  : null
-const j2c = !skip
-  ? fixture("openjphjs/test/fixtures/j2c/CT1.j2c")
-  : null
+// CT-style 512x512 16-bit signed (for the .57/.70/.81/.91/.5/.201 fixtures)
+const ctSigned512 = {
+  rows: 512,
+  columns: 512,
+  bitsAllocated: 16,
+  samplesPerPixel: 1,
+  pixelRepresentation: 1,
+  signed: true,
+}
+
+// 8-bit JFIF (800x600)
+const jpeg8bitInfo = {
+  rows: 800,
+  columns: 600,
+  bitsAllocated: 8,
+  samplesPerPixel: 1,
+  pixelRepresentation: 0,
+  signed: false,
+}
+
+// 12-bit JPEG (uncalibrated, unsigned)
+const jpeg12bitInfo = {
+  rows: 512,
+  columns: 512,
+  bitsAllocated: 16,
+  samplesPerPixel: 1,
+  pixelRepresentation: 0,
+  signed: false,
+}
+
+const fixtures = skip
+  ? {}
+  : {
+      "JPEG Baseline 8-bit (.50)": [
+        read("libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg"),
+        jpeg8bitInfo,
+        "1.2.840.10008.1.2.4.50",
+      ],
+      "JPEG 12-bit Extended (.51)": [
+        read("libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg"),
+        jpeg12bitInfo,
+        "1.2.840.10008.1.2.4.51",
+      ],
+      "JPEG Lossless P14 (.57)": [
+        read("dicom-codec/test/fixtures/jpeg-lossless/CT-512x512-process14.jpll"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.57",
+      ],
+      "JPEG Lossless P14 SV1 (.70)": [
+        read("dicom-codec/test/fixtures/jpeg-lossless/CT-512x512-process14-sv1.jpll"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.70",
+      ],
+      "JPEG-LS Lossless (.80)": [
+        read("charls/test/fixtures/CT1.JLS"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.80",
+      ],
+      "JPEG-LS Near-Lossless (.81)": [
+        read("charls/test/fixtures/CT-512x512-near-lossless.JLS"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.81",
+      ],
+      "JPEG 2000 Lossless (.90)": [
+        read("openjpeg/test/fixtures/j2k/CT1.j2k"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.90",
+      ],
+      "JPEG 2000 Lossy (.91)": [
+        read("openjpeg/test/fixtures/j2k/CT-512x512-lossy.j2k"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.91",
+      ],
+      "HTJ2K Lossless (.201)": [
+        read("openjphjs/test/fixtures/j2c/CT1.j2c"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.201",
+      ],
+      "RLE Lossless (.5)": [
+        read("dicom-codec/test/fixtures/rle/CT-512x512.rle"),
+        ctSigned512,
+        "1.2.840.10008.1.2.5",
+      ],
+    }
 
 describe.skipIf(skip)("dicom-codec dispatch", () => {
-  bench("JPEG Baseline 8-bit (1.2.840.10008.1.2.4.50)", async () => {
-    await dicomCodec.decode(
-      jpeg,
-      {
-        rows: 800,
-        columns: 600,
-        bitsAllocated: 8,
-        samplesPerPixel: 1,
-        pixelRepresentation: 0,
-        signed: false,
-      },
-      "1.2.840.10008.1.2.4.50"
-    )
-  })
-
-  bench("JPEG-LS Lossless (1.2.840.10008.1.2.4.80)", async () => {
-    await dicomCodec.decode(
-      jls,
-      {
-        rows: 512,
-        columns: 512,
-        bitsAllocated: 16,
-        samplesPerPixel: 1,
-        pixelRepresentation: 1,
-        signed: true,
-      },
-      "1.2.840.10008.1.2.4.80"
-    )
-  })
-
-  bench("JPEG 2000 Lossless (1.2.840.10008.1.2.4.90)", async () => {
-    await dicomCodec.decode(
-      j2k,
-      {
-        rows: 512,
-        columns: 512,
-        bitsAllocated: 16,
-        samplesPerPixel: 1,
-        pixelRepresentation: 1,
-        signed: true,
-      },
-      "1.2.840.10008.1.2.4.90"
-    )
-  })
-
-  bench("HTJ2K (1.2.840.10008.1.2.4.201)", async () => {
-    await dicomCodec.decode(
-      j2c,
-      {
-        rows: 512,
-        columns: 512,
-        bitsAllocated: 16,
-        samplesPerPixel: 1,
-        pixelRepresentation: 1,
-        signed: true,
-      },
-      "1.2.840.10008.1.2.4.201"
-    )
-  })
+  for (const [label, [bytes, info, uid]] of Object.entries(fixtures)) {
+    bench(label, async () => {
+      await dicomCodec.decode(bytes, info, uid)
+    })
+  }
 })

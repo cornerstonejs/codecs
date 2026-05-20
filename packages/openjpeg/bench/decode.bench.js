@@ -10,11 +10,11 @@ const fixturesDir = resolve(__dirname, "../test/fixtures")
 const distPath = resolve(distDir, "openjpegwasm.js")
 const skip = !existsSync(distPath)
 
-const ct1Encoded = !skip
-  ? readFileSync(resolve(fixturesDir, "j2k/CT1.j2k"))
-  : null
-const ct1Raw = !skip
-  ? readFileSync(resolve(fixturesDir, "raw/CT1.RAW"))
+const ct1Encoded = !skip ? readFileSync(resolve(fixturesDir, "j2k/CT1.j2k")) : null
+const ct2Encoded = !skip ? readFileSync(resolve(fixturesDir, "j2k/CT2.j2k")) : null
+const ct1Raw = !skip ? readFileSync(resolve(fixturesDir, "raw/CT1.RAW")) : null
+const ctLossy = !skip
+  ? readFileSync(resolve(fixturesDir, "j2k/CT-512x512-lossy.j2k"))
   : null
 
 let codec
@@ -24,9 +24,23 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("openjpeg J2K (wasm)", () => {
-  bench("decode CT1.j2k (512x512x16bit)", () => {
+  bench("decode CT1.j2k (.90 lossless 5-3, 512x512x16bit)", () => {
     const decoder = new codec.J2KDecoder()
     decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    decoder.decode()
+    decoder.delete()
+  })
+
+  bench("decode CT2.j2k (.90 lossless 5-3, 512x512x16bit)", () => {
+    const decoder = new codec.J2KDecoder()
+    decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    decoder.decode()
+    decoder.delete()
+  })
+
+  bench("decode CT-512x512-lossy.j2k (.91 irreversible 9-7)", () => {
+    const decoder = new codec.J2KDecoder()
+    decoder.getEncodedBuffer(ctLossy.length).set(ctLossy)
     decoder.decode()
     decoder.delete()
   })

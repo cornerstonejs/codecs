@@ -10,10 +10,12 @@ const fixturesDir = resolve(__dirname, "../test/fixtures")
 const distPath = resolve(distDir, "charlswasm.js")
 const skip = !existsSync(distPath)
 
-const ct2Encoded = !skip
-  ? readFileSync(resolve(fixturesDir, "CT2.JLS"))
-  : null
+const ct1Encoded = !skip ? readFileSync(resolve(fixturesDir, "CT1.JLS")) : null
+const ct2Encoded = !skip ? readFileSync(resolve(fixturesDir, "CT2.JLS")) : null
 const ct2Raw = !skip ? readFileSync(resolve(fixturesDir, "CT2.RAW")) : null
+const ctNearLossless = !skip
+  ? readFileSync(resolve(fixturesDir, "CT-512x512-near-lossless.JLS"))
+  : null
 
 let codec
 if (!skip) {
@@ -22,9 +24,23 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("charls JPEG-LS (wasm)", () => {
-  bench("decode CT2.JLS (512x512x16bit)", () => {
+  bench("decode CT1.JLS (.80 lossless, 512x512x16bit)", () => {
+    const decoder = new codec.JpegLSDecoder()
+    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    decoder.decode()
+    decoder.delete()
+  })
+
+  bench("decode CT2.JLS (.80 lossless, 512x512x16bit)", () => {
     const decoder = new codec.JpegLSDecoder()
     decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    decoder.decode()
+    decoder.delete()
+  })
+
+  bench("decode CT-512x512-near-lossless.JLS (.81 near-lossless)", () => {
+    const decoder = new codec.JpegLSDecoder()
+    decoder.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
     decoder.decode()
     decoder.delete()
   })
