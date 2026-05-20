@@ -1,5 +1,7 @@
 # codecs
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/cornerstonejs/codecs?utm_source=badge)
+
 ## Packages
 
 This repository is maintained as a monorepo. This means that this repository, instead of containing a single project, contains many projects. If you explore our project structure, you'll see the following:
