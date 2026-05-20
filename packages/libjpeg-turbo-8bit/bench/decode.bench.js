@@ -1,3 +1,8 @@
+// Decoder/encoder construction is hoisted to module scope so the bench
+// body only measures the decode/encode kernel itself. A separate
+// "instantiate+destroy" bench measures the lifecycle cost that the old
+// monolithic bench was conflating with kernel time.
+
 import { bench, describe } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
@@ -18,31 +23,43 @@ const rawDecoded = !skip
   : null
 
 let codec
+let dec
+let enc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
   codec = await factory()
+
+  dec = new codec.JPEGDecoder()
+  dec.getEncodedBuffer(jpegEncoded.length).set(jpegEncoded)
+
+  enc = new codec.JPEGEncoder()
+  enc
+    .getDecodedBuffer({
+      width: 600,
+      height: 800,
+      bitsPerSample: 8,
+      componentCount: 1,
+      isSigned: false,
+    })
+    .set(rawDecoded)
 }
 
 describe.skipIf(skip)("libjpeg-turbo-8bit (wasm)", () => {
-  bench("decode jpeg400jfif.jpg (600x800x8bit)", () => {
-    const decoder = new codec.JPEGDecoder()
-    decoder.getEncodedBuffer(jpegEncoded.length).set(jpegEncoded)
-    decoder.decode()
-    decoder.delete()
+  bench("instantiate+destroy JPEGDecoder", () => {
+    const d = new codec.JPEGDecoder()
+    d.delete()
   })
 
-  bench("encode raw 600x800x8bit (lossy default)", () => {
-    const encoder = new codec.JPEGEncoder()
-    encoder
-      .getDecodedBuffer({
-        width: 600,
-        height: 800,
-        bitsPerSample: 8,
-        componentCount: 1,
-        isSigned: false,
-      })
-      .set(rawDecoded)
-    encoder.encode()
-    encoder.delete()
+  bench("instantiate+destroy JPEGEncoder", () => {
+    const e = new codec.JPEGEncoder()
+    e.delete()
+  })
+
+  bench("decode jpeg400jfif.jpg (600x800x8bit) — kernel", () => {
+    dec.decode()
+  })
+
+  bench("encode raw 600x800x8bit (lossy default) — kernel", () => {
+    enc.encode()
   })
 })
