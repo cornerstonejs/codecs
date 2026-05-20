@@ -53,12 +53,15 @@ describe.each(buildVariants)(
         // instead.
 
         const decoded = decoder.getDecodedBuffer()
-        // 512*512 samples × 16 bits allocated = 524,288 bytes
-        expect(decoded.length).toBe(512 * 512 * 2)
+        // 512*512 samples × 16 bits allocated = 524,288 bytes. Assert
+        // byteLength rather than length, because the 12-bit decoder
+        // returns a 16-bit-element typed array (length is in elements
+        // = 262 144).
+        expect(decoded.byteLength).toBe(512 * 512 * 2)
 
         // Sanity-check pixel value range matches what we expect from a
         // 12-bit CT (uncalibrated; 0..4095). View as Uint16 LE.
-        const view = new Uint16Array(decoded.buffer, decoded.byteOffset, decoded.length / 2)
+        const view = new Uint16Array(decoded.buffer, decoded.byteOffset, decoded.byteLength / 2)
         let max = view[0]
         for (let i = 1; i < view.length; i++) {
           if (view[i] > max) max = view[i]
