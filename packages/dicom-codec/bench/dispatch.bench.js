@@ -15,7 +15,6 @@ const packagesRoot = resolve(__dirname, "../..")
 const REQUIRED = [
   "charls/dist/charlsjs.js",
   "libjpeg-turbo-8bit/dist/libjpegturbojs.js",
-  "libjpeg-turbo-12bit/dist/libjpegturbo12js.js",
   "openjpeg/dist/openjpegjs.js",
   "openjphjs/dist/openjphjs.js",
 ]
@@ -49,16 +48,6 @@ const jpeg8bitInfo = {
   signed: false,
 }
 
-// 12-bit JPEG (uncalibrated, unsigned)
-const jpeg12bitInfo = {
-  rows: 512,
-  columns: 512,
-  bitsAllocated: 16,
-  samplesPerPixel: 1,
-  pixelRepresentation: 0,
-  signed: false,
-}
-
 const fixtures = skip
   ? {}
   : {
@@ -66,11 +55,6 @@ const fixtures = skip
         read("libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg"),
         jpeg8bitInfo,
         "1.2.840.10008.1.2.4.50",
-      ],
-      "JPEG 12-bit Extended (.51)": [
-        read("libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg"),
-        jpeg12bitInfo,
-        "1.2.840.10008.1.2.4.51",
       ],
       "JPEG Lossless P14 (.57)": [
         read("dicom-codec/test/fixtures/jpeg-lossless/CT-512x512-process14.jpll"),

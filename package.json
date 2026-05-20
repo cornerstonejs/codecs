@@ -5,7 +5,7 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.4.0",
+    "@codspeed/vitest-plugin": "^4.0.1",
     "@vitest/coverage-v8": "^2.1.8",
     "dotenv": "^14.1.0",
     "lerna": "^8.0.0",
