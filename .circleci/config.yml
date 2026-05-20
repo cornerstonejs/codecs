@@ -89,6 +89,13 @@ jobs:
       - run:
           name: Build PR version
           command: cd "packages/<< parameters.package >>" && yarn run build:ci
+      - run:
+          name: Ensure dist exists for persist
+          # dicom-codec (and any other pure-JS package whose build:ci is a
+          # no-op) ships nothing in dist/. persist_to_workspace fails on
+          # missing paths, so create an empty dir to keep the workspace
+          # contract uniform across the matrix.
+          command: mkdir -p "packages/<< parameters.package >>/dist"
       - persist_to_workspace:
           root: ~/repo
           paths:
