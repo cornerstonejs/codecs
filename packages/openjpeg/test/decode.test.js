@@ -11,6 +11,10 @@ const ct1Encoded = readFileSync(resolve(fixturesDir, "j2k/CT1.j2k"))
 const ct1Raw = readFileSync(resolve(fixturesDir, "raw/CT1.RAW"))
 const ct2Encoded = readFileSync(resolve(fixturesDir, "j2k/CT2.j2k"))
 const ct2Raw = readFileSync(resolve(fixturesDir, "raw/CT2.RAW"))
+// CT-512x512-lossy.j2k is a real .91 (JPEG 2000 Lossy) payload extracted from
+// a Cornerstone3D test DICOM. Uses an irreversible 9-7 wavelet, so byte
+// equality with any RAW is not expected.
+const ctLossy = readFileSync(resolve(fixturesDir, "j2k/CT-512x512-lossy.j2k"))
 
 async function loadModule(modulePath) {
   const mod = await import(modulePath)
@@ -63,6 +67,25 @@ describe.each(buildVariants)("openjpeg J2K decode — $name", ({ path, dist }) =
 
     decoder.delete()
   })
+
+  it.skipIf(!isBuilt)(
+    "decodes a lossy 9-7 J2K (transfer syntax .91) to a 512x512 16-bit frame",
+    () => {
+      const decoder = new codec.J2KDecoder()
+      decoder.getEncodedBuffer(ctLossy.length).set(ctLossy)
+      decoder.decode()
+
+      const frameInfo = decoder.getFrameInfo()
+      expect(frameInfo.width).toBe(512)
+      expect(frameInfo.height).toBe(512)
+      expect(frameInfo.bitsPerSample).toBe(16)
+      expect(frameInfo.componentCount).toBe(1)
+
+      const decoded = decoder.getDecodedBuffer()
+      expect(decoded.length).toBe(512 * 512 * 2)
+      decoder.delete()
+    }
+  )
 })
 
 const encoderVariants = buildVariants.filter((v) => !v.name.includes("decode-only"))

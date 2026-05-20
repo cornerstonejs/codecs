@@ -27,7 +27,12 @@ const libjpegTurbo12BitCodec = require("./libjpegTurbo12bit");
 const codecsMap = {
   "1.2.840.10008.1.2": littleEndianCodec,
   "1.2.840.10008.1.2.1": littleEndianCodec,
-  "1.2.840.10008.1.2.1.99": littleEndianCodec,
+  // 1.2.840.10008.1.2.1.99 (Deflated Explicit VR Little Endian) is
+  // intentionally NOT mapped: the previous wiring routed it to the plain
+  // little-endian codec which does not deflate the byte stream, so
+  // decoding actually-deflated payloads silently produced garbage. If you
+  // need deflate support, plumb a real inflate step (e.g., zlib) before
+  // forwarding to littleEndianCodec and re-add the mapping here.
   "1.2.840.10008.1.2.2": bigEndianCodec,
   "1.2.840.10008.1.2.4.50": libjpegTurbo8BitCodec,
   "1.2.840.10008.1.2.4.51": libjpegTurbo12BitCodec,

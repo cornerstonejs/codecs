@@ -141,4 +141,75 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
       expect(result.imageInfo.height).toBe(512)
     })
   })
+
+  describe("JPEG Lossless (1.2.840.10008.1.2.4.57 / .70)", () => {
+    // These go through dicom-codec's internal jpegLosslessCodec
+    // (jpeg-lossless-decoder-js, pure JS — no separate wasm package). Both
+    // fixtures decode the same 512x512x16 CT slice.
+    const jpllProcess14 = readFileSync(
+      resolve(
+        packagesRoot,
+        "dicom-codec/test/fixtures/jpeg-lossless/CT-512x512-process14.jpll"
+      )
+    )
+    const jpllProcess14Sv1 = readFileSync(
+      resolve(
+        packagesRoot,
+        "dicom-codec/test/fixtures/jpeg-lossless/CT-512x512-process14-sv1.jpll"
+      )
+    )
+
+    const ctImageInfo = {
+      rows: 512,
+      columns: 512,
+      bitsAllocated: 16,
+      samplesPerPixel: 1,
+      pixelRepresentation: 1,
+      signed: true,
+    }
+
+    it("decodes Process 14 through the dispatcher (.57)", async () => {
+      const result = await dicomCodec.decode(
+        jpllProcess14,
+        ctImageInfo,
+        "1.2.840.10008.1.2.4.57"
+      )
+      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+    })
+
+    it("decodes Process 14 SV1 through the dispatcher (.70)", async () => {
+      const result = await dicomCodec.decode(
+        jpllProcess14Sv1,
+        ctImageInfo,
+        "1.2.840.10008.1.2.4.70"
+      )
+      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+    })
+  })
+
+  describe("RLE Lossless (1.2.840.10008.1.2.5)", () => {
+    // Routed to dicom-codec's internal rleLossless.js (pure JS).
+    const rleBytes = readFileSync(
+      resolve(packagesRoot, "dicom-codec/test/fixtures/rle/CT-512x512.rle")
+    )
+
+    it("decodes through the dispatcher", async () => {
+      const imageInfo = {
+        rows: 512,
+        columns: 512,
+        bitsAllocated: 16,
+        samplesPerPixel: 1,
+        pixelRepresentation: 1,
+        signed: true,
+      }
+
+      const result = await dicomCodec.decode(
+        rleBytes,
+        imageInfo,
+        "1.2.840.10008.1.2.5"
+      )
+
+      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+    })
+  })
 })

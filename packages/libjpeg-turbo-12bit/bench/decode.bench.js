@@ -1,17 +1,17 @@
-// libjpeg-turbo-12bit benchmarks are minimal — the encoder bindings are
-// commented out in src/jslib.cpp and there is no real 12-bit JPEG fixture
-// checked in, so we can only exercise decoder instantiation. Real
-// throughput numbers will arrive once a 12-bit fixture is added to
-// test/fixtures/jpeg/ and a proper decode bench is wired up here.
-
 import { bench, describe } from "vitest"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const distPath = resolve(__dirname, "../dist/libjpegturbo12wasm.js")
-const skip = !existsSync(distPath)
+const fixturePath = resolve(
+  __dirname,
+  "../test/fixtures/jpeg/CT-512x512-12bit.jpg"
+)
+const skip = !existsSync(distPath) || !existsSync(fixturePath)
+
+const encoded = !skip ? readFileSync(fixturePath) : null
 
 let codec
 if (!skip) {
@@ -20,8 +20,10 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("libjpeg-turbo-12bit (wasm)", () => {
-  bench("decoder instantiate + delete", () => {
+  bench("decode CT-512x512-12bit.jpg", () => {
     const d = new codec.JPEGDecoder()
+    d.getEncodedBuffer(encoded.length).set(encoded)
+    d.decode()
     d.delete()
   })
 })

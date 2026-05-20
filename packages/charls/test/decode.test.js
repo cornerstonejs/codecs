@@ -10,6 +10,12 @@ const fixturesDir = resolve(__dirname, "fixtures")
 const ct1Encoded = readFileSync(resolve(fixturesDir, "CT1.JLS"))
 const ct2Encoded = readFileSync(resolve(fixturesDir, "CT2.JLS"))
 const ct2Raw = readFileSync(resolve(fixturesDir, "CT2.RAW"))
+// CT-512x512-near-lossless.JLS is a real .81 (JPEG-LS Lossy / Near-Lossless)
+// payload extracted from a Cornerstone3D test DICOM. Decoding exercises the
+// same charls codec but verifies the near-lossless code path (NEAR > 0).
+const ctNearLossless = readFileSync(
+  resolve(fixturesDir, "CT-512x512-near-lossless.JLS")
+)
 
 async function loadModule(modulePath) {
   const mod = await import(modulePath)
@@ -63,6 +69,25 @@ describe.each(buildVariants)("charls JPEG-LS decode — $name", ({ path, dist })
 
     decoder.delete()
   })
+
+  it.skipIf(!isBuilt)(
+    "decodes a near-lossless CT JLS (transfer syntax .81)",
+    () => {
+      const decoder = new codec.JpegLSDecoder()
+      decoder.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
+      decoder.decode()
+
+      const frameInfo = decoder.getFrameInfo()
+      expect(frameInfo.width).toBe(512)
+      expect(frameInfo.height).toBe(512)
+      expect(frameInfo.bitsPerSample).toBe(16)
+      expect(frameInfo.componentCount).toBe(1)
+
+      const decoded = decoder.getDecodedBuffer()
+      expect(decoded.length).toBe(512 * 512 * 2)
+      decoder.delete()
+    }
+  )
 })
 
 const encoderVariants = buildVariants.filter((v) => !v.name.includes("decode-only"))

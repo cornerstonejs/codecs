@@ -7,13 +7,12 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const distDir = resolve(__dirname, "../dist")
 const fixturesDir = resolve(__dirname, "fixtures")
 
-// This package compiles libjpeg-turbo with WITH12BIT=ON and only binds the
-// JPEGDecoder (the JPEGEncoder bindings in src/jslib.cpp are commented out).
-// The only fixture in the repo is jpeg400jfif.jpg, which is an 8-bit JPEG —
-// the 12-bit decoder rejects it with "Unsupported JPEG data precision 8".
-// We use that to verify the precision guard, plus a smoke check that the
-// decoder can be instantiated, until a real 12-bit JPEG fixture is added.
-
+// CT-512x512-12bit.jpg is a real 12-bit JPEG extracted from a DICOM file with
+// transfer syntax 1.2.840.10008.1.2.4.51 (JPEG Extended, Process 2 & 4). It's
+// the only fixture the 12-bit decoder will accept — the older
+// jpeg400jfif.jpg in the same dir is 8-bit and is rejected with
+// "Unsupported JPEG data precision 8".
+const ct12bit = readFileSync(resolve(fixturesDir, "jpeg/CT-512x512-12bit.jpg"))
 const jpeg8bit = readFileSync(resolve(fixturesDir, "jpeg/jpeg400jfif.jpg"))
 
 async function loadModule(modulePath) {
@@ -37,13 +36,37 @@ describe.each(buildVariants)(
       if (isBuilt) codec = await loadModule(path)
     })
 
-    it.skipIf(!isBuilt)("instantiates a JPEGDecoder", () => {
-      const decoder = new codec.JPEGDecoder()
-      expect(decoder).toBeDefined()
-      expect(typeof decoder.decode).toBe("function")
-      expect(typeof decoder.getFrameInfo).toBe("function")
-      decoder.delete()
-    })
+    it.skipIf(!isBuilt)(
+      "decodes the 12-bit CT JPEG to a 512x512 16-bit-allocated 12-bit-stored frame",
+      () => {
+        const decoder = new codec.JPEGDecoder()
+        decoder.getEncodedBuffer(ct12bit.length).set(ct12bit)
+        decoder.decode()
+
+        const frameInfo = decoder.getFrameInfo()
+        expect(frameInfo.width).toBe(512)
+        expect(frameInfo.height).toBe(512)
+        expect(frameInfo.componentCount).toBe(1)
+        expect(frameInfo.bitsPerSample).toBe(12)
+
+        const decoded = decoder.getDecodedBuffer()
+        // 512*512 samples, 16 bits allocated → 524,288 bytes
+        expect(decoded.length).toBe(512 * 512 * 2)
+
+        // Sanity-check pixel value range matches what we expect from a
+        // 12-bit CT (uncalibrated; 0..4095). View as Uint16 LE.
+        const view = new Uint16Array(decoded.buffer, decoded.byteOffset, decoded.length / 2)
+        let min = view[0], max = view[0]
+        for (let i = 1; i < view.length; i++) {
+          if (view[i] < min) min = view[i]
+          if (view[i] > max) max = view[i]
+        }
+        expect(max).toBeGreaterThan(0)
+        expect(max).toBeLessThanOrEqual(4095)
+
+        decoder.delete()
+      }
+    )
 
     it.skipIf(!isBuilt)("rejects 8-bit JPEG input (precision guard)", () => {
       const decoder = new codec.JPEGDecoder()
@@ -53,15 +76,11 @@ describe.each(buildVariants)(
     })
 
     it.skipIf(!isBuilt)("throws on truncated input", () => {
-      const truncated = jpeg8bit.subarray(0, Math.floor(jpeg8bit.length / 2))
+      const truncated = ct12bit.subarray(0, Math.floor(ct12bit.length / 2))
       const decoder = new codec.JPEGDecoder()
       decoder.getEncodedBuffer(truncated.length).set(truncated)
       expect(() => decoder.decode()).toThrow()
       decoder.delete()
     })
-
-    it.todo(
-      "decodes a real 12-bit JPEG fixture (TODO: add one to test/fixtures/jpeg/)"
-    )
   }
 )
