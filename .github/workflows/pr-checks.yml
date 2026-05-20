@@ -197,11 +197,25 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
       - name: Run CodSpeed benchmarks
-        # CodSpeedHQ/action@v4 sets up CPU simulation (deterministic, <1%
-        # variance, hardware-independent), runs the inner command under
-        # valgrind, uploads to codspeed.io, and posts/updates a sticky PR
-        # comment with the per-bench deltas. Authenticates via GitHub OIDC
-        # (id-token: write above) so no CODSPEED_TOKEN secret is needed.
+        # CodSpeedHQ/action@v4 sets up CPU simulation (Cachegrind-based
+        # instruction counting on a modeled CPU + cache hierarchy), runs
+        # the inner command under valgrind, uploads to codspeed.io, and
+        # posts/updates a sticky PR comment with the per-bench deltas.
+        # Authenticates via GitHub OIDC (id-token: write above) so no
+        # CODSPEED_TOKEN secret is needed.
+        #
+        # mode: simulation (vs walltime) — we chose simulation because:
+        #   - deterministic: <1% run-to-run drift (verified across 3
+        #     runs of identical source)
+        #   - free CI minutes (walltime needs CodSpeed macro-runners)
+        #   - regression-detection signal is strong even though the
+        #     headline numbers are MODELED instruction-time, not real
+        #     wall-clock (JS-loop benches inflate 30-100x vs production
+        #     V8 due to no JIT under Cachegrind; wasm decode kernels
+        #     inflate ~5-15x; pure native ~1x)
+        # See BENCHMARKING.md at the repo root for the full measurement
+        # model, how to read the cold/warm bench split, and what the
+        # CodSpeed dashboard warnings mean.
         uses: CodSpeedHQ/action@v4
         with:
           mode: simulation
