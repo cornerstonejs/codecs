@@ -1,13 +1,25 @@
-// Production-representative decoder/encoder reuse pattern: one shared
-// JpegLSDecoder/Encoder per codec, warmed up at module scope (untimed),
-// then every per-fixture bench refills the input buffer and calls the
-// kernel on the shared instance — mirroring how a real app drives
-// CharLS across many frames.
+// Cold vs warm decoder benches.
 //
-// The warmup decode/encode is critical: under CodSpeed each bench body
-// runs exactly once, and the first call into a fresh wasm decoder pays
-// cold cost (allocator placement, JIT). Warming up at module scope
-// flattens that asymmetry so every measured bench sees a hot decoder.
+// "cold" = a fresh decoder/encoder instance whose first .decode()/.encode()
+// call happens INSIDE the bench body. Models frame 1 of a worker
+// session — cornerstone3D's decodeImageFrameWorker.js has no explicit
+// warmup, so frame 1 in each worker pays this cost.
+//
+// "warm" = a shared decoder/encoder that has already done 5 decode/encode
+// passes at module load (untimed). The bench body is the 6th+ call.
+// Models frames 2..N in a worker session — cornerstone3D's
+// decodeJPEGLS.ts:73 caches the decoder on `local.decoder` and reuses
+// it for every subsequent frame, so this is the dominant production
+// case.
+//
+// Bench bodies are symmetric (same code shape) between cold and warm —
+// the only difference is module-load state, so the cold/warm delta
+// isolates the cost of "first call setup" (wasm heap grow, page-touch,
+// V8 tier-up) versus pure kernel time.
+//
+// Warmup uses CT1.JLS (the largest of the three fixtures at 164 KB)
+// so the warm decoder's internal buffers never need to regrow when
+// processing the smaller fixtures.
 //
 // A separate "instantiate+destroy" bench measures the per-instance
 // lifecycle cost in isolation.
@@ -39,20 +51,38 @@ const encoderImageInfo = {
 }
 
 let codec
-let decoder
-let encoder
+let coldDecCT1
+let coldDecCT2
+let coldDecNL
+let warmDec
+let coldEnc
+let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
   codec = await factory()
 
-  decoder = new codec.JpegLSDecoder()
-  decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
-  decoder.decode() // warmup
+  // Cold instances: one per fixture, constructed but never decoded.
+  // The bench body will be the first decode call on this instance.
+  coldDecCT1 = new codec.JpegLSDecoder()
+  coldDecCT2 = new codec.JpegLSDecoder()
+  coldDecNL = new codec.JpegLSDecoder()
+  coldEnc = new codec.JpegLSEncoder()
 
-  encoder = new codec.JpegLSEncoder()
-  encoder.getDecodedBuffer(encoderImageInfo).set(ct2Raw)
-  encoder.setNearLossless(0)
-  encoder.encode() // warmup
+  // Warm instances: 5 untimed iterations to stabilize V8 tiering and
+  // wasm heap state. Warmup uses the largest fixture (CT1) so smaller
+  // fixtures in the warm decode benches don't trigger a buffer regrow.
+  warmDec = new codec.JpegLSDecoder()
+  for (let i = 0; i < 5; i++) {
+    warmDec.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    warmDec.decode()
+  }
+
+  warmEnc = new codec.JpegLSEncoder()
+  for (let i = 0; i < 5; i++) {
+    warmEnc.getDecodedBuffer(encoderImageInfo).set(ct2Raw)
+    warmEnc.setNearLossless(0)
+    warmEnc.encode()
+  }
 }
 
 describe.skipIf(skip)("charls JPEG-LS (wasm)", () => {
@@ -66,24 +96,45 @@ describe.skipIf(skip)("charls JPEG-LS (wasm)", () => {
     e.delete()
   })
 
-  bench("decode CT1.JLS (.80 lossless, 512x512x16bit) — reused decoder", () => {
-    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
-    decoder.decode()
+  bench("decode CT1.JLS (.80 lossless, 512x512x16bit) — cold", () => {
+    coldDecCT1.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    coldDecCT1.decode()
   })
 
-  bench("decode CT2.JLS (.80 lossless, 512x512x16bit) — reused decoder", () => {
-    decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
-    decoder.decode()
+  bench("decode CT1.JLS (.80 lossless, 512x512x16bit) — warm", () => {
+    warmDec.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    warmDec.decode()
   })
 
-  bench("decode CT-512x512-near-lossless.JLS (.81 near-lossless) — reused decoder", () => {
-    decoder.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
-    decoder.decode()
+  bench("decode CT2.JLS (.80 lossless, 512x512x16bit) — cold", () => {
+    coldDecCT2.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    coldDecCT2.decode()
   })
 
-  bench("encode CT2.RAW (lossless near=0) — reused encoder", () => {
-    encoder.getDecodedBuffer(encoderImageInfo).set(ct2Raw)
-    encoder.setNearLossless(0)
-    encoder.encode()
+  bench("decode CT2.JLS (.80 lossless, 512x512x16bit) — warm", () => {
+    warmDec.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    warmDec.decode()
+  })
+
+  bench("decode CT-512x512-near-lossless.JLS (.81 near-lossless) — cold", () => {
+    coldDecNL.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
+    coldDecNL.decode()
+  })
+
+  bench("decode CT-512x512-near-lossless.JLS (.81 near-lossless) — warm", () => {
+    warmDec.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
+    warmDec.decode()
+  })
+
+  bench("encode CT2.RAW (lossless near=0) — cold", () => {
+    coldEnc.getDecodedBuffer(encoderImageInfo).set(ct2Raw)
+    coldEnc.setNearLossless(0)
+    coldEnc.encode()
+  })
+
+  bench("encode CT2.RAW (lossless near=0) — warm", () => {
+    warmEnc.getDecodedBuffer(encoderImageInfo).set(ct2Raw)
+    warmEnc.setNearLossless(0)
+    warmEnc.encode()
   })
 })

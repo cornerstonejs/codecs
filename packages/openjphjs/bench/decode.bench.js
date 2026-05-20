@@ -1,16 +1,30 @@
-// Production-representative decoder/encoder reuse pattern: one shared
-// HTJ2KDecoder/Encoder per codec, warmed up at module scope (untimed),
-// then every per-fixture bench refills the input buffer and calls the
-// kernel on the shared instance — mirroring how a real app drives
-// OpenJPH across many frames.
+// Cold vs warm decoder benches.
 //
-// The warmup decode/encode is critical: under CodSpeed each bench body
-// runs exactly once, and the first call into a fresh wasm decoder pays
-// cold cost (allocator placement, JIT). Warming up at module scope
-// flattens that asymmetry so every measured bench sees a hot decoder.
+// "cold" = a fresh decoder/encoder instance whose first .decode()/.encode()
+// call happens INSIDE the bench body. Models frame 1 of a worker
+// session — cornerstone3D's decodeImageFrameWorker.js has no explicit
+// warmup, so frame 1 in each worker pays this cost.
 //
-// A separate "instantiate+destroy" bench measures the per-instance
-// lifecycle cost in isolation.
+// "warm" = a shared decoder/encoder that has already done 5 decode/encode
+// passes at module load (untimed). The bench body is the 6th+ call.
+//
+// Important caveat for HTJ2K: cornerstone3D's decodeHTJ2K.ts:69 actually
+// creates a fresh `new HTJ2KDecoder()` for every frame (a comment in
+// that file notes reuse is "much slower for some reason"). So for
+// HTJ2K specifically, the production-cost approximation is:
+//
+//   per-frame cost ≈ instantiate+destroy HTJ2KDecoder + decode — cold
+//
+// The "warm" HTJ2K decode bench remains useful for regression detection
+// on the openjph decoder kernel itself, but isn't what cornerstone3D
+// actually pays per frame.
+//
+// Bench bodies are symmetric between cold and warm — the only difference
+// is module-load state, so the cold/warm delta isolates first-call
+// setup cost from pure kernel time.
+//
+// Warmup uses CT1.j2c (the larger of the two decode fixtures at 185 KB)
+// so the warm decoder's internal buffers never need to regrow.
 
 import { bench, describe } from "vitest"
 import { existsSync, readFileSync } from "node:fs"
@@ -38,19 +52,33 @@ const encoderImageInfo = {
 }
 
 let codec
-let decoder
-let encoder
+let coldDecCT1
+let coldDecCT2
+let warmDec
+let coldEnc
+let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
   codec = await factory()
 
-  decoder = new codec.HTJ2KDecoder()
-  decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
-  decoder.decode() // warmup
+  // Cold instances: one per fixture, constructed but never decoded.
+  coldDecCT1 = new codec.HTJ2KDecoder()
+  coldDecCT2 = new codec.HTJ2KDecoder()
+  coldEnc = new codec.HTJ2KEncoder()
 
-  encoder = new codec.HTJ2KEncoder()
-  encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
-  encoder.encode() // warmup
+  // Warm instances: 5 untimed iterations to stabilize V8 tiering and
+  // wasm heap state. Warmup uses the larger fixture (CT1).
+  warmDec = new codec.HTJ2KDecoder()
+  for (let i = 0; i < 5; i++) {
+    warmDec.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    warmDec.decode()
+  }
+
+  warmEnc = new codec.HTJ2KEncoder()
+  for (let i = 0; i < 5; i++) {
+    warmEnc.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+    warmEnc.encode()
+  }
 }
 
 describe.skipIf(skip)("openjphjs HTJ2K (wasm)", () => {
@@ -64,18 +92,33 @@ describe.skipIf(skip)("openjphjs HTJ2K (wasm)", () => {
     e.delete()
   })
 
-  bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — reused decoder", () => {
-    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
-    decoder.decode()
+  bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — cold", () => {
+    coldDecCT1.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    coldDecCT1.decode()
   })
 
-  bench("decode CT2.j2c (.201 lossless, 512x512x16bit) — reused decoder", () => {
-    decoder.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
-    decoder.decode()
+  bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — warm", () => {
+    warmDec.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    warmDec.decode()
   })
 
-  bench("encode CT1.RAW (HTJ2K lossless) — reused encoder", () => {
-    encoder.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
-    encoder.encode()
+  bench("decode CT2.j2c (.201 lossless, 512x512x16bit) — cold", () => {
+    coldDecCT2.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    coldDecCT2.decode()
+  })
+
+  bench("decode CT2.j2c (.201 lossless, 512x512x16bit) — warm", () => {
+    warmDec.getEncodedBuffer(ct2Encoded.length).set(ct2Encoded)
+    warmDec.decode()
+  })
+
+  bench("encode CT1.RAW (HTJ2K lossless) — cold", () => {
+    coldEnc.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+    coldEnc.encode()
+  })
+
+  bench("encode CT1.RAW (HTJ2K lossless) — warm", () => {
+    warmEnc.getDecodedBuffer(encoderImageInfo).set(ct1Raw)
+    warmEnc.encode()
   })
 })
