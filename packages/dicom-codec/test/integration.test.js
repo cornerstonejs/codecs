@@ -54,7 +54,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         "1.2.840.10008.1.2.4.50"
       )
 
-      expect(result.imageFrame.length).toBe(600 * 800)
+      expect(result.imageFrame.byteLength).toBe(600 * 800)
       expect(result.imageInfo.width).toBe(600)
       expect(result.imageInfo.height).toBe(800)
       expect(typeof result.processInfo.duration).toBe("number")
@@ -82,7 +82,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         "1.2.840.10008.1.2.4.80"
       )
 
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
       expect(result.imageInfo.width).toBe(512)
       expect(result.imageInfo.height).toBe(512)
     })
@@ -109,7 +109,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         "1.2.840.10008.1.2.4.90"
       )
 
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
       expect(result.imageInfo.width).toBe(512)
       expect(result.imageInfo.height).toBe(512)
     })
@@ -136,7 +136,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         "1.2.840.10008.1.2.4.201"
       )
 
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
       expect(result.imageInfo.width).toBe(512)
       expect(result.imageInfo.height).toBe(512)
     })
@@ -174,7 +174,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         ctImageInfo,
         "1.2.840.10008.1.2.4.57"
       )
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
     })
 
     it("decodes Process 14 SV1 through the dispatcher (.70)", async () => {
@@ -183,7 +183,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         ctImageInfo,
         "1.2.840.10008.1.2.4.70"
       )
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
     })
   })
 
@@ -209,7 +209,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
         "1.2.840.10008.1.2.5"
       )
 
-      expect(result.imageFrame.length).toBe(512 * 512 * 2)
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
     })
   })
 })
