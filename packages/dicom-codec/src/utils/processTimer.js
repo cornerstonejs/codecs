@@ -1,4 +1,4 @@
-const { isNode, isBrowser } = require("browser-or-node");
+const { isNode, isBrowser, isWebWorker } = require("browser-or-node");
 /**
  * Wrapper for process timer to capture process timestamp.
  *
@@ -13,6 +13,11 @@ function processTimer(processName, loggerInstance) {
   let processDurationTime;
   const NS_SEC = 1000000000;
 
+  /**
+   *
+   * @return {[number, number]|number}
+   * @param previousTime{[number, number]}
+   */
   function hrtime(previousTime) {
     // node
     if (isNode) {
@@ -32,6 +37,16 @@ function processTimer(processName, loggerInstance) {
       }
     }
 
+    // browser web worker
+    if (isWebWorker) {
+      if (previousTime) {
+        return [Math.abs(performance.now() - previousTime[0]), 0];
+      } else {
+        return [performance.now(), 0];
+      }
+    }
+
+    // Return [0, 0] to avoid crash in other environments?
     return 0;
   }
 
