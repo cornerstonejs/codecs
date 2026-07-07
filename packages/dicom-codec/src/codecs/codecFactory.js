@@ -203,38 +203,42 @@ function getImageFrame(typedArray) {
 function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   const { iterations = 1 } = options;
   const encoderInstance = new codecConfig.Encoder();
-  const decodedTypedArray = encoderInstance.getDecodedBuffer(imageInfo);
-  decodedTypedArray.set(imageFrame);
+  try {
+    const decodedTypedArray = encoderInstance.getDecodedBuffer(imageInfo);
+    decodedTypedArray.set(imageFrame);
 
-  const { beforeEncode = () => {} } = options;
+    const { beforeEncode = () => {} } = options;
 
-  beforeEncode(encoderInstance, codecConfig);
+    beforeEncode(encoderInstance, codecConfig);
 
-  context.timer.init("To encode length: " + imageFrame.length);
-  for (let i = 0; i < iterations; i++) {
-    encoderInstance.encode();
+    context.timer.init("To encode length: " + imageFrame.length);
+    for (let i = 0; i < iterations; i++) {
+      encoderInstance.encode();
+    }
+
+    context.timer.end();
+
+    const encodedTypedArray = encoderInstance.getEncodedBuffer();
+    context.logger.log("Encoded length:" + encodedTypedArray.length);
+    context.logger.log(
+      "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
+    );
+
+    const imageFrameOut = getImageFrame(encodedTypedArray);
+
+    const processInfo = {
+      duration: context.timer.getDuration(),
+    };
+
+    return {
+      imageFrame: imageFrameOut,
+      imageInfo: getTargetImageInfo(imageInfo, imageInfo),
+      processInfo,
+    };
+  } finally {
+    // cleanup allocated memory
+    encoderInstance.delete();
   }
-
-  context.timer.end();
-
-  const encodedTypedArray = encoderInstance.getEncodedBuffer();
-  context.logger.log("Encoded length:" + encodedTypedArray.length);
-  context.logger.log(
-    "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
-  );
-
-  // cleanup allocated memory
-  encoderInstance.delete();
-
-  const processInfo = {
-    duration: context.timer.getDuration(),
-  };
-
-  return {
-    imageFrame: getImageFrame(encodedTypedArray),
-    imageInfo: getTargetImageInfo(imageInfo, imageInfo),
-    processInfo,
-  };
 }
 
 /**
@@ -255,40 +259,44 @@ function decode(context, codecConfig, imageFrame, imageInfo) {
   }
   const decoderInstance = new codecConfig.Decoder();
 
-  const { length } = imageFrame;
-  // get pointer to the source/encoded bit stream buffer in WASM memory
-  // that can hold the encoded bitstream
-  const encodedTypedArray = decoderInstance.getEncodedBuffer(length);
+  try {
+    const { length } = imageFrame;
+    // get pointer to the source/encoded bit stream buffer in WASM memory
+    // that can hold the encoded bitstream
+    const encodedTypedArray = decoderInstance.getEncodedBuffer(length);
 
-  // copy the encoded bitstream into WASM memory buffer
-  encodedTypedArray.set(imageFrame);
-  context.timer.init("To decode length: " + length);
-  // decode it
-  decoderInstance.decode();
-  context.timer.end();
+    // copy the encoded bitstream into WASM memory buffer
+    encodedTypedArray.set(imageFrame);
+    context.timer.init("To decode length: " + length);
+    // decode it
+    decoderInstance.decode();
+    context.timer.end();
 
-  const decodedTypedArray = decoderInstance.getDecodedBuffer();
+    const decodedTypedArray = decoderInstance.getDecodedBuffer();
 
-  context.logger.log("Decoded length:" + decodedTypedArray.length);
-  context.logger.log(
-    "Decoded is a Typed array of: " + decodedTypedArray.constructor.name
-  );
+    context.logger.log("Decoded length:" + decodedTypedArray.length);
+    context.logger.log(
+      "Decoded is a Typed array of: " + decodedTypedArray.constructor.name
+    );
 
-  // get information about the decoded image
-  const decodedImageInfo = decoderInstance.getFrameInfo();
+    // get information about the decoded image
+    const decodedImageInfo = decoderInstance.getFrameInfo();
 
-  // cleanup allocated memory
-  decoderInstance.delete();
+    const imageFrameOut = getImageFrame(decodedTypedArray);
 
-  const processInfo = {
-    duration: context.timer.getDuration(),
-  };
+    const processInfo = {
+      duration: context.timer.getDuration(),
+    };
 
-  return {
-    imageFrame: getImageFrame(decodedTypedArray),
-    imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
-    processInfo,
-  };
+    return {
+      imageFrame: imageFrameOut,
+      imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
+      processInfo,
+    };
+  } finally {
+    // cleanup allocated memory
+    decoderInstance.delete();
+  }
 }
 
 exports.runProcess = runProcess;

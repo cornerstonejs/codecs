@@ -37,6 +37,47 @@ const SUPPORTED_UIDS = [
   "1.2.840.10008.1.2.5",
 ]
 
+describe("codecFactory instance cleanup", () => {
+  it("frees the decoder instance even when decode() throws", () => {
+    const codecFactory = require("../src/codecs/codecFactory")
+
+    let deleted = false
+
+    class FakeDecoder {
+      getEncodedBuffer() {
+        return { set: () => {} }
+      }
+
+      decode() {
+        throw new Error("boom")
+      }
+
+      delete() {
+        deleted = true
+      }
+    }
+
+    const codecConfig = { Decoder: FakeDecoder }
+    const context = {
+      timer: {
+        init: () => {},
+        end: () => {},
+        getDuration: () => 0,
+      },
+      logger: {
+        log: () => {},
+      },
+    }
+    const imageFrame = new Uint8Array([1, 2, 3])
+    const imageInfo = {}
+
+    expect(() =>
+      codecFactory.decode(context, codecConfig, imageFrame, imageInfo)
+    ).toThrow("boom")
+    expect(deleted).toBe(true)
+  })
+})
+
 describe.skipIf(!ALL_BUILT)("dicom-codec dispatcher", () => {
   let dicomCodec
 
