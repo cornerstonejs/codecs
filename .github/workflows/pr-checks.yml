@@ -144,7 +144,7 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-build-${{ hashFiles('yarn.lock') }}
+          key: modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
@@ -200,7 +200,7 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-node22-${{ hashFiles('yarn.lock') }}
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
@@ -244,7 +244,7 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-node22-${{ hashFiles('yarn.lock') }}
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
@@ -282,15 +282,17 @@ jobs:
         # Authenticates via GitHub OIDC (id-token: write above) so no
         # CODSPEED_TOKEN secret is needed.
         #
-        # mode: simulation (vs walltime) — we chose simulation because:
+        # mode: simulation — the blocking regression gate:
         #   - deterministic: <1% run-to-run drift (verified across 3
         #     runs of identical source)
-        #   - free CI minutes (walltime needs CodSpeed macro-runners)
+        #   - free CI minutes (runs on GitHub-hosted runners)
         #   - regression-detection signal is strong even though the
         #     headline numbers are MODELED instruction-time, not real
         #     wall-clock (JS-loop benches inflate 30-100x vs production
         #     V8 due to no JIT under Cachegrind; wasm decode kernels
         #     inflate ~5-15x; pure native ~1x)
+        # The codspeed-walltime job below complements this with real
+        # wall-clock measurements on CodSpeed macro runners.
         # See BENCHMARKING.md at the repo root for the full measurement
         # model, how to read the cold/warm bench split, and what the
         # CodSpeed dashboard warnings mean.
@@ -301,3 +303,77 @@ jobs:
         with:
           mode: simulation
           run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
+
+  codspeed-walltime:
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    # Advisory instrument: real wall-clock numbers (V8 JIT active, real
+    # cache/branch behavior) that complement the simulation gate above —
+    # simulation catches small algorithmic slips deterministically,
+    # walltime keeps the numbers honest on real hardware and covers the
+    # pure-JS packages where the no-JIT simulation model is furthest from
+    # production. Failures here must not block the PR while this beds in.
+    continue-on-error: true
+    timeout-minutes: 30
+    # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
+    # low-noise walltime measurement. Requires the CodSpeed GitHub app on
+    # an organization account. NOTE: ARM64 — anything cached must be
+    # arch-qualified (see the cache key below).
+    runs-on: codspeed-macro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # runner.arch matters: this job runs on ARM64 while every other
+          # job is x64; sharing a key would restore x64 native binaries
+          # (esbuild/rollup) and break vitest.
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+      - name: Log CPU info
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        id: scope
+        env:
+          BENCH: ${{ needs.detect-changes.outputs.bench }}
+        run: |
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            name=$(node -p "require('./packages/$pkg/package.json').name")
+            flags="$flags --scope $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+      - name: Run CodSpeed benchmarks (walltime)
+        # Walltime measures actual elapsed time, so parallel benchmark
+        # processes would contend for cores and add noise — run packages
+        # sequentially (--concurrency 1), unlike the simulation job where
+        # instruction counting is immune to contention.
+        uses: CodSpeedHQ/action@v4.18.2
+        with:
+          mode: walltime
+          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
