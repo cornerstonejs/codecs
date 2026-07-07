@@ -16,6 +16,7 @@
   },
   "scripts": {
     "build:all": "lerna run build:ci --parallel --stream",
+    "test": "vitest run",
     "test:all": "lerna run test:ci --parallel --stream",
     "bench": "lerna run bench --parallel --stream",
     "bench:ci": "lerna run bench --parallel --stream",

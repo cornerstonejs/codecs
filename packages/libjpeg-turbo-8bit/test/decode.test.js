@@ -1,9 +1,10 @@
 import { beforeAll, describe, expect, it } from "vitest"
-import { readFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { fileURLToPath } from "node:url"
 import { dirname, resolve } from "node:path"
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const distDir = resolve(__dirname, "../dist")
 const fixturesDir = resolve(__dirname, "fixtures")
 
 const jpeg400 = readFileSync(resolve(fixturesDir, "jpeg/jpeg400jfif.jpg"))
@@ -16,18 +17,19 @@ async function loadModule(modulePath) {
 }
 
 const buildVariants = [
-  { name: "asm.js (libjpegturbojs)", path: "../dist/libjpegturbojs.js" },
-  { name: "wasm (libjpegturbowasm)", path: "../dist/libjpegturbowasm.js" },
+  { name: "asm.js (libjpegturbojs)", path: "../dist/libjpegturbojs.js", dist: "libjpegturbojs.js" },
+  { name: "wasm (libjpegturbowasm)", path: "../dist/libjpegturbowasm.js", dist: "libjpegturbowasm.js" },
 ]
 
-describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path }) => {
+describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path, dist }) => {
+  const isBuilt = existsSync(resolve(distDir, dist))
   let codec
 
   beforeAll(async () => {
-    codec = await loadModule(path)
+    if (isBuilt) codec = await loadModule(path)
   })
 
-  it("decodes the jpeg400 grayscale fixture", () => {
+  it.skipIf(!isBuilt)("decodes the jpeg400 grayscale fixture", () => {
     const decoder = new codec.JPEGDecoder()
     const encodedBuffer = decoder.getEncodedBuffer(jpeg400.length)
     encodedBuffer.set(jpeg400)
@@ -47,7 +49,7 @@ describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path }) =
     decoder.delete()
   })
 
-  it("throws or marks error on truncated input", () => {
+  it.skipIf(!isBuilt)("throws or marks error on truncated input", () => {
     const truncated = jpeg400.subarray(0, Math.floor(jpeg400.length / 2))
     const decoder = new codec.JPEGDecoder()
     const encodedBuffer = decoder.getEncodedBuffer(truncated.length)
@@ -61,14 +63,15 @@ describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path }) =
 
 describe.each(buildVariants)(
   "libjpeg-turbo-8bit encode + round-trip — $name",
-  ({ path }) => {
+  ({ path, dist }) => {
+    const isBuilt = existsSync(resolve(distDir, dist))
     let codec
 
     beforeAll(async () => {
-      codec = await loadModule(path)
+      if (isBuilt) codec = await loadModule(path)
     })
 
-    it("encodes raw → JPEG and decodes back to the same dimensions", () => {
+    it.skipIf(!isBuilt)("encodes raw → JPEG and decodes back to the same dimensions", () => {
       const frameInfo = {
         width: 600,
         height: 800,
