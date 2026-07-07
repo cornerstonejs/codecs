@@ -836,6 +836,8 @@ class J2KDecoder {
       frameInfo_.height = image->y1;
       frameInfo_.componentCount = image->numcomps;
       if (frameInfo_.componentCount != 1 && frameInfo_.componentCount != 3) {
+        opj_destroy_codec(l_codec);
+        opj_stream_destroy(l_stream);
         opj_image_destroy(image);
         throw std::runtime_error("unsupported J2K component count");
       }
