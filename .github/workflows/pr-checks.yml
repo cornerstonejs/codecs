@@ -326,18 +326,17 @@ jobs:
         # Pinned to a full version (not the floating @v4) so the
         # instrumentation environment stays identical between the main
         # baseline and PR runs.
-        # --dangerouslyIgnoreUnhandledErrors (forwarded through lerna to
-        # vitest): under valgrind the whole vitest process runs ~60x slow
-        # while vitest 3's hard-coded 60s worker<->main RPC timer counts
-        # real seconds, so big suites structurally trip "Timeout calling
-        # onTaskUpdate" AFTER their benches complete — the error is exit-code
-        # noise, not a measurement problem. Genuine bench failures still fail
-        # (they are reported as failed suites, not unhandled errors). The
-        # walltime job runs at native speed and stays strict.
+        # Note: vitest 3's hard-coded 60s worker-RPC timer counts real
+        # seconds while valgrind slows the process ~60x, so large suites
+        # structurally trip "Timeout calling onTaskUpdate" AFTER their
+        # benches complete. The vitest configs set
+        # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
+        # "simulation" to keep that exit-code noise from failing the job
+        # (config-level because yarn 1 mangles `--`-forwarded CLI flags).
         uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
-          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }} -- --dangerouslyIgnoreUnhandledErrors
+          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
 
   codspeed-walltime:
     needs: [detect-changes, build]
