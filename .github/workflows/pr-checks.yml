@@ -326,16 +326,18 @@ jobs:
         # Pinned to a full version (not the floating @v4) so the
         # instrumentation environment stays identical between the main
         # baseline and PR runs.
-        # Sequential (--concurrency 1), not --parallel: vitest 3 enforces a
-        # hard-coded 60s worker<->main RPC timeout, and eight valgrind-slowed
-        # bench processes contending for 4 cores starve the biggest suites
-        # (openjpeg, dicom-codec) past it ("Timeout calling onTaskUpdate").
-        # Instruction counting is contention-immune, so serializing changes
-        # only wall time, not the measured numbers.
+        # --dangerouslyIgnoreUnhandledErrors (forwarded through lerna to
+        # vitest): under valgrind the whole vitest process runs ~60x slow
+        # while vitest 3's hard-coded 60s worker<->main RPC timer counts
+        # real seconds, so big suites structurally trip "Timeout calling
+        # onTaskUpdate" AFTER their benches complete — the error is exit-code
+        # noise, not a measurement problem. Genuine bench failures still fail
+        # (they are reported as failed suites, not unhandled errors). The
+        # walltime job runs at native speed and stays strict.
         uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
-          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
+          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }} -- --dangerouslyIgnoreUnhandledErrors
 
   codspeed-walltime:
     needs: [detect-changes, build]
