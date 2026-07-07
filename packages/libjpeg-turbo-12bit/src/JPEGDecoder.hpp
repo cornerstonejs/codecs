@@ -16,6 +16,7 @@ using namespace std;
 #include <emscripten/val.h>
 
 thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("Uint8ClampedArray");
+thread_local const emscripten::val Uint16Array = emscripten::val::global("Uint16Array");
 
 #endif
 
@@ -56,13 +57,16 @@ class JPEGDecoder {
   /// holds the decoded pixel data
   /// </summary>
   emscripten::val getDecodedBuffer() {
-    // Create a JavaScript-friendly result from the memory view
-    // instead of relying on the consumer to detach it from WASM memory
-    // See https://web.dev/webassembly-memory-debugging/
-    emscripten::val js_result = Uint8ClampedArray.new_(emscripten::typed_memory_view(
+    // decoded_ holds one 12-bit grayscale sample per pixel in an int16_t
+    // (values 0..4095). Copy it into a JS-owned Uint16Array so the result is
+    // detached from WASM memory (see https://web.dev/webassembly-memory-debugging/).
+    // NOTE: must be a 16-bit typed array — wrapping in Uint8ClampedArray would
+    // run every sample through ToUint8Clamp and flatten anything above 255,
+    // destroying the 12-bit output.
+    emscripten::val js_result = Uint16Array.new_(emscripten::typed_memory_view(
       decoded_.size(), decoded_.data()
     ));
-    
+
     return js_result;
   }
 #else
