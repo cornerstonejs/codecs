@@ -306,14 +306,26 @@ jobs:
         # Pinned to a full version (not the floating @v4) so the
         # instrumentation environment stays identical between the main
         # baseline and PR runs.
+        # Sequential (--concurrency 1), not --parallel: vitest 3 enforces a
+        # hard-coded 60s worker<->main RPC timeout, and eight valgrind-slowed
+        # bench processes contending for 4 cores starve the biggest suites
+        # (openjpeg, dicom-codec) past it ("Timeout calling onTaskUpdate").
+        # Instruction counting is contention-immune, so serializing changes
+        # only wall time, not the measured numbers.
         uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
-          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
+          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
 
   codspeed-walltime:
     needs: [detect-changes, build]
-    if: needs.detect-changes.outputs.any == 'true'
+    # Gated behind a repository variable: a `runs-on: codspeed-macro` job
+    # queues forever (up to 24h) when macro runners aren't provisioned for
+    # the org, and GitHub's job timeout only covers execution, not queue
+    # time. Enable macro runners for the org on app.codspeed.io first
+    # (the repo is public — also make sure the runner group allows public
+    # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
+    if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
     # Advisory instrument: real wall-clock numbers (V8 JIT active, real
     # cache/branch behavior) that complement the simulation gate above —
     # simulation catches small algorithmic slips deterministically,
