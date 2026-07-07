@@ -9,6 +9,9 @@ const packagesRoot = resolve(__dirname, "../..")
 const LIBJPEG_8BIT_BUILT = existsSync(
   resolve(packagesRoot, "libjpeg-turbo-8bit/dist/libjpegturbojs.js")
 )
+const LIBJPEG_12BIT_BUILT = existsSync(
+  resolve(packagesRoot, "libjpeg-turbo-12bit/dist/libjpegturbo12js.js")
+)
 const CHARLS_BUILT = existsSync(
   resolve(packagesRoot, "charls/dist/charlsjs.js")
 )
@@ -20,7 +23,11 @@ const OPENJPH_BUILT = existsSync(
 )
 
 const ALL_BUILT =
-  LIBJPEG_8BIT_BUILT && CHARLS_BUILT && OPENJPEG_BUILT && OPENJPH_BUILT
+  LIBJPEG_8BIT_BUILT &&
+  LIBJPEG_12BIT_BUILT &&
+  CHARLS_BUILT &&
+  OPENJPEG_BUILT &&
+  OPENJPH_BUILT
 
 describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
   let dicomCodec
@@ -57,6 +64,37 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
       expect(result.imageFrame.byteLength).toBe(600 * 800)
       expect(result.imageInfo.width).toBe(600)
       expect(result.imageInfo.height).toBe(800)
+      expect(typeof result.processInfo.duration).toBe("number")
+    })
+  })
+
+  describe("JPEG Baseline 12-bit (1.2.840.10008.1.2.4.51)", () => {
+    const jpeg12BitBytes = readFileSync(
+      resolve(
+        packagesRoot,
+        "libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg"
+      )
+    )
+
+    it("decodes through the dispatcher", async () => {
+      const imageInfo = {
+        rows: 512,
+        columns: 512,
+        bitsAllocated: 16,
+        samplesPerPixel: 1,
+        pixelRepresentation: 0,
+        signed: false,
+      }
+
+      const result = await dicomCodec.decode(
+        jpeg12BitBytes,
+        imageInfo,
+        "1.2.840.10008.1.2.4.51"
+      )
+
+      expect(result.imageFrame.byteLength).toBe(512 * 512 * 2)
+      expect(result.imageInfo.width).toBe(512)
+      expect(result.imageInfo.height).toBe(512)
       expect(typeof result.processInfo.duration).toBe("number")
     })
   })
