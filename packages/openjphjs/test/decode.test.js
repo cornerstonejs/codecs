@@ -28,6 +28,12 @@ describe("openjphjs HTJ2K decode", () => {
     if (isBuilt) codec = await loadModule(modulePath)
   })
 
+  // In CI a missing dist means the build/artifact pipeline broke; fail loudly
+  // instead of letting every skipIf() below silently skip the suite.
+  it.runIf(process.env.CI)("dist is present in CI", () => {
+    expect(isBuilt, "openjphjs.js missing — build artifact was not replayed").toBe(true)
+  })
+
   it.skipIf(!isBuilt)(
     "decodes CT1.j2c to a 512x512 16-bit monochrome frame matching CT1.RAW",
     () => {

@@ -30,8 +30,8 @@ function decode(imageFrame, pixelData) {
   } else if (imageFrame.bitsAllocated === 8 || imageFrame.bitsAllocated === 1) {
     imageFrame.pixelData = pixelData;
   } else if (imageFrame.bitsAllocated === 32) {
-    // if pixel data is not aligned on even boundary, shift it
-    if (offset % 2) {
+    // Float32Array views must be 4-byte aligned; shift unaligned data
+    if (offset % 4) {
       arrayBuffer = arrayBuffer.slice(offset);
       offset = 0;
     }

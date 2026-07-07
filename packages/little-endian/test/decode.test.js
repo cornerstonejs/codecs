@@ -64,6 +64,19 @@ describe("little-endian decode", () => {
     expect(Array.from(imageFrame.pixelData)).toEqual([1, 2])
   })
 
+  it("realigns 32-bit pixel data when byteOffset is 2 (even but not 4-aligned)", () => {
+    const source = new Float32Array([1.5, -2.25])
+    const padded = new Uint8Array(2 + source.length * 4)
+    padded.set(new Uint8Array(source.buffer), 2)
+    const pixelData = new Uint8Array(padded.buffer, 2, source.length * 4)
+    const imageFrame = { bitsAllocated: 32 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Float32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([1.5, -2.25])
+  })
+
   it("returns the same imageFrame object", () => {
     const imageFrame = { bitsAllocated: 8 }
     const result = decode(imageFrame, new Uint8Array([0]))

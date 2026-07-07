@@ -29,7 +29,13 @@ describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path, dis
     if (isBuilt) codec = await loadModule(path)
   })
 
-  it.skipIf(!isBuilt)("decodes the jpeg400 grayscale fixture", () => {
+  // In CI a missing dist means the build/artifact pipeline broke; fail loudly
+  // instead of letting every skipIf() below silently skip the suite.
+  it.runIf(process.env.CI)("dist is present in CI", () => {
+    expect(isBuilt, `${dist} missing — build artifact was not replayed`).toBe(true)
+  })
+
+  it.skipIf(!isBuilt)("decodes the jpeg400 grayscale fixture to bytes matching the RAW reference", () => {
     const decoder = new codec.JPEGDecoder()
     const encodedBuffer = decoder.getEncodedBuffer(jpeg400.length)
     encodedBuffer.set(jpeg400)
@@ -43,8 +49,10 @@ describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path, dis
     expect(frameInfo.componentCount).toBe(1)
 
     const decoded = decoder.getDecodedBuffer()
-    expect(decoded.length).toBe(600 * 800)
     expect(decoded.length).toBe(jpeg400Raw.length)
+    // Baseline JPEG decoding is deterministic: the decoded pixels must match
+    // the RAW reference exactly (identical across asm.js and wasm variants).
+    expect(Buffer.from(decoded).equals(jpeg400Raw)).toBe(true)
 
     decoder.delete()
   })
@@ -101,6 +109,20 @@ describe.each(buildVariants)(
 
       const roundTripDecoded = decoder.getDecodedBuffer()
       expect(roundTripDecoded.length).toBe(jpeg400Raw.length)
+
+      // Baseline JPEG is lossy, so byte equality is not expected — but the
+      // error must stay small. Measured on this fixture: maxAbsDiff 6,
+      // meanAbsDiff 0.26. Bound it so a broken DCT/quantization path (which
+      // produces structurally wrong pixels, not slightly-off ones) fails.
+      let maxAbsDiff = 0
+      let totalAbsDiff = 0
+      for (let i = 0; i < jpeg400Raw.length; i++) {
+        const diff = Math.abs(roundTripDecoded[i] - jpeg400Raw[i])
+        if (diff > maxAbsDiff) maxAbsDiff = diff
+        totalAbsDiff += diff
+      }
+      expect(maxAbsDiff).toBeLessThanOrEqual(10)
+      expect(totalAbsDiff / jpeg400Raw.length).toBeLessThanOrEqual(1)
 
       decoder.delete()
       encoder.delete()

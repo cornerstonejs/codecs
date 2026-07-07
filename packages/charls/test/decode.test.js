@@ -8,13 +8,23 @@ const distDir = resolve(__dirname, "../dist")
 const fixturesDir = resolve(__dirname, "fixtures")
 
 const ct1Encoded = readFileSync(resolve(fixturesDir, "CT1.JLS"))
+// CT1.RAW is the lossless reference for CT1.JLS. The same slice ships as
+// openjpeg's CT1.RAW and openjphjs's CT1.RAW; charls, openjpeg and openjph
+// all decode their CT1 fixtures to these exact bytes, so the three codecs
+// cross-validate each other.
+const ct1Raw = readFileSync(resolve(fixturesDir, "CT1.RAW"))
 const ct2Encoded = readFileSync(resolve(fixturesDir, "CT2.JLS"))
 const ct2Raw = readFileSync(resolve(fixturesDir, "CT2.RAW"))
 // CT-512x512-near-lossless.JLS is a real .81 (JPEG-LS Lossy / Near-Lossless)
 // payload extracted from a Cornerstone3D test DICOM. Decoding exercises the
 // same charls codec but verifies the near-lossless code path (NEAR > 0).
+// Near-lossless decoding is deterministic, so the decoder's own output is
+// pinned as a regression golden (identical across all three build variants).
 const ctNearLossless = readFileSync(
   resolve(fixturesDir, "CT-512x512-near-lossless.JLS")
+)
+const ctNearLosslessRaw = readFileSync(
+  resolve(fixturesDir, "CT-512x512-near-lossless.RAW")
 )
 
 async function loadModule(modulePath) {
@@ -37,11 +47,17 @@ describe.each(buildVariants)("charls JPEG-LS decode — $name", ({ path, dist })
     if (isBuilt) codec = await loadModule(path)
   })
 
+  // In CI a missing dist means the build/artifact pipeline broke; fail loudly
+  // instead of letting every skipIf() below silently skip the suite.
+  it.runIf(process.env.CI)("dist is present in CI", () => {
+    expect(isBuilt, `${dist} missing — build artifact was not replayed`).toBe(true)
+  })
+
   it.skipIf(!isBuilt)("exposes a version string", () => {
     expect(typeof codec.getVersion()).toBe("string")
   })
 
-  it.skipIf(!isBuilt)("decodes CT1.JLS to a 512x512 16-bit monochrome frame", () => {
+  it.skipIf(!isBuilt)("decodes CT1.JLS to bytes matching CT1.RAW (lossless)", () => {
     const decoder = new codec.JpegLSDecoder()
     decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
     decoder.decode()
@@ -53,7 +69,8 @@ describe.each(buildVariants)("charls JPEG-LS decode — $name", ({ path, dist })
     expect(frameInfo.componentCount).toBe(1)
 
     const decoded = decoder.getDecodedBuffer()
-    expect(decoded.length).toBe(512 * 512 * 2)
+    expect(decoded.length).toBe(ct1Raw.length)
+    expect(Buffer.from(decoded).equals(ct1Raw)).toBe(true)
 
     decoder.delete()
   })
@@ -71,7 +88,7 @@ describe.each(buildVariants)("charls JPEG-LS decode — $name", ({ path, dist })
   })
 
   it.skipIf(!isBuilt)(
-    "decodes a near-lossless CT JLS (transfer syntax .81)",
+    "decodes a near-lossless CT JLS (transfer syntax .81) matching the pinned golden output",
     () => {
       const decoder = new codec.JpegLSDecoder()
       decoder.getEncodedBuffer(ctNearLossless.length).set(ctNearLossless)
@@ -84,7 +101,8 @@ describe.each(buildVariants)("charls JPEG-LS decode — $name", ({ path, dist })
       expect(frameInfo.componentCount).toBe(1)
 
       const decoded = decoder.getDecodedBuffer()
-      expect(decoded.length).toBe(512 * 512 * 2)
+      expect(decoded.length).toBe(ctNearLosslessRaw.length)
+      expect(Buffer.from(decoded).equals(ctNearLosslessRaw)).toBe(true)
       decoder.delete()
     }
   )
