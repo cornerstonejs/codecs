@@ -125,6 +125,13 @@ jobs:
       - uses: actions/checkout@v4
         # Shallow checkout: builds only need the working tree (full history
         # is only required by detect-changes for the merge-base diff).
+      - uses: actions/setup-node@v4
+        # The emsdk image bundles node 20.18.0, which fails vite 7's engine
+        # check (needs >=20.19) during yarn install. Put node 22 on PATH for
+        # yarn/webpack; emscripten is unaffected — emcc invokes the node
+        # binary pinned in its own .emscripten config, not the one on PATH.
+        with:
+          node-version: '22'
       - name: Allow git to operate on the workspace
         # The container runs as root but the workspace is owned by the
         # checkout action's user, which makes git complain about
