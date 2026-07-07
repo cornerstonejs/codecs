@@ -11,11 +11,17 @@ name: PR checks
 on:
   pull_request:
   push:
-    # Run on every branch including main so each merge to main seeds a
-    # fresh CodSpeed baseline. Without a main run, PR comments stay stuck
-    # on "Congrats! CodSpeed is installed" with no before/after deltas.
+    # Run pushes on main only: each merge seeds a fresh CodSpeed baseline
+    # (without a main run, PR comments stay stuck on "Congrats! CodSpeed
+    # is installed" with no before/after deltas). PR branches are already
+    # covered by the pull_request event — running push on them too meant
+    # every commit was built/tested/benched TWICE and uploaded two
+    # CodSpeed measurements per commit, each on a randomly allocated
+    # runner CPU (GitHub mixes Intel 8370C and AMD EPYC 7763 hardware),
+    # which is a prime source of "Different runtime environments detected"
+    # warnings on comparisons.
     branches:
-      - "**"
+      - main
   # workflow_dispatch lets CodSpeed trigger a backtest run from the
   # dashboard (to seed initial perf data after the repo is connected).
   workflow_dispatch:
@@ -242,6 +248,16 @@ jobs:
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
+      - name: Log CPU info
+        # GitHub standard runners are randomly assigned different physical
+        # CPUs (e.g. Intel Xeon 8370C vs AMD EPYC 7763) with different cache
+        # sizes and ISA extensions; glibc dispatches different code paths on
+        # each, so even simulation-mode instruction counts shift between
+        # them. CodSpeed flags such comparisons as "different runtime
+        # environments". Logging the CPU makes those warnings diagnosable
+        # at a glance (recommendation from
+        # https://codspeed.io/blog/unrelated-benchmark-regression).
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
       - name: Compute bench scope
         # Translate the changed-package directory names into lerna --scope
         # flags so PRs only bench what they touched. Baseline runs (main /
