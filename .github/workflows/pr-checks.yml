@@ -214,6 +214,26 @@ jobs:
       - name: Test
         run: npx vitest run
 
+  dist-size:
+    # Binary-size regression gate: compares every shipped dist artifact
+    # (js/wasm/mem, raw and gzip) against the ground truth committed in
+    # tools/dist-size/baseline.json and fails if anything grows beyond
+    # max(1%, 1 KiB). Intentional size changes update the baseline in the
+    # same PR (node tools/dist-size/check.js --update) so growth is always
+    # a visible, reviewed diff.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Check dist sizes against baseline
+        run: node tools/dist-size/check.js --artifacts tmp
+
   codspeed-bench:
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
