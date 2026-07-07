@@ -5,7 +5,7 @@ name: PR checks
 # runs concurrently, any failure fails the workflow.
 #
 # CodSpeed's first-class GHA integration replaces the manual codspeed-bench
-# job from CircleCI: `CodSpeedHQ/action@v3` installs valgrind, sets up
+# job from CircleCI: `CodSpeedHQ/action` installs valgrind, sets up
 # instrumentation, and uploads results in one step.
 
 on:
@@ -187,7 +187,13 @@ jobs:
   codspeed-bench:
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
-    runs-on: ubuntu-latest
+    # Pin the OS (not ubuntu-latest) so PR runs are measured in the same
+    # runtime environment as the baseline seeded on main. A drifting
+    # ubuntu-latest image changes the valgrind/toolchain fingerprint between
+    # baseline and PR, which makes CodSpeed report "Different runtime
+    # environments detected" and refuse to trust the comparison. The baseline
+    # on main must be re-seeded after changing this so both sides match.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -236,7 +242,10 @@ jobs:
         # See BENCHMARKING.md at the repo root for the full measurement
         # model, how to read the cold/warm bench split, and what the
         # CodSpeed dashboard warnings mean.
-        uses: CodSpeedHQ/action@v4
+        # Pinned to a full version (not the floating @v4) so the
+        # instrumentation environment stays identical between the main
+        # baseline and PR runs.
+        uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
           run: yarn run bench
