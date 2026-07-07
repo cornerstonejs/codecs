@@ -296,9 +296,12 @@ class J2KEncoder {
       return; // TODO: implement error handling
     }
 
-    // HACK: For now - make encoded buffer the same size as decoded so we can
-    // avoid messing with BufferStream malloc/free stuff
-    encoded_.resize(decoded_.size());
+    // HACK: For now - make encoded buffer roughly the same size as decoded
+    // (plus headroom for worst-case expansion) so we can avoid messing with
+    // BufferStream malloc/free stuff. opj_write_to_buffer clamps writes to
+    // the buffer's remaining space, which is the hard safety net if this
+    // estimate is ever too small.
+    encoded_.resize(decoded_.size() + (decoded_.size() / 2) + 1024);
 
     /* open a byte stream for writing and allocate memory for all tiles */
     opj_buffer_info_t buffer_info;
