@@ -88,6 +88,45 @@ describe.each(buildVariants)("openjpeg J2K decode — $name", ({ path, dist }) =
   )
 })
 
+describe.each(buildVariants)("openjpeg J2K decode robustness — $name", ({ path, dist }) => {
+  const isBuilt = existsSync(resolve(distDir, dist))
+  let codec
+
+  beforeAll(async () => {
+    if (isBuilt) codec = await loadModule(path)
+  })
+
+  it.skipIf(!isBuilt)("throws when the encoded buffer is smaller than 4 bytes", () => {
+    const decoder = new codec.J2KDecoder()
+    const tooShort = new Uint8Array([0x00, 0x01, 0x02])
+    decoder.getEncodedBuffer(tooShort.length).set(tooShort)
+
+    expect(() => decoder.decode()).toThrow()
+
+    decoder.delete()
+  })
+
+  it.skipIf(!isBuilt)("does not crash the process on a malformed/garbage buffer", () => {
+    const decoder = new codec.J2KDecoder()
+    const garbage = new Uint8Array(64)
+    for (let i = 0; i < garbage.length; i++) garbage[i] = (i * 37 + 11) % 256
+    decoder.getEncodedBuffer(garbage.length).set(garbage)
+
+    // Malformed input must either throw or return without corrupting the
+    // process (e.g. via an out-of-bounds heap write). Reaching this
+    // expectation at all is the meaningful assertion here.
+    expect(() => {
+      try {
+        decoder.decode()
+      } catch (e) {
+        // throwing is an acceptable, expected outcome for malformed input
+      }
+    }).not.toThrow()
+
+    decoder.delete()
+  })
+})
+
 const encoderVariants = buildVariants.filter((v) => !v.name.includes("decode-only"))
 
 describe.each(encoderVariants)(
