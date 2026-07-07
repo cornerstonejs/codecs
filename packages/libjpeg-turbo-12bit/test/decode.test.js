@@ -85,6 +85,47 @@ describe.each(buildVariants)("libjpeg-turbo-12bit decode — $name", ({ path }) 
     decoder.delete()
   })
 
+  it.skipIf(!isBuilt)("rejects multi-component (color) 12-bit JPEGs instead of silently dropping chroma", () => {
+    // Splice the grayscale fixture into a syntactically valid 3-component
+    // JPEG: rewrite SOF1 (FFC1) from 1 to 3 components and SOS (FFDA) from
+    // 1 to 3 selectors. The decoder must fail closed on the header — a
+    // forced JCS_GRAYSCALE decode would silently discard the chroma
+    // channels — so the entropy data never being read is fine.
+    const findMarker = (buf, marker) => {
+      for (let i = 2; i < buf.length - 1; i++) {
+        if (buf[i] === 0xff && buf[i + 1] === marker) return i
+      }
+      throw new Error("marker not found")
+    }
+    const sofAt = findMarker(ct12bit, 0xc1)
+    const sosAt = findMarker(ct12bit, 0xda)
+
+    const before = ct12bit.subarray(0, sofAt)
+    const sofBody = ct12bit.subarray(sofAt + 4, sofAt + 4 + 5) // P(1), Y(2), X(2)
+    const between = ct12bit.subarray(sofAt + 2 + 11, sosAt) // after 1-comp SOF
+    const after = ct12bit.subarray(sosAt + 2 + 8) // after 1-comp SOS: entropy data
+
+    const sof3 = Buffer.concat([
+      Buffer.from([0xff, 0xc1, 0x00, 17]),
+      sofBody,
+      Buffer.from([3]), // Nf = 3
+      Buffer.from([1, 0x11, 0, 2, 0x11, 0, 3, 0x11, 0]),
+    ])
+    const sos3 = Buffer.concat([
+      Buffer.from([0xff, 0xda, 0x00, 12, 3]), // Ns = 3
+      Buffer.from([1, 0x00, 2, 0x00, 3, 0x00]),
+      ct12bit.subarray(sosAt + 7, sosAt + 10), // Ss, Se, Ah/Al
+    ])
+    const colorJpeg = Buffer.concat([before, sof3, between, sos3, after])
+
+    const decoder = new codec.JPEGDecoder()
+    decoder.getEncodedBuffer(colorJpeg.length).set(colorJpeg)
+
+    expect(() => decoder.decode()).toThrow()
+
+    decoder.delete()
+  })
+
   it.skipIf(!isBuilt)("handles truncated input without crashing", () => {
     // libjpeg treats a premature end-of-file as a recoverable warning (it
     // fills the missing scanlines rather than aborting), so decode() may

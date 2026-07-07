@@ -5,6 +5,7 @@
 
 #include <exception>
 #include <memory>
+#include <stdexcept>
 
 
 #include "openjpeg.h"
@@ -289,18 +290,28 @@ class J2KEncoder {
 
     // TODO: Add support for using tiles?
 
+    // Free everything on every exit path. A silent `return` here used to
+    // leak the codec/stream/image AND leave encoded_ at its full pre-sized
+    // allocation, so JS callers treated a failed encode as a successful one
+    // and read back garbage bytes.
+    const auto cleanup = [&]() {
+      if (l_stream) opj_stream_destroy(l_stream);
+      if (l_codec) opj_destroy_codec(l_codec);
+      if (image) opj_image_destroy(image);
+    };
+
     if (! opj_setup_encoder(l_codec, &parameters, image)) {
-      fprintf(stderr, "failed to encode image: opj_setup_encoder\n");
-      opj_destroy_codec(l_codec);
-      opj_image_destroy(image);
-      return; // TODO: implement error handling
+      cleanup();
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_setup_encoder");
     }
 
     // HACK: For now - make encoded buffer roughly the same size as decoded
     // (plus headroom for worst-case expansion) so we can avoid messing with
     // BufferStream malloc/free stuff. opj_write_to_buffer clamps writes to
     // the buffer's remaining space, which is the hard safety net if this
-    // estimate is ever too small.
+    // estimate is ever too small: the clamped write makes the compress call
+    // below return false, which now throws instead of returning silently.
     encoded_.resize(decoded_.size() + (decoded_.size() / 2) + 1024);
 
     /* open a byte stream for writing and allocate memory for all tiles */
@@ -309,24 +320,33 @@ class J2KEncoder {
     buffer_info.cur = encoded_.data();
     buffer_info.len = encoded_.size();
     l_stream = opj_stream_create_buffer_stream(&buffer_info, OPJ_FALSE);
+    if (!l_stream) {
+      cleanup();
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: could not create buffer stream");
+    }
 
     /* encode the image */
     if (!opj_start_compress(l_codec, image, l_stream))  {
-        fprintf(stderr, "failed to encode image: opj_start_compress\n");
-        return; // todo: error handling
+      cleanup();
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_start_compress (encoded buffer too small?)");
     }
 
     if(!opj_encode(l_codec, l_stream)) {
-      fprintf(stderr, "failed to encode image: opj_encode\n");
-      return; // todo: error handling
+      cleanup();
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_encode (encoded buffer too small?)");
     }
 
     if(!opj_end_compress(l_codec, l_stream)) {
-      fprintf(stderr, "failed to encode image: opj_end_compress\n");
-      return; // todo: error handling
+      cleanup();
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_end_compress (encoded buffer too small?)");
     }
 
     encoded_.resize(buffer_info.cur - buffer_info.buf);
+    cleanup();
   }
 
   private:

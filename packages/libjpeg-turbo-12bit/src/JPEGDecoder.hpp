@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <string>
 #include <vector>
 // #include "config.h"
 #include "jpeglib.h"
@@ -125,6 +126,16 @@ class JPEGDecoder {
     jpeg_mem_src(&cinfo, encoded_.data(), encoded_.size());
     // Read file header, set default decompression parameters
     jpeg_read_header(&cinfo, TRUE);
+    // Fail closed on multi-component images. This codec only supports
+    // single-component (grayscale) 12-bit JPEGs; forcing JCS_GRAYSCALE on a
+    // color image would make libjpeg silently discard the chroma channels
+    // and report componentCount=1, corrupting color data without any error.
+    if (cinfo.num_components != 1) {
+      jpeg_destroy_decompress(&cinfo);
+      throw std::runtime_error(
+        "Unsupported 12-bit JPEG: expected 1 component (grayscale), got " +
+        std::to_string(cinfo.num_components));
+    }
     // Decode as single-component grayscale. This is a 12-bit-per-sample
     // codec: each output value is a 16-bit-wide JSAMPLE (holding 0..4095),
     // not an 8-bit RGBA quad. Previously this forced a 4-samples-per-pixel
