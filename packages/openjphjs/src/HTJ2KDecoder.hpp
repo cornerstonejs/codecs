@@ -3,8 +3,10 @@
 
 #pragma once
 
+#include <cstdint>
 #include <exception>
 #include <memory>
+#include <stdexcept>
 #include <limits.h>
 
 #include <ojph_arch.h>
@@ -21,6 +23,22 @@
 #include "FrameInfo.hpp"
 #include "Point.hpp"
 #include "Size.hpp"
+
+/// <summary>
+/// Computes width * height * components * bytesPerPixel while guarding
+/// against 32-bit size_t overflow on the wasm32 target and rejecting
+/// unreasonably large decoded buffer sizes.
+/// </summary>
+static inline size_t checkedDecodedSize(uint64_t width, uint64_t height, uint64_t components, uint64_t bytesPerPixel) {
+  const uint64_t kMaxBytes = 512ull * 1024ull * 1024ull; // 512 MiB
+  uint64_t total = width * height;
+  total *= components;
+  total *= bytesPerPixel;
+  if (total == 0 || total > kMaxBytes) {
+    throw std::runtime_error("decoded frame size out of range");
+  }
+  return static_cast<size_t>(total);
+}
 
 /// <summary>
 /// JavaScript API for decoding HTJ2K bistreams with OpenJPH
@@ -314,7 +332,7 @@ private:
     Size sizeAtDecompositionLevel = calculateSizeAtDecompositionLevel(decompositionLevel);
     int resolutionLevel = numDecompositions_ - decompositionLevel;
     const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
-    const size_t destinationSize = sizeAtDecompositionLevel.width * sizeAtDecompositionLevel.height * frameInfo.componentCount * bytesPerPixel;
+    const size_t destinationSize = checkedDecodedSize(sizeAtDecompositionLevel.width, sizeAtDecompositionLevel.height, frameInfo.componentCount, bytesPerPixel);
     pDecoded_->resize(destinationSize);
 
     // set the level to read to and reconstruction level to the specified decompositionLevel

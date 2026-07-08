@@ -107,6 +107,16 @@ describe.each(buildVariants)("openjpeg J2K decode robustness — $name", ({ path
     if (isBuilt) codec = await loadModule(path)
   })
 
+  it.skipIf(!isBuilt)("throws when the encoded buffer is smaller than 4 bytes", () => {
+    const decoder = new codec.J2KDecoder()
+    const tooShort = new Uint8Array([0x00, 0x01, 0x02])
+    decoder.getEncodedBuffer(tooShort.length).set(tooShort)
+
+    expect(() => decoder.decode()).toThrow()
+
+    decoder.delete()
+  })
+
   it.skipIf(!isBuilt)("does not crash the process on a malformed/garbage buffer", () => {
     const decoder = new codec.J2KDecoder()
     const garbage = new Uint8Array(64)

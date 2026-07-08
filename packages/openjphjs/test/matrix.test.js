@@ -23,8 +23,8 @@ const asBuffer = (ta) => Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)
 // Fixture provenance (tools/fixture-verification/gen/generate-fixtures.mjs):
 // all four are lossless HTJ2K encodes of committed sources (US1.RAW RGB
 // frame; deterministic CT2.RAW transforms from derive.mjs), so each test's
-// reference is re-derived from the source — a decoder regression on these
-// paths breaks byte equality.
+// reference is re-derived from the source — a decoder OR encoder regression
+// on these paths breaks byte equality.
 //
 // The color pair covers both isUsingColorTransform settings — the RCT path
 // was flagged "not been tested yet" in HTJ2KDecoder.hpp.
