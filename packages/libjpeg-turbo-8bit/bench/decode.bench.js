@@ -83,14 +83,21 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("libjpeg-turbo-8bit (wasm)", () => {
-  bench("instantiate+destroy JPEGDecoder", () => {
-    const d = new codec.JPEGDecoder()
-    d.delete()
+  // Batched x50: a single instantiate+destroy is ~60 µs, where fixed harness
+  // overhead and cache-model variation across runner CPUs dominate; the loop
+  // puts the body in the ms range so the codec work is the signal.
+  bench("instantiate+destroy JPEGDecoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const d = new codec.JPEGDecoder()
+      d.delete()
+    }
   })
 
-  bench("instantiate+destroy JPEGEncoder", () => {
-    const e = new codec.JPEGEncoder()
-    e.delete()
+  bench("instantiate+destroy JPEGEncoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const e = new codec.JPEGEncoder()
+      e.delete()
+    }
   })
 
   bench("decode jpeg400jfif.jpg (600x800x8bit) — cold", () => {

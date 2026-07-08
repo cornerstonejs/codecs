@@ -82,14 +82,21 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("openjpeg J2K (wasm)", () => {
-  bench("instantiate+destroy J2KDecoder", () => {
-    const d = new codec.J2KDecoder()
-    d.delete()
+  // Batched x50: a single instantiate+destroy is ~60 µs, where fixed harness
+  // overhead and cache-model variation across runner CPUs dominate; the loop
+  // puts the body in the ms range so the codec work is the signal.
+  bench("instantiate+destroy J2KDecoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const d = new codec.J2KDecoder()
+      d.delete()
+    }
   })
 
-  bench("instantiate+destroy J2KEncoder", () => {
-    const e = new codec.J2KEncoder()
-    e.delete()
+  bench("instantiate+destroy J2KEncoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const e = new codec.J2KEncoder()
+      e.delete()
+    }
   })
 
   bench("decode CT1.j2k (.90 lossless 5-3, 512x512x16bit) — cold", () => {
