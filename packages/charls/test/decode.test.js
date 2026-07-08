@@ -132,8 +132,11 @@ describe.each(encoderVariants)(
       encoder.setNearLossless(0)
       encoder.encode()
       const encoded = encoder.getEncodedBuffer()
-      expect(encoded.length).toBeGreaterThan(0)
-      expect(encoded.length).toBeLessThan(ct2Raw.length)
+      // Compression-quality regression bounds. Measured 115504 bytes on
+      // 2026-07-07 (emsdk 3.1.74): the ceiling catches an encoder that
+      // regresses compression ratio; the floor catches silent truncation.
+      expect(encoded.length).toBeGreaterThan(115504 * 0.5)
+      expect(encoded.length).toBeLessThan(115504 * 1.10)
 
       const decoder = new codec.JpegLSDecoder()
       decoder.getEncodedBuffer(encoded.length).set(encoded)

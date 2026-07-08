@@ -189,7 +189,10 @@ describe.each(encoderVariants)(
         encoder.getDecodedBuffer(frameInfo).set(ct1Raw)
         encoder.encode()
         const encoded = encoder.getEncodedBuffer()
-        expect(encoded.length).toBeGreaterThan(0)
+        // Measured 174404 bytes on 2026-07-07 (emsdk 3.1.74); ceiling =
+        // compression regression, floor = silent truncation.
+        expect(encoded.length).toBeGreaterThan(174404 * 0.5)
+        expect(encoded.length).toBeLessThan(174404 * 1.10)
 
         const decoder = new codec.J2KDecoder()
         decoder.getEncodedBuffer(encoded.length).set(encoded)

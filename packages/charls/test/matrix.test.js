@@ -79,6 +79,35 @@ describe("charls JPEG-LS decode matrix — color and bit depths", () => {
     expect(out.equals(asBuffer(gray16uFromCT2(ct2)))).toBe(true)
   })
 
+  it.skipIf(!isBuilt)("near-lossless encode honors the spec error bound (maxAbsDiff <= NEAR)", () => {
+    // T.87 guarantees every reconstructed sample is within NEAR of the
+    // source — an exact spec bound, not a heuristic tolerance.
+    for (const near of [1, 2, 3]) {
+      const encoder = new codec.JpegLSEncoder()
+      encoder.getDecodedBuffer({ width: 512, height: 512, bitsPerSample: 16, componentCount: 1 }).set(ct2)
+      encoder.setNearLossless(near)
+      encoder.encode()
+      const encoded = Buffer.from(encoder.getEncodedBuffer())
+      encoder.delete()
+
+      const decoder = new codec.JpegLSDecoder()
+      decoder.getEncodedBuffer(encoded.length).set(encoded)
+      decoder.decode()
+      const out = Buffer.from(decoder.getDecodedBuffer())
+      decoder.delete()
+
+      const src16 = new Int16Array(ct2.buffer, ct2.byteOffset, ct2.length / 2)
+      const out16 = new Int16Array(out.buffer, out.byteOffset, out.length / 2)
+      let maxAbsDiff = 0
+      for (let i = 0; i < src16.length; i++) {
+        const diff = Math.abs(out16[i] - src16[i])
+        if (diff > maxAbsDiff) maxAbsDiff = diff
+      }
+      expect(maxAbsDiff).toBeLessThanOrEqual(near)
+      expect(maxAbsDiff).toBeGreaterThan(0) // actually lossy, not accidentally lossless
+    }
+  })
+
   it.skipIf(!isBuilt)("decodes the shipped 12-bit SC1 fixture to the pinned pixels", () => {
     const { frameInfo, out } = decode("SC1.JLS")
     expect(frameInfo.width).toBe(2048)

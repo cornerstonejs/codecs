@@ -138,8 +138,10 @@ describe.each(buildVariants)(
 
       encoder.encode()
       const encoded = encoder.getEncodedBuffer()
-      expect(encoded.length).toBeGreaterThan(0)
-      expect(encoded.length).toBeLessThan(jpeg400Raw.length)
+      // Measured 63975 bytes at the default quality (95) on 2026-07-07;
+      // ceiling = compression regression, floor = silent truncation.
+      expect(encoded.length).toBeGreaterThan(63975 * 0.5)
+      expect(encoded.length).toBeLessThan(63975 * 1.10)
 
       const decoder = new codec.JPEGDecoder()
       const inBuffer = decoder.getEncodedBuffer(encoded.length)
@@ -168,6 +170,16 @@ describe.each(buildVariants)(
       }
       expect(maxAbsDiff).toBeLessThanOrEqual(10)
       expect(totalAbsDiff / jpeg400Raw.length).toBeLessThanOrEqual(1)
+
+      // PSNR floor: measured 53.6 dB at default quality on 2026-07-07. A
+      // broken DCT/quantization path lands tens of dB below this.
+      let sumSq = 0
+      for (let i = 0; i < jpeg400Raw.length; i++) {
+        const diff = roundTripDecoded[i] - jpeg400Raw[i]
+        sumSq += diff * diff
+      }
+      const psnr = 10 * Math.log10((255 * 255) / (sumSq / jpeg400Raw.length))
+      expect(psnr).toBeGreaterThan(48)
 
       decoder.delete()
       encoder.delete()
