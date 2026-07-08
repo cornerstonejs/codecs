@@ -16,9 +16,10 @@ function swap32(val) {
  * Decodes the provided pixelData and sets the `pixelData` property
  * of the imageFrame object to the decoded representation.
  *
- * Set pixelData will be `Uint16Array` if `pixelRepresentation` is 0,
- * otherwise it will be an `Int16Array`. 32-bit data is byte-swapped
- * into a `Float32Array`, mirroring the little-endian package.
+ * 16-bit and 32-bit data are byte-swapped and become unsigned
+ * (`pixelRepresentation` 0) or signed (`pixelRepresentation` 1) integer
+ * arrays. 32-bit data with no `pixelRepresentation` is treated as float
+ * (e.g. FloatPixelData), mirroring the little-endian package.
  *
  * @param {object} imageFrame
  * @param {number} imageFrame.bitsAllocated - 32, 16, 8 or 1
@@ -49,24 +50,41 @@ function decode(imageFrame, pixelData) {
       imageFrame.pixelData[i] = swap16(imageFrame.pixelData[i]);
     }
   } else if (imageFrame.bitsAllocated === 8 || imageFrame.bitsAllocated === 1) {
+    // 1-bit data must already be extracted per frame by the caller:
+    // multi-frame 1-bit pixel data is bit-packed across frame boundaries,
+    // so frame extraction cannot happen at this level
     imageFrame.pixelData = pixelData;
   } else if (imageFrame.bitsAllocated === 32) {
     let arrayBuffer = pixelData.buffer;
 
     let offset = pixelData.byteOffset;
     const length = pixelData.length;
-    // Float32Array views must be 4-byte aligned; shift unaligned data
+    // pixelData is typically a view into the full DICOM P10 buffer, so its
+    // byteOffset is even (DICOM guarantees even lengths) but not necessarily
+    // 4-byte aligned; 32-bit typed-array views require 4-byte alignment,
+    // so copy the bytes to a fresh, aligned buffer when needed
     if (offset % 4) {
       arrayBuffer = arrayBuffer.slice(offset);
       offset = 0;
     }
 
+    // The swap is a pure byte permutation, so it is done through a
+    // Uint32Array view regardless of how the result is interpreted below
     const swapView = new Uint32Array(arrayBuffer, offset, length / 4);
     for (let i = 0; i < swapView.length; i++) {
       swapView[i] = swap32(swapView[i]);
     }
 
-    imageFrame.pixelData = new Float32Array(arrayBuffer, offset, length / 4);
+    // 32-bit PixelData is integer data (signed per pixelRepresentation);
+    // it is only float when pixelRepresentation is absent (e.g. the
+    // FloatPixelData element), matching cornerstone3D's decodeLittleEndian
+    if (imageFrame.pixelRepresentation === 0) {
+      imageFrame.pixelData = swapView;
+    } else if (imageFrame.pixelRepresentation === 1) {
+      imageFrame.pixelData = new Int32Array(arrayBuffer, offset, length / 4);
+    } else {
+      imageFrame.pixelData = new Float32Array(arrayBuffer, offset, length / 4);
+    }
   }
 
   return imageFrame;

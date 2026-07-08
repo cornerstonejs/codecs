@@ -41,7 +41,29 @@ describe("little-endian decode", () => {
     expect(imageFrame.pixelData).toBe(pixelData)
   })
 
-  it("decodes 32-bit pixel data into Float32Array", () => {
+  it("decodes 32-bit unsigned pixel data into Uint32Array", () => {
+    const source = new Uint32Array([1, 2, 0xffffffff])
+    const pixelData = new Uint8Array(source.buffer)
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 0 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Uint32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([1, 2, 0xffffffff])
+  })
+
+  it("decodes 32-bit signed pixel data into Int32Array", () => {
+    const source = new Int32Array([-1, 2, -100000])
+    const pixelData = new Uint8Array(source.buffer)
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 1 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Int32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([-1, 2, -100000])
+  })
+
+  it("decodes 32-bit pixel data into Float32Array when pixelRepresentation is absent", () => {
     const source = new Float32Array([1.5, -2.25, 3.75])
     const pixelData = new Uint8Array(source.buffer)
     const imageFrame = { bitsAllocated: 32 }

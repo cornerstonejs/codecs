@@ -52,9 +52,35 @@ describe("big-endian decode", () => {
     expect(imageFrame.pixelData).toBe(pixelData)
   })
 
-  it("byte-swaps 32-bit pixel data into Float32Array", () => {
-    const source = new Float32Array([1.5, -2.25, 3.75])
+  it("byte-swaps 32-bit unsigned pixel data into Uint32Array", () => {
+    const source = [1, 2, 0xdeadbeef]
     // Build the big-endian byte stream for those values
+    const bigEndianBytes = new Uint8Array(source.length * 4)
+    const view = new DataView(bigEndianBytes.buffer)
+    source.forEach((value, i) => view.setUint32(i * 4, value, false))
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 0 }
+
+    decode(imageFrame, bigEndianBytes)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Uint32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([1, 2, 0xdeadbeef])
+  })
+
+  it("byte-swaps 32-bit signed pixel data into Int32Array", () => {
+    const source = [-1, 2, -100000]
+    const bigEndianBytes = new Uint8Array(source.length * 4)
+    const view = new DataView(bigEndianBytes.buffer)
+    source.forEach((value, i) => view.setInt32(i * 4, value, false))
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 1 }
+
+    decode(imageFrame, bigEndianBytes)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Int32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([-1, 2, -100000])
+  })
+
+  it("byte-swaps 32-bit pixel data into Float32Array when pixelRepresentation is absent", () => {
+    const source = new Float32Array([1.5, -2.25, 3.75])
     const bigEndianBytes = new Uint8Array(source.length * 4)
     const view = new DataView(bigEndianBytes.buffer)
     source.forEach((value, i) => view.setFloat32(i * 4, value, false))
