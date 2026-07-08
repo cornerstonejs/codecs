@@ -269,6 +269,60 @@ jobs:
       - name: Check dist sizes against baseline
         run: node tools/dist-size/check.js --artifacts tmp
 
+  browser-smoke:
+    # Decodes every build variant in headless Chromium and hash-compares
+    # against the RAW references — catches emscripten glue regressions that
+    # only manifest in browsers (wasm URL resolution, MIME/streaming
+    # compile, fetch loading), which is where emsdk bumps break first.
+    # Advisory while it beds in; promote to blocking once proven stable.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    continue-on-error: true
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+      - name: Cache Playwright chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+      - name: Install chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright-core install chromium
+      - name: Browser smoke decode
+        run: node tools/browser-smoke/run.js
+
   codspeed-bench:
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
