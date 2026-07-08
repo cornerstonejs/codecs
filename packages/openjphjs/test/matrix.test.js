@@ -23,11 +23,13 @@ const asBuffer = (ta) => Buffer.from(ta.buffer, ta.byteOffset, ta.byteLength)
 // Fixture provenance (tools/fixture-verification/gen/generate-fixtures.mjs):
 // all four are lossless HTJ2K encodes of committed sources (US1.RAW RGB
 // frame; deterministic CT2.RAW transforms from derive.mjs), so each test's
-// reference is re-derived from the source — a decoder regression on these
-// paths breaks byte equality.
+// reference is re-derived from the source — a decoder OR encoder regression
+// on these paths breaks byte equality.
 //
 // The color pair covers both isUsingColorTransform settings — the RCT path
-// was flagged "not been tested yet" in HTJ2KDecoder.hpp.
+// was flagged "not been tested yet" in HTJ2KDecoder.hpp. The 12-bit case
+// pins the row-stride fix in HTJ2KEncoder.hpp (bitsPerSample/8 truncated to
+// 1 for 9..15-bit samples, corrupting every row after the first).
 describe("openjphjs HTJ2K decode matrix — color and bit depths", () => {
   let codec
   const us1 = readFileSync(resolve(__dirname, "../../openjpeg/test/fixtures/raw/US1.RAW"))
@@ -71,9 +73,30 @@ describe("openjphjs HTJ2K decode matrix — color and bit depths", () => {
     expect(out.equals(asBuffer(gray8FromCT2(ct2)))).toBe(true)
   })
 
-  it.skipIf(!isBuilt)("decodes 12-bit grayscale losslessly", () => {
+  it.skipIf(!isBuilt)("decodes 12-bit grayscale losslessly (encoder stride regression case)", () => {
     const { frameInfo, out } = decode("CT2-gray12.j2c")
     expect(frameInfo.bitsPerSample).toBe(12)
     expect(out.equals(asBuffer(gray12FromCT2(ct2)))).toBe(true)
+  })
+
+  it.skipIf(!isBuilt)("round-trips 12-bit through the encoder (pins the stride fix)", () => {
+    // Re-encode the 12-bit source in-process: proves the ENCODER writes
+    // every row from the right offset, independent of the committed fixture.
+    const src = gray12FromCT2(ct2)
+    const encoder = new codec.HTJ2KEncoder()
+    encoder
+      .getDecodedBuffer({ width: 512, height: 512, bitsPerSample: 12, componentCount: 1, isSigned: false, isUsingColorTransform: false })
+      .set(new Uint8Array(src.buffer, 0, src.byteLength))
+    encoder.encode()
+    const encoded = Buffer.from(encoder.getEncodedBuffer())
+    encoder.delete()
+
+    const decoder = new codec.HTJ2KDecoder()
+    decoder.getEncodedBuffer(encoded.length).set(encoded)
+    decoder.decode()
+    const out = Buffer.from(decoder.getDecodedBuffer())
+    decoder.delete()
+
+    expect(out.equals(asBuffer(src))).toBe(true)
   })
 })
