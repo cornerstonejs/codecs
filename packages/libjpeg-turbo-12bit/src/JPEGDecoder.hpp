@@ -3,9 +3,7 @@
 
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <stdexcept>
 #include <vector>
 // #include "config.h"
 #include "jpeglib.h"
@@ -16,7 +14,6 @@ using namespace std;
 #include <emscripten/val.h>
 
 thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("Uint8ClampedArray");
-thread_local const emscripten::val Uint16Array = emscripten::val::global("Uint16Array");
 
 #endif
 
@@ -57,16 +54,13 @@ class JPEGDecoder {
   /// holds the decoded pixel data
   /// </summary>
   emscripten::val getDecodedBuffer() {
-    // decoded_ holds one 12-bit grayscale sample per pixel in an int16_t
-    // (values 0..4095). Copy it into a JS-owned Uint16Array so the result is
-    // detached from WASM memory (see https://web.dev/webassembly-memory-debugging/).
-    // NOTE: must be a 16-bit typed array — wrapping in Uint8ClampedArray would
-    // run every sample through ToUint8Clamp and flatten anything above 255,
-    // destroying the 12-bit output.
-    emscripten::val js_result = Uint16Array.new_(emscripten::typed_memory_view(
+    // Create a JavaScript-friendly result from the memory view
+    // instead of relying on the consumer to detach it from WASM memory
+    // See https://web.dev/webassembly-memory-debugging/
+    emscripten::val js_result = Uint8ClampedArray.new_(emscripten::typed_memory_view(
       decoded_.size(), decoded_.data()
     ));
-
+    
     return js_result;
   }
 #else
@@ -125,55 +119,28 @@ class JPEGDecoder {
     jpeg_mem_src(&cinfo, encoded_.data(), encoded_.size());
     // Read file header, set default decompression parameters
     jpeg_read_header(&cinfo, TRUE);
-    // Decode as single-component grayscale. This is a 12-bit-per-sample
-    // codec: each output value is a 16-bit-wide JSAMPLE (holding 0..4095),
-    // not an 8-bit RGBA quad. Previously this forced a 4-samples-per-pixel
-    // RGBA colorspace while the output buffer below was sized for 1
-    // sample/pixel, causing libjpeg to write ~2x past the end of the
-    // allocated buffer (heap overflow).
-    cinfo.out_color_space = JCS_GRAYSCALE;
+    // Force RGBA decoding, even for grayscale images
+    cinfo.out_color_space = JCS_EXT_RGBA;
     jpeg_start_decompress(&cinfo);
 
 
     frameInfo_.width = cinfo.output_width;
     frameInfo_.height = cinfo.output_height;
-    frameInfo_.bitsPerSample = 12;
-    frameInfo_.componentCount = 1;
+    frameInfo_.bitsPerSample = 8;
+    frameInfo_.componentCount = 1; //inColorspace == 2 ? 1 : 3;
+    
+    // Prepare output buffer
+      // int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
 
-    // Prepare output buffer. One JSAMPLE (short, holding 0..4095) per pixel
-    // since output is single-component grayscale.
-    const int pixelFormat = 1;
+    // const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
+    int pixelFormat = 1;
+    size_t output_size = cinfo.output_width * cinfo.output_height * pixelFormat;
 
-    // Compute the output size (in samples) using a checked 64-bit multiply
-    // capped at 512 MiB so a malformed/adversarial header cannot overflow
-    // the size computation or force an unbounded allocation.
-    constexpr uint64_t kMaxOutputSamples = 512ull * 1024ull * 1024ull; // 512 MiB worth of samples
-    const uint64_t width64 = static_cast<uint64_t>(cinfo.output_width);
-    const uint64_t height64 = static_cast<uint64_t>(cinfo.output_height);
-    const uint64_t pixelFormat64 = static_cast<uint64_t>(pixelFormat);
-
-    if (width64 == 0 || height64 == 0) {
-      jpeg_destroy_decompress(&cinfo);
-      throw std::runtime_error("Invalid JPEG dimensions (zero width or height)");
-    }
-
-    uint64_t output_size64 = width64 * height64;
-    if (output_size64 / width64 != height64) {
-      // width * height overflowed
-      jpeg_destroy_decompress(&cinfo);
-      throw std::runtime_error("Overflow computing decoded buffer size");
-    }
-    output_size64 *= pixelFormat64;
-    if (output_size64 == 0 || output_size64 > kMaxOutputSamples) {
-      jpeg_destroy_decompress(&cinfo);
-      throw std::runtime_error("Decoded buffer size exceeds allowed maximum or is invalid");
-    }
-
-    const size_t output_size = static_cast<size_t>(output_size64);
+    // std::vector<uint8_t> output_buffer(output_size);
 
     decoded_.resize(output_size);
 
-    const size_t stride = static_cast<size_t>(cinfo.output_width) * static_cast<size_t>(pixelFormat);
+    auto stride = cinfo.output_width * pixelFormat;
 
     // Process data
     while (cinfo.output_scanline < cinfo.output_height) {
@@ -181,6 +148,10 @@ class JPEGDecoder {
       (void)jpeg_read_scanlines(&cinfo, &output_data, 1);
     }
     jpeg_finish_decompress(&cinfo);
+
+    // Step 7: release JPEG compression object
+
+    // auto data = Uint8ClampedArray.new_(typed_memory_view(output_size, &output_buffer[0]));
 
     // This is an important step since it will release a good deal of memory.
     jpeg_destroy_decompress(&cinfo);

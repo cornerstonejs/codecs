@@ -3,9 +3,7 @@
 
 #pragma once
 
-#include <cstdint>
 #include <memory>
-#include <stdexcept>
 #include <turbojpeg.h>
 #include <vector>
 
@@ -17,22 +15,6 @@ thread_local const emscripten::val Uint8ClampedArray = emscripten::val::global("
 #endif
 
 #include "FrameInfo.hpp"
-
-/// <summary>
-/// Computes width * height * components * bytesPerPixel while guarding
-/// against 32-bit size_t overflow on the wasm32 target and rejecting
-/// unreasonably large decoded buffer sizes.
-/// </summary>
-static inline size_t checkedDecodedSize(uint64_t width, uint64_t height, uint64_t components, uint64_t bytesPerPixel) {
-  const uint64_t kMaxBytes = 512ull * 1024ull * 1024ull; // 512 MiB
-  uint64_t total = width * height;
-  total *= components;
-  total *= bytesPerPixel;
-  if (total == 0 || total > kMaxBytes) {
-    throw std::runtime_error("decoded frame size out of range");
-  }
-  return static_cast<size_t>(total);
-}
 
 /// <summary>
 /// JavaScript API for decoding JPEG bistreams with libjpeg-turbo
@@ -128,7 +110,7 @@ class JPEGDecoder {
 
     int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
 
-    const size_t destinationSize = checkedDecodedSize(frameInfo_.width, frameInfo_.height, 1, tjPixelSize[pixelFormat]);
+    const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
     decoded_.resize(destinationSize);
 
     if (tjDecompress2(tjInstance, encoded_.data(), encoded_.size(), decoded_.data(), 
