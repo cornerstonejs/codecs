@@ -10,8 +10,12 @@ export default defineConfig({
     // calling onTaskUpdate" AFTER their benches complete and upload. Ignore
     // that exit-code noise in simulation only; walltime and test runs stay
     // strict.
+    // (CODSPEED_ENV is set whenever the CodSpeed runner is active; the
+    // mode string is "instrumentation" on older runners and "simulation"
+    // on newer ones, so match anything except walltime.)
     dangerouslyIgnoreUnhandledErrors:
-      process.env.CODSPEED_RUNNER_MODE === "simulation",
+      process.env.CODSPEED_ENV !== undefined &&
+      process.env.CODSPEED_RUNNER_MODE !== "walltime",
     name: "charls",
     include: ["test/**/*.test.js"],
     benchmark: {
