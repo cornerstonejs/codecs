@@ -105,11 +105,15 @@ for (const [pkg, files] of Object.entries(baseline)) {
     for (const measure of ["raw", "gzip"]) {
       const allowed = base[measure] + Math.max(base[measure] * PCT_TOLERANCE, ABS_TOLERANCE);
       const delta = now[measure] - base[measure];
-      const line = `${pkg}/${file} [${measure}] ${kib(base[measure])} -> ${kib(now[measure])} (${delta >= 0 ? "+" : ""}${pct(now[measure], base[measure])})`;
+      const change =
+        delta === 0
+          ? "identical"
+          : `${delta >= 0 ? "+" : ""}${pct(now[measure], base[measure])}`;
+      const line = `${pkg}/${file} [${measure}] ${kib(base[measure])} -> ${kib(now[measure])} (${change})`;
       if (now[measure] > allowed) {
         report.push(`FAIL ${line} — exceeds tolerance. If intentional, run 'node tools/dist-size/check.js --update' after a CI-equivalent build and commit baseline.json.`);
         failures++;
-      } else if (delta !== 0) {
+      } else {
         report.push(`  ok ${line}`);
       }
     }
@@ -128,6 +132,6 @@ for (const pkg of Object.keys(current)) {
   }
 }
 
-console.log(report.length ? report.join("\n") : "all tracked artifacts byte-identical to baseline");
+console.log(report.join("\n"));
 console.log(`\n${failures === 0 ? "PASS" : "FAIL"}: ${failures} size regression(s)`);
 process.exit(failures ? 1 : 0);
