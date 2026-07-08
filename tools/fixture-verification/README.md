@@ -47,6 +47,42 @@ to the same bytes.
   implementation would legitimately differ by +-1. If libjpeg-turbo is ever
   rebuilt with SIMD enabled, re-check rather than assume.
 
+## Derived color / bit-depth fixtures (plans 034/035)
+
+`gen/generate-fixtures.mjs` produces the color and bit-depth fixtures from
+committed sources (US1.RAW RGB frame, CT2.RAW CT slice) through the wasm
+encoders; `gen/derive.mjs` holds the deterministic transforms the tests use
+to re-derive lossless references. Verification performed 2026-07-07:
+
+- charls US1-color-ilv-sample.jls: byte-identical decode by
+  pylibjpeg-libjpeg (independent JPEG-LS implementation).
+- charls SC1.JLS (shipped, 12-bit): pylibjpeg-libjpeg agrees on all
+  5,093,376 samples; the same image's SC1.j2c (openjphjs) and SC1.j2k
+  (openjpeg) decodes are byte-identical — three codecs, one pixel truth.
+- libjpeg-turbo-8bit US1-color-420 golden: byte-identical to DCMTK
+  dcmdjpeg (YBR_FULL_422 -> RGB), 0 of 921600 bytes differ.
+- libjpeg-turbo-8bit jpeg400jfif-new (progressive SOF2) golden:
+  byte-identical to Pillow's independently built libjpeg.
+- HTJ2K / J2K / RLE color and gray fixtures are lossless: the tests compare
+  against the source bytes themselves.
+
+Two real bugs were found while creating these:
+- `HTJ2KEncoder.hpp` computed the row stride as `bitsPerSample / 8`
+  (truncating to 1 for 9..15-bit samples), corrupting every row after the
+  first for 12-bit encodes.
+- dicom-codec's `adaptImageInfo` dropped `planarConfiguration`, making the
+  RLE plane-sequential path (`decode8Planar`) unreachable via the public
+  API.
+
+## Known limitation of the from-scratch JPEG-LS decoder
+
+`jls.js` disagrees with CharLS/pylibjpeg on `SC1.JLS` (12-bit, run-mode
+heavy) — first divergence at sample (y=32, x=716) in a run-interruption
+context, with CharLS and pylibjpeg agreeing with each other. The bug is in
+`jls.js`, not the fixture; the CT-profile checks it performs in run-all.js
+remain valid (independently confirmed by DCMTK/RLE cross-checks). Fixing
+the 12-bit run-interruption path here is a TODO.
+
 ## Bug found by this verification
 
 `jpeg-lossless-decoder-js` (used by dicom-codec for transfer syntaxes

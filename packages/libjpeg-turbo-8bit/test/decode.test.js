@@ -9,6 +9,18 @@ const fixturesDir = resolve(__dirname, "fixtures")
 
 const jpeg400 = readFileSync(resolve(fixturesDir, "jpeg/jpeg400jfif.jpg"))
 const jpeg400Raw = readFileSync(resolve(fixturesDir, "raw/jpeg400jfif.raw"))
+// Progressive (SOF2) variant of the same image — a distinct libjpeg decode
+// module (jdcoefct/progressive refinement) not exercised by the baseline
+// fixture. Golden verified bit-identical against Pillow's independently
+// built libjpeg on 2026-07-07; asm.js and wasm variants agree byte-exact.
+const jpegProgressive = readFileSync(resolve(fixturesDir, "jpeg/jpeg400jfif-new.jpg"))
+const jpegProgressiveRaw = readFileSync(resolve(fixturesDir, "raw/jpeg400jfif-new.raw"))
+// Color 4:2:0 YCbCr baseline JPEG encoded from the US1 RGB ultrasound frame
+// (tools/fixture-verification/gen/generate-fixtures.mjs). Decoded golden
+// verified bit-identical against DCMTK dcmdjpeg (0 of 921600 bytes differ,
+// 2026-07-07) — pins the YCbCr->RGB conversion + chroma upsampling path.
+const jpegColor = readFileSync(resolve(fixturesDir, "jpeg/US1-color-420.jpg"))
+const jpegColorRaw = readFileSync(resolve(fixturesDir, "raw/US1-color-420.raw"))
 
 async function loadModule(modulePath) {
   const mod = await import(modulePath)
@@ -53,6 +65,39 @@ describe.each(buildVariants)("libjpeg-turbo-8bit decode — $name", ({ path, dis
     // Baseline JPEG decoding is deterministic: the decoded pixels must match
     // the RAW reference exactly (identical across asm.js and wasm variants).
     expect(Buffer.from(decoded).equals(jpeg400Raw)).toBe(true)
+
+    decoder.delete()
+  })
+
+  it.skipIf(!isBuilt)("decodes a progressive (SOF2) JPEG to bytes matching the RAW reference", () => {
+    const decoder = new codec.JPEGDecoder()
+    decoder.getEncodedBuffer(jpegProgressive.length).set(jpegProgressive)
+    decoder.decode()
+
+    const frameInfo = decoder.getFrameInfo()
+    expect(frameInfo.width).toBe(600)
+    expect(frameInfo.height).toBe(800)
+    expect(frameInfo.componentCount).toBe(1)
+
+    const decoded = decoder.getDecodedBuffer()
+    expect(Buffer.from(decoded).equals(jpegProgressiveRaw)).toBe(true)
+
+    decoder.delete()
+  })
+
+  it.skipIf(!isBuilt)("decodes a color 4:2:0 YCbCr JPEG to interleaved RGB matching the DCMTK-verified reference", () => {
+    const decoder = new codec.JPEGDecoder()
+    decoder.getEncodedBuffer(jpegColor.length).set(jpegColor)
+    decoder.decode()
+
+    const frameInfo = decoder.getFrameInfo()
+    expect(frameInfo.width).toBe(640)
+    expect(frameInfo.height).toBe(480)
+    expect(frameInfo.componentCount).toBe(3)
+
+    const decoded = decoder.getDecodedBuffer()
+    expect(decoded.length).toBe(640 * 480 * 3)
+    expect(Buffer.from(decoded).equals(jpegColorRaw)).toBe(true)
 
     decoder.delete()
   })
