@@ -4,6 +4,16 @@ name: PR checks
 # the slow part), then a single test job runs the whole vitest workspace
 # against the built dists, and CodSpeed benches the packages the PR touched.
 #
+# Toolchain bumps (emsdk image tag below, root package.json/yarn.lock, this
+# workflow itself) force the FULL pipeline including a full bench sweep.
+# Expect such a PR to also need:
+#   1. tools/dist-size/baseline.json regenerated from that PR's own CI
+#      artifacts: gh run download <run-id> --pattern 'dist-*' -d tmp/ then
+#      node tools/dist-size/check.js --update --artifacts tmp/ (commit diff)
+#   2. possibly regenerated lossy decode goldens (openjpeg .91, charls .81,
+#      openjphjs corpus SHAs) IF the lossless tests still pass — see
+#      tools/fixture-verification/README.md before touching any golden.
+#
 # CodSpeed's first-class GHA integration replaces the manual codspeed-bench
 # job from CircleCI: `CodSpeedHQ/action` installs valgrind, sets up
 # instrumentation, and uploads results in one step.
@@ -82,6 +92,31 @@ jobs:
 
           git fetch --no-tags --depth=50 origin main || true
           BASE=$(git merge-base origin/main HEAD || echo "origin/main")
+
+          # Toolchain files affect how EVERY package is built, tested or
+          # measured. A change here (e.g. an emsdk bump in this workflow, or
+          # a vitest upgrade in the root lockfile) must run the full
+          # pipeline with a full bench sweep — previously such PRs matched
+          # no package path and skipped CI entirely.
+          TOOLCHAIN_PATHS=(
+            ".github/workflows/"
+            "package.json"
+            "yarn.lock"
+            "vitest.workspace.mjs"
+            "babel.config.json"
+            "lerna.json"
+            "tools/dist-size/"
+          )
+          for p in "${TOOLCHAIN_PATHS[@]}"; do
+            if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
+              echo "Toolchain change detected in $p: forcing all packages (build/test/bench)"
+              echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "any=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
           changed=()
           for pkg in "${ALL[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "packages/$pkg/"; then
