@@ -6,8 +6,6 @@
 #include <exception>
 #include <memory>
 #include <limits.h>
-#include <stdexcept>
-#include <cstdint>
 
 #include "openjpeg.h"
 #include "format_defs.h"
@@ -16,21 +14,6 @@
 #include <stdlib.h>
 #define EMSCRIPTEN_API __attribute__((used))
 #define J2K_MAGIC_NUMBER 0x51FF4FFF
-
-/// <summary>
-/// Computes width * height * components * bytesPerPixel with overflow
-/// checking, throwing if the result is zero or exceeds a sane upper bound.
-/// </summary>
-static inline size_t checkedDecodedSize(uint64_t width, uint64_t height, uint64_t components, uint64_t bytesPerPixel) {
-  const uint64_t kMaxBytes = 512ull * 1024ull * 1024ull; // 512 MiB
-  uint64_t total = width * height;
-  total *= components;
-  total *= bytesPerPixel;
-  if (total == 0 || total > kMaxBytes) {
-    throw std::runtime_error("decoded frame size out of range");
-  }
-  return static_cast<size_t>(total);
-}
 
 #ifdef __EMSCRIPTEN__
 #include <emscripten/val.h>
@@ -765,9 +748,6 @@ class J2KDecoder {
       // NOTE: DICOM only supports OPJ_CODEC_J2K, but not everyone follows this
       // and some DICOM images will have JP2 encoded bitstreams
       // http://dicom.nema.org/medical/dicom/2017e/output/chtml/part05/sect_A.4.4.html
-      if (encoded_.size() < 4) {
-        throw std::runtime_error("encoded J2K buffer too small");
-      }
       if( ((OPJ_INT32*)encoded_.data())[0] == J2K_MAGIC_NUMBER ){
           l_codec = opj_create_decompress(OPJ_CODEC_J2K);
       }else{
@@ -835,12 +815,6 @@ class J2KDecoder {
       frameInfo_.width = image->x1;
       frameInfo_.height = image->y1;
       frameInfo_.componentCount = image->numcomps;
-      if (frameInfo_.componentCount != 1 && frameInfo_.componentCount != 3) {
-        opj_destroy_codec(l_codec);
-        opj_stream_destroy(l_stream);
-        opj_image_destroy(image);
-        throw std::runtime_error("unsupported J2K component count");
-      }
       frameInfo_.isSigned = image->comps[0].sgnd;
       frameInfo_.bitsPerSample = image->comps[0].prec;
 
@@ -865,7 +839,7 @@ class J2KDecoder {
       // allocate destination buffer
       Size sizeAtDecompositionLevel = calculateSizeAtDecompositionLevel(decompositionLevel);
       const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
-      const size_t destinationSize = checkedDecodedSize(sizeAtDecompositionLevel.width, sizeAtDecompositionLevel.height, frameInfo_.componentCount, bytesPerPixel);
+      const size_t destinationSize = sizeAtDecompositionLevel.width * sizeAtDecompositionLevel.height * frameInfo_.componentCount * bytesPerPixel;
       decoded_.resize(destinationSize);
 
       // Convert from int32 to native size

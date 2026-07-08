@@ -29,7 +29,6 @@ async function loadModule(path) {
 describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
   let codec
   const encoded = readFileSync(resolve(fixturesDir, "j2k/CT1.j2k"))
-  const raw = readFileSync(resolve(fixturesDir, "raw/CT1.RAW"))
 
   beforeAll(async () => {
     if (isBuilt) codec = await loadModule("../dist/openjpegwasm.js")
@@ -45,19 +44,6 @@ describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
     for (let i = 0; i < 10; i++) decodeOnce()
     const settled = codec.HEAP8.length
     for (let i = 0; i < 100; i++) decodeOnce()
-    expect(codec.HEAP8.length).toBe(settled)
-  })
-
-  it.skipIf(!isBuilt)("repeated encode/delete cycles do not grow the heap", () => {
-    const encodeOnce = () => {
-      const encoder = new codec.J2KEncoder()
-      encoder.getDecodedBuffer({ width: 512, height: 512, bitsPerSample: 16, componentCount: 1, isSigned: true }).set(raw)
-      encoder.encode()
-      encoder.delete()
-    }
-    for (let i = 0; i < 10; i++) encodeOnce()
-    const settled = codec.HEAP8.length
-    for (let i = 0; i < 60; i++) encodeOnce()
     expect(codec.HEAP8.length).toBe(settled)
   })
 

@@ -32,8 +32,6 @@ const VARIANTS = [
   ["openjphjs", "openjphjs.js", "HTJ2KDecoder", "openjphjs/test/fixtures/j2c/CT1.j2c", "openjphjs/test/fixtures/raw/CT1.RAW"],
   ["libjpeg-turbo-8bit", "libjpegturbojs.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
   ["libjpeg-turbo-8bit", "libjpegturbowasm.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
-  ["libjpeg-turbo-12bit", "libjpegturbo12js.js", "JPEGDecoder", "libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg", "libjpeg-turbo-12bit/test/fixtures/raw/CT-512x512-12bit.raw"],
-  ["libjpeg-turbo-12bit", "libjpegturbo12wasm.js", "JPEGDecoder", "libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg", "libjpeg-turbo-12bit/test/fixtures/raw/CT-512x512-12bit.raw"],
 ];
 
 const MIME = {

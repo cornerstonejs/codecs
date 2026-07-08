@@ -82,25 +82,13 @@ function getPixelData(imageFrame, imageInfo) {
   } else if (bitsAllocated === 8 || bitsAllocated === 1) {
     result = imageFrame;
   } else if (bitsAllocated === 32) {
-    // imageFrame is typically a view into the full DICOM P10 buffer, so its
-    // byteOffset is even (DICOM guarantees even lengths) but not necessarily
-    // 4-byte aligned; 32-bit typed-array views require 4-byte alignment,
-    // so copy the bytes to a fresh, aligned buffer when needed
-    if (offset % 4) {
+    // if pixel data is not aligned on even boundary, shift it
+    if (offset % 2) {
       arrayBuffer = arrayBuffer.slice(offset);
       offset = 0;
     }
 
-    // 32-bit PixelData is integer data (signed per pixelRepresentation);
-    // it is only float when pixelRepresentation is absent (e.g. the
-    // FloatPixelData element), matching cornerstone3D's decodeLittleEndian
-    if (pixelRepresentation === 0) {
-      result = new Uint32Array(arrayBuffer, offset, length / 4);
-    } else if (pixelRepresentation === 1) {
-      result = new Int32Array(arrayBuffer, offset, length / 4);
-    } else {
-      result = new Float32Array(arrayBuffer, offset, length / 4);
-    }
+    result = new Float32Array(arrayBuffer, offset, length / 4);
   }
 
   return result;

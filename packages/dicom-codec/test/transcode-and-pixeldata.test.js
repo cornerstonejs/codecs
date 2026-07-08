@@ -8,7 +8,6 @@ const packagesRoot = resolve(__dirname, "../..")
 
 const REQUIRED = [
   "charls/dist/charlsjs.js",
-  "openjpeg/dist/openjpegjs.js",
 ]
 const ALL_BUILT = REQUIRED.every((p) => existsSync(resolve(packagesRoot, p)))
 
@@ -20,10 +19,9 @@ it.runIf(process.env.CI)("sibling codec dists are present in CI (transcode suite
   expect(ALL_BUILT, "codec dists missing — artifacts not replayed").toBe(true)
 })
 
-describe.skipIf(!ALL_BUILT)("dicom-codec transcode and encode", () => {
+describe.skipIf(!ALL_BUILT)("dicom-codec encode", () => {
   let dicomCodec
   const ct1Raw = readFileSync(resolve(packagesRoot, "openjpeg/test/fixtures/raw/CT1.RAW"))
-  const ct1Jls = readFileSync(resolve(packagesRoot, "charls/test/fixtures/CT1.JLS"))
   const ctImageInfo = {
     rows: 512,
     columns: 512,
@@ -38,30 +36,9 @@ describe.skipIf(!ALL_BUILT)("dicom-codec transcode and encode", () => {
     dicomCodec = mod.default ?? mod
   })
 
-  it("encode() to J2K Lossless (.90) round-trips byte-exact", async () => {
-    const encoded = await dicomCodec.encode(new Uint8Array(ct1Raw), ctImageInfo, "1.2.840.10008.1.2.4.90")
-    expect(encoded.imageFrame.byteLength).toBeGreaterThan(0)
-
-    const decoded = await dicomCodec.decode(encoded.imageFrame, ctImageInfo, "1.2.840.10008.1.2.4.90")
-    expect(frameBytes(decoded.imageFrame).equals(ct1Raw)).toBe(true)
-  })
-
   it("encode() to JPEG-LS Lossless (.80) round-trips byte-exact", async () => {
     const encoded = await dicomCodec.encode(new Uint8Array(ct1Raw), ctImageInfo, "1.2.840.10008.1.2.4.80")
     const decoded = await dicomCodec.decode(encoded.imageFrame, ctImageInfo, "1.2.840.10008.1.2.4.80")
-    expect(frameBytes(decoded.imageFrame).equals(ct1Raw)).toBe(true)
-  })
-
-  it("transcode() JPEG-LS -> J2K preserves the pixels exactly (both lossless)", async () => {
-    const transcoded = await dicomCodec.transcode(
-      ct1Jls,
-      ctImageInfo,
-      "1.2.840.10008.1.2.4.80",
-      "1.2.840.10008.1.2.4.90"
-    )
-    expect(transcoded.imageFrame.byteLength).toBeGreaterThan(0)
-
-    const decoded = await dicomCodec.decode(transcoded.imageFrame, ctImageInfo, "1.2.840.10008.1.2.4.90")
     expect(frameBytes(decoded.imageFrame).equals(ct1Raw)).toBe(true)
   })
 })

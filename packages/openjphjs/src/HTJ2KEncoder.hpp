@@ -268,11 +268,7 @@ public:
     codestream.write_headers(&encoded_);
 
     // Encode the image
-    // Round UP like getDecodedBuffer() does (line 52): bitsPerSample / 8
-    // truncates to 1 for 9..15-bit samples, halving the row stride so every
-    // row after the first was read from the wrong offset (found by the
-    // 12-bit round-trip test; 8- and 16-bit were unaffected).
-    const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
+    const size_t bytesPerPixel = frameInfo_.bitsPerSample / 8;
     ojph::ui32 next_comp;
     ojph::line_buf *cur_line = codestream.exchange(NULL, next_comp);
     siz = codestream.access_siz();
