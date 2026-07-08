@@ -59,7 +59,11 @@ let coldEnc
 let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
-  codec = await factory()
+  // Silence wasm stdout/stderr: HTJ2KDecoder's constructor prints a banner,
+  // and vitest's console interception (stack-trace task attribution +
+  // source-map mapping) would otherwise run inside the measured bench body,
+  // swamping the microsecond-scale instantiate+destroy benches.
+  codec = await factory({ print: () => {}, printErr: () => {} })
 
   // Cold instances: one per fixture, constructed but never decoded.
   coldDecCT1 = new codec.HTJ2KDecoder()

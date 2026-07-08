@@ -57,7 +57,9 @@ let coldEnc
 let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
-  codec = await factory()
+  // Silence wasm stdout/stderr so vitest's console interception never runs
+  // inside a measured bench body (see openjphjs bench for details).
+  codec = await factory({ print: () => {}, printErr: () => {} })
 
   // Cold instances: just construct, never decode/encode at module load.
   // The bench body will be the first call into the decoder/encoder.

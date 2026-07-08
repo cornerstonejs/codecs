@@ -25,7 +25,9 @@ let warmDecoder
 async function loadCodec() {
   const mod = await import(distPath)
   const factory = mod.default ?? mod
-  return await factory()
+  // Silence wasm stdout/stderr so vitest's console interception never runs
+  // inside a measured bench body (see openjphjs bench for details).
+  return await factory({ print: () => {}, printErr: () => {} })
 }
 
 function decodeOnce(decoder) {
