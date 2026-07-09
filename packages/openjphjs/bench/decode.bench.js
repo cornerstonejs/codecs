@@ -59,7 +59,11 @@ let coldEnc
 let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
-  codec = await factory()
+  // Silence wasm stdout/stderr: HTJ2KDecoder's constructor prints a banner,
+  // and vitest's console interception (stack-trace task attribution +
+  // source-map mapping) would otherwise run inside the measured bench body,
+  // swamping the microsecond-scale instantiate+destroy benches.
+  codec = await factory({ print: () => {}, printErr: () => {} })
 
   // Cold instances: one per fixture, constructed but never decoded.
   coldDecCT1 = new codec.HTJ2KDecoder()
@@ -82,14 +86,23 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("openjphjs HTJ2K (wasm)", () => {
-  bench("instantiate+destroy HTJ2KDecoder", () => {
-    const d = new codec.HTJ2KDecoder()
-    d.delete()
+  // Lifecycle benches are batched: a single instantiate+destroy is ~60 µs,
+  // small enough that fixed harness overhead (bench-wrapper frames, task
+  // attribution) and the simulated cache model's CPU-to-CPU variation
+  // dominate the number. 50 iterations puts the body in the ms range where
+  // the codec work is the signal.
+  bench("instantiate+destroy HTJ2KDecoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const d = new codec.HTJ2KDecoder()
+      d.delete()
+    }
   })
 
-  bench("instantiate+destroy HTJ2KEncoder", () => {
-    const e = new codec.HTJ2KEncoder()
-    e.delete()
+  bench("instantiate+destroy HTJ2KEncoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const e = new codec.HTJ2KEncoder()
+      e.delete()
+    }
   })
 
   bench("decode CT1.j2c (.201 lossless, 512x512x16bit) — cold", () => {

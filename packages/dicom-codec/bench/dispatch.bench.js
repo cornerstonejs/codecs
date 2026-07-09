@@ -105,3 +105,20 @@ describe.skipIf(skip)("dicom-codec dispatch", () => {
     })
   }
 })
+
+describe.skipIf(skip)("dicom-codec encode/transcode dispatch", () => {
+  const ct1Raw = skip ? null : read("openjpeg/test/fixtures/raw/CT1.RAW")
+  const ct1Jls = skip ? null : read("charls/test/fixtures/CT1.JLS")
+
+  bench("encode to JPEG-LS Lossless (.80)", async () => {
+    await dicomCodec.encode(new Uint8Array(ct1Raw), ctSigned512, "1.2.840.10008.1.2.4.80")
+  })
+
+  bench("encode to JPEG 2000 Lossless (.90)", async () => {
+    await dicomCodec.encode(new Uint8Array(ct1Raw), ctSigned512, "1.2.840.10008.1.2.4.90")
+  })
+
+  bench("transcode JPEG-LS -> J2K (.80 -> .90)", async () => {
+    await dicomCodec.transcode(ct1Jls, ctSigned512, "1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.90")
+  })
+})

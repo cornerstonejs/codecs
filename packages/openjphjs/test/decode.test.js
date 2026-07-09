@@ -28,6 +28,12 @@ describe("openjphjs HTJ2K decode", () => {
     if (isBuilt) codec = await loadModule(modulePath)
   })
 
+  // In CI a missing dist means the build/artifact pipeline broke; fail loudly
+  // instead of letting every skipIf() below silently skip the suite.
+  it.runIf(process.env.CI)("dist is present in CI", () => {
+    expect(isBuilt, "openjphjs.js missing — build artifact was not replayed").toBe(true)
+  })
+
   it.skipIf(!isBuilt)(
     "decodes CT1.j2c to a 512x512 16-bit monochrome frame matching CT1.RAW",
     () => {
@@ -83,7 +89,10 @@ describe("openjphjs HTJ2K encode + round-trip", () => {
       encoder.getDecodedBuffer(frameInfo).set(ct1Raw)
       encoder.encode()
       const encoded = encoder.getEncodedBuffer()
-      expect(encoded.length).toBeGreaterThan(0)
+      // Measured 185183 bytes on 2026-07-07 (emsdk 3.1.74); ceiling =
+      // compression regression, floor = silent truncation.
+      expect(encoded.length).toBeGreaterThan(185183 * 0.5)
+      expect(encoded.length).toBeLessThan(185183 * 1.10)
 
       const decoder = new codec.HTJ2KDecoder()
       decoder.getEncodedBuffer(encoded.length).set(encoded)

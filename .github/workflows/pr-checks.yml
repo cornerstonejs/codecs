@@ -1,21 +1,37 @@
 name: PR checks
 
-# Per-package parallel pipeline: each codec is built, tested, and benchmarked
-# independently. The matrix mirrors what CircleCI was doing — every entry
-# runs concurrently, any failure fails the workflow.
+# Pipeline: builds run as a per-package parallel matrix (wasm compiles are
+# the slow part), then a single test job runs the whole vitest workspace
+# against the built dists, and CodSpeed benches the packages the PR touched.
+#
+# Toolchain bumps (emsdk image tag below, root package.json/yarn.lock, this
+# workflow itself) force the FULL pipeline including a full bench sweep.
+# Expect such a PR to also need:
+#   1. tools/dist-size/baseline.json regenerated from that PR's own CI
+#      artifacts: gh run download <run-id> --pattern 'dist-*' -d tmp/ then
+#      node tools/dist-size/check.js --update --artifacts tmp/ (commit diff)
+#   2. possibly regenerated lossy decode goldens (openjpeg .91, charls .81,
+#      openjphjs corpus SHAs) IF the lossless tests still pass — see
+#      tools/fixture-verification/README.md before touching any golden.
 #
 # CodSpeed's first-class GHA integration replaces the manual codspeed-bench
-# job from CircleCI: `CodSpeedHQ/action@v3` installs valgrind, sets up
+# job from CircleCI: `CodSpeedHQ/action` installs valgrind, sets up
 # instrumentation, and uploads results in one step.
 
 on:
   pull_request:
   push:
-    # Run on every branch including main so each merge to main seeds a
-    # fresh CodSpeed baseline. Without a main run, PR comments stay stuck
-    # on "Congrats! CodSpeed is installed" with no before/after deltas.
+    # Run pushes on main only: each merge seeds a fresh CodSpeed baseline
+    # (without a main run, PR comments stay stuck on "Congrats! CodSpeed
+    # is installed" with no before/after deltas). PR branches are already
+    # covered by the pull_request event — running push on them too meant
+    # every commit was built/tested/benched TWICE and uploaded two
+    # CodSpeed measurements per commit, each on a randomly allocated
+    # runner CPU (GitHub mixes Intel 8370C and AMD EPYC 7763 hardware),
+    # which is a prime source of "Different runtime environments detected"
+    # warnings on comparisons.
     branches:
-      - "**"
+      - main
   # workflow_dispatch lets CodSpeed trigger a backtest run from the
   # dashboard (to seed initial perf data after the repo is connected).
   workflow_dispatch:
@@ -32,13 +48,20 @@ permissions:
 
 jobs:
   detect-changes:
-    # Build the matrix dynamically from the set of packages that actually
-    # changed since main. Mirrors CircleCI's --since main skip logic. On a
-    # PR where every README was touched (this branch) the list is the full
-    # 8 packages; on a docs-only PR the build matrix is empty.
+    # Decide what this run needs to do. Two outputs:
+    #   packages — what to build (and therefore what the test job can rely
+    #     on). dicom-codec's integration tests decode through EVERY sibling
+    #     codec's dist, and the in-test CI guards fail loudly when a dist is
+    #     missing (no more silently-skipped suites), so any package change
+    #     builds the full set. Docs-only changes still skip everything.
+    #   bench — only the packages that actually changed. CodSpeed benches
+    #     run under valgrind (the slowest job in the workflow), and a PR
+    #     only needs deltas for what it touched; main re-benches everything
+    #     to keep full baselines.
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.list.outputs.packages }}
+      bench: ${{ steps.list.outputs.bench }}
       any: ${{ steps.list.outputs.any }}
     steps:
       - uses: actions/checkout@v4
@@ -52,6 +75,7 @@ jobs:
         run: |
           set -e
           ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
+          ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
 
           # Baseline runs: on a manual dispatch or any commit landing on
           # main, build/test/bench every package. The "diff vs main" trick
@@ -59,15 +83,46 @@ jobs:
           # `git diff origin/main..HEAD` is empty and would skip CodSpeed
           # entirely, leaving the dashboard with no baseline data.
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$REF" = "refs/heads/main" ]; then
-            json=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
             echo "Baseline run ($EVENT_NAME on $REF): forcing all packages"
-            echo "packages=$json" >> "$GITHUB_OUTPUT"
+            echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
           git fetch --no-tags --depth=50 origin main || true
           BASE=$(git merge-base origin/main HEAD || echo "origin/main")
+
+          # Toolchain files affect how EVERY package is built, tested or
+          # measured. A change here (e.g. an emsdk bump in this workflow, or
+          # a vitest upgrade in the root lockfile) must run the full
+          # pipeline with a full bench sweep — previously such PRs matched
+          # no package path and skipped CI entirely. tools/ entries count
+          # too: browser-smoke drives the browser-smoke job, and the test
+          # suites import reference derivations from
+          # tools/fixture-verification/gen/ — a change to either must not
+          # land with CI skipped.
+          TOOLCHAIN_PATHS=(
+            ".github/workflows/"
+            "package.json"
+            "yarn.lock"
+            "vitest.workspace.mjs"
+            "babel.config.json"
+            "lerna.json"
+            "tools/dist-size/"
+            "tools/browser-smoke/"
+            "tools/fixture-verification/"
+          )
+          for p in "${TOOLCHAIN_PATHS[@]}"; do
+            if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
+              echo "Toolchain change detected in $p: forcing all packages (build/test/bench)"
+              echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "any=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
           changed=()
           for pkg in "${ALL[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "packages/$pkg/"; then
@@ -77,11 +132,13 @@ jobs:
           if [ ${#changed[@]} -eq 0 ]; then
             echo "No packages changed since $BASE."
             echo 'packages=[]' >> "$GITHUB_OUTPUT"
+            echo 'bench=[]' >> "$GITHUB_OUTPUT"
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
-            json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -s -c .)
-            echo "Changed packages: $json"
-            echo "packages=$json" >> "$GITHUB_OUTPUT"
+            bench_json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -s -c .)
+            echo "Changed: $bench_json — building all packages, benching changed only"
+            echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            echo "bench=$bench_json" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
           fi
 
@@ -107,8 +164,15 @@ jobs:
           apt-get clean -y
           rm -rf /var/lib/apt/lists/*
       - uses: actions/checkout@v4
+        # Shallow checkout: builds only need the working tree (full history
+        # is only required by detect-changes for the merge-base diff).
+      - uses: actions/setup-node@v4
+        # The emsdk image bundles node 20.18.0, which fails vite 7's engine
+        # check (needs >=20.19) during yarn install. Put node 22 on PATH for
+        # yarn/webpack; emscripten is unaffected — emcc invokes the node
+        # binary pinned in its own .emscripten config, not the one on PATH.
         with:
-          fetch-depth: 0
+          node-version: '22'
       - name: Allow git to operate on the workspace
         # The container runs as root but the workspace is owned by the
         # checkout action's user, which makes git complain about
@@ -121,13 +185,16 @@ jobs:
           else
             echo "No extern/ submodule for ${{ matrix.package }}; skipping."
           fi
-      - name: Restore yarn cache
+      - name: Restore node_modules cache
+        id: modules-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
       - name: Build
         run: cd "packages/${{ matrix.package }}" && yarn run build:ci
@@ -142,12 +209,13 @@ jobs:
           retention-days: 7
 
   test:
+    # One job for the whole vitest workspace: per-package test jobs spent far
+    # more on runner setup (checkout, node, artifact download, yarn install)
+    # than on the few seconds of vitest itself, and dicom-codec's suite needs
+    # every sibling dist anyway. CI=true (set by GitHub) arms the in-test
+    # guards: a missing dist FAILS its suite instead of silently skipping.
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
-    strategy:
-      fail-fast: false
-      matrix:
-        package: ${{ fromJson(needs.detect-changes.outputs.packages) }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -173,20 +241,50 @@ jobs:
             cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
           done
           ls packages/*/dist 2>/dev/null | head
-      - name: Restore yarn cache
+      - name: Restore node_modules cache
+        id: modules-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
       - name: Test
-        run: cd "packages/${{ matrix.package }}" && yarn run test:ci
+        run: npx vitest run
 
-  codspeed-bench:
+  dist-size:
+    # Binary-size regression gate: compares every shipped dist artifact
+    # (js/wasm/mem, raw and gzip) against the ground truth committed in
+    # tools/dist-size/baseline.json and fails if anything grows beyond
+    # max(1%, 1 KiB). Intentional size changes update the baseline in the
+    # same PR (node tools/dist-size/check.js --update) so growth is always
+    # a visible, reviewed diff.
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Check dist sizes against baseline
+        run: node tools/dist-size/check.js --artifacts tmp
+
+  browser-smoke:
+    # Decodes every build variant in headless Chromium and hash-compares
+    # against the RAW references — catches emscripten glue regressions that
+    # only manifest in browsers (wasm URL resolution, MIME/streaming
+    # compile, fetch loading), which is where emsdk bumps break first.
+    # Advisory while it beds in; promote to blocking once proven stable.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    continue-on-error: true
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -208,14 +306,96 @@ jobs:
             shopt -s dotglob nullglob
             cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
           done
-      - name: Restore yarn cache
+      - name: Restore node_modules cache
+        id: modules-cache
         uses: actions/cache@v4
         with:
-          path: ~/.cache/yarn
-          key: yarn-${{ hashFiles('yarn.lock') }}
-          restore-keys: yarn-
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
       - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
         run: yarn install --frozen-lockfile
+      - name: Cache Playwright chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+      - name: Install chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: npx playwright-core install chromium
+      - name: Browser smoke decode
+        run: node tools/browser-smoke/run.js
+
+  codspeed-bench:
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    # Pin the OS (not ubuntu-latest) so PR runs are measured in the same
+    # runtime environment as the baseline seeded on main. A drifting
+    # ubuntu-latest image changes the valgrind/toolchain fingerprint between
+    # baseline and PR, which makes CodSpeed report "Different runtime
+    # environments detected" and refuse to trust the comparison. The baseline
+    # on main must be re-seeded after changing this so both sides match.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+      - name: Log CPU info
+        # GitHub standard runners are randomly assigned different physical
+        # CPUs (e.g. Intel Xeon 8370C vs AMD EPYC 7763) with different cache
+        # sizes and ISA extensions; glibc dispatches different code paths on
+        # each, so even simulation-mode instruction counts shift between
+        # them. CodSpeed flags such comparisons as "different runtime
+        # environments". Logging the CPU makes those warnings diagnosable
+        # at a glance (recommendation from
+        # https://codspeed.io/blog/unrelated-benchmark-regression).
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        # Translate the changed-package directory names into lerna --scope
+        # flags so PRs only bench what they touched. Baseline runs (main /
+        # workflow_dispatch) get the full list from detect-changes, which
+        # makes this a no-op filter there.
+        id: scope
+        env:
+          BENCH: ${{ needs.detect-changes.outputs.bench }}
+        run: |
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            name=$(node -p "require('./packages/$pkg/package.json').name")
+            flags="$flags --scope $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
       - name: Run CodSpeed benchmarks
         # CodSpeedHQ/action@v4 sets up CPU simulation (Cachegrind-based
         # instruction counting on a modeled CPU + cache hierarchy), runs
@@ -224,19 +404,111 @@ jobs:
         # Authenticates via GitHub OIDC (id-token: write above) so no
         # CODSPEED_TOKEN secret is needed.
         #
-        # mode: simulation (vs walltime) — we chose simulation because:
+        # mode: simulation — the blocking regression gate:
         #   - deterministic: <1% run-to-run drift (verified across 3
         #     runs of identical source)
-        #   - free CI minutes (walltime needs CodSpeed macro-runners)
+        #   - free CI minutes (runs on GitHub-hosted runners)
         #   - regression-detection signal is strong even though the
         #     headline numbers are MODELED instruction-time, not real
         #     wall-clock (JS-loop benches inflate 30-100x vs production
         #     V8 due to no JIT under Cachegrind; wasm decode kernels
         #     inflate ~5-15x; pure native ~1x)
+        # The codspeed-walltime job below complements this with real
+        # wall-clock measurements on CodSpeed macro runners.
         # See BENCHMARKING.md at the repo root for the full measurement
         # model, how to read the cold/warm bench split, and what the
         # CodSpeed dashboard warnings mean.
-        uses: CodSpeedHQ/action@v4
+        # Pinned to a full version (not the floating @v4) so the
+        # instrumentation environment stays identical between the main
+        # baseline and PR runs.
+        # Note: vitest 3's hard-coded 60s worker-RPC timer counts real
+        # seconds while valgrind slows the process ~60x, so large suites
+        # structurally trip "Timeout calling onTaskUpdate" AFTER their
+        # benches complete. The vitest configs set
+        # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
+        # "simulation" to keep that exit-code noise from failing the job
+        # (config-level because yarn 1 mangles `--`-forwarded CLI flags).
+        uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
-          run: yarn run bench
+          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
+
+  codspeed-walltime:
+    needs: [detect-changes, build]
+    # Gated behind a repository variable: a `runs-on: codspeed-macro` job
+    # queues forever (up to 24h) when macro runners aren't provisioned for
+    # the org, and GitHub's job timeout only covers execution, not queue
+    # time. Enable macro runners for the org on app.codspeed.io first
+    # (the repo is public — also make sure the runner group allows public
+    # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
+    if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
+    # Advisory instrument: real wall-clock numbers (V8 JIT active, real
+    # cache/branch behavior) that complement the simulation gate above —
+    # simulation catches small algorithmic slips deterministically,
+    # walltime keeps the numbers honest on real hardware and covers the
+    # pure-JS packages where the no-JIT simulation model is furthest from
+    # production. Failures here must not block the PR while this beds in.
+    continue-on-error: true
+    timeout-minutes: 30
+    # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
+    # low-noise walltime measurement. Requires the CodSpeed GitHub app on
+    # an organization account. NOTE: ARM64 — anything cached must be
+    # arch-qualified (see the cache key below).
+    runs-on: codspeed-macro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # runner.arch matters: this job runs on ARM64 while every other
+          # job is x64; sharing a key would restore x64 native binaries
+          # (esbuild/rollup) and break vitest.
+          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: yarn install --frozen-lockfile
+      - name: Log CPU info
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        id: scope
+        env:
+          BENCH: ${{ needs.detect-changes.outputs.bench }}
+        run: |
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            name=$(node -p "require('./packages/$pkg/package.json').name")
+            flags="$flags --scope $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+      - name: Run CodSpeed benchmarks (walltime)
+        # Walltime measures actual elapsed time, so parallel benchmark
+        # processes would contend for cores and add noise — run packages
+        # sequentially (--concurrency 1), unlike the simulation job where
+        # instruction counting is immune to contention.
+        uses: CodSpeedHQ/action@v4.18.2
+        with:
+          mode: walltime
+          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}

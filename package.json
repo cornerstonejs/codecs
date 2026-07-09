@@ -5,17 +5,19 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^4.0.1",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@codspeed/vitest-plugin": "^5.7.1",
+    "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^14.1.0",
     "lerna": "^8.0.0",
-    "vitest": "^2.1.8"
+    "vitest": "^3.2.4",
+    "playwright-core": "^1.49.0"
   },
   "engines": {
     "node": ">=18"
   },
   "scripts": {
     "build:all": "lerna run build:ci --parallel --stream",
+    "test": "vitest run",
     "test:all": "lerna run test:ci --parallel --stream",
     "bench": "lerna run bench --parallel --stream",
     "bench:ci": "lerna run bench --parallel --stream",

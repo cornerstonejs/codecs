@@ -57,7 +57,9 @@ let coldEnc
 let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
-  codec = await factory()
+  // Silence wasm stdout/stderr so vitest's console interception never runs
+  // inside a measured bench body (see openjphjs bench for details).
+  codec = await factory({ print: () => {}, printErr: () => {} })
 
   // Cold instances: just construct, never decode/encode at module load.
   // The bench body will be the first call into the decoder/encoder.
@@ -81,14 +83,21 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("libjpeg-turbo-8bit (wasm)", () => {
-  bench("instantiate+destroy JPEGDecoder", () => {
-    const d = new codec.JPEGDecoder()
-    d.delete()
+  // Batched x50: a single instantiate+destroy is ~60 µs, where fixed harness
+  // overhead and cache-model variation across runner CPUs dominate; the loop
+  // puts the body in the ms range so the codec work is the signal.
+  bench("instantiate+destroy JPEGDecoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const d = new codec.JPEGDecoder()
+      d.delete()
+    }
   })
 
-  bench("instantiate+destroy JPEGEncoder", () => {
-    const e = new codec.JPEGEncoder()
-    e.delete()
+  bench("instantiate+destroy JPEGEncoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const e = new codec.JPEGEncoder()
+      e.delete()
+    }
   })
 
   bench("decode jpeg400jfif.jpg (600x800x8bit) — cold", () => {
