@@ -332,13 +332,18 @@ jobs:
   codspeed-bench:
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
-    # Pin the OS (not ubuntu-latest) so PR runs are measured in the same
-    # runtime environment as the baseline seeded on main. A drifting
-    # ubuntu-latest image changes the valgrind/toolchain fingerprint between
-    # baseline and PR, which makes CodSpeed report "Different runtime
-    # environments detected" and refuse to trust the comparison. The baseline
-    # on main must be re-seeded after changing this so both sides match.
-    runs-on: ubuntu-24.04
+    # Runs on a DEDICATED self-hosted runner with fixed hardware (label
+    # `codspeed-bench`). GitHub's shared runners randomly assign different
+    # physical CPUs (Intel Xeon 8370C vs AMD EPYC 7763); simulation-mode
+    # instruction counts are derived from the runner CPU's cache model, so a
+    # baseline (main) and a PR landing on different CPUs produce spurious
+    # "Different runtime environments detected" deltas. One fixed box keeps
+    # every run on identical hardware, so Simulation is stable run-to-run.
+    # See docs/ci/self-hosted-runner.md for what the box must provide
+    # (valgrind, node 22, a pinned/isolated CPU) and the cutover steps.
+    # IMPORTANT: after this lands, the baseline on main must be re-seeded by
+    # one main run on THIS runner before PR comparisons are meaningful.
+    runs-on: [self-hosted, codspeed-bench]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
