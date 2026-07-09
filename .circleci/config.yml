@@ -18,11 +18,22 @@ executors:
 
 commands:
   install-build-tools:
-    description: Install yarn + cmake + C++ build deps on top of the emsdk image
+    description: Install node + yarn + cmake + C++ build deps on top of the emsdk image
     steps:
       - run:
           name: Install build tooling
           command: |
+            # The emsdk 3.1.74 image ships node 20.18.0, but vite 7 (pulled in
+            # transitively by vitest 3) requires "^20.19.0 || >=22.12.0", so
+            # `yarn install` fails its engine check. Install node 22 and put it
+            # first on PATH for all later steps (mirrors the setup-node@v4 step
+            # the GitHub Actions build job already uses). emcc keeps using its
+            # own configured node, so the wasm build is unaffected.
+            wget -qO- "https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.gz" \
+              | tar --strip-components=1 -xz -C /usr/local
+            echo 'export PATH=/usr/local/bin:$PATH' >> "$BASH_ENV"
+            export PATH=/usr/local/bin:$PATH
+            node --version
             npm install --global yarn@1.22.22
             apt-get update
             apt-get -y install build-essential

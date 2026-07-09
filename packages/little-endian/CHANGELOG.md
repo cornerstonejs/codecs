@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.0.7](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-little-endian@0.0.6...@cornerstonejs/codec-little-endian@0.0.7) (2026-07-09)
+
+**Note:** Version bump only for package @cornerstonejs/codec-little-endian
+
+
+
+
+
 ## [0.0.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-little-endian@0.0.4...@cornerstonejs/codec-little-endian@0.0.6) (2022-02-09)
 
 
