@@ -3,7 +3,10 @@
 
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <vector>
 // #include "config.h"
 #include "jpeglib.h"
@@ -117,43 +120,65 @@ class JPEGDecoder {
     jpeg_create_decompress(&cinfo);
 
     jpeg_mem_src(&cinfo, encoded_.data(), encoded_.size());
-    // Read file header, set default decompression parameters
+    // Read the header. In libjpeg-turbo 3.x this is precision-agnostic.
     jpeg_read_header(&cinfo, TRUE);
-    // Force RGBA decoding, even for grayscale images
-    cinfo.out_color_space = JCS_EXT_RGBA;
-    jpeg_start_decompress(&cinfo);
 
+    // This codec handles single-component (grayscale) 12-bit JPEGs only. Fail
+    // closed on color input: forcing JCS_GRAYSCALE on a multi-component image
+    // would silently drop chroma and mis-report componentCount=1.
+    if (cinfo.num_components != 1) {
+      jpeg_destroy_decompress(&cinfo);
+      throw std::runtime_error(
+        "Unsupported 12-bit JPEG: expected 1 component (grayscale), got " +
+        std::to_string(cinfo.num_components));
+    }
+    // libjpeg-turbo 3.x is multi-precision in a single build; this codec only
+    // supports 12-bit samples. Reject other precisions rather than mis-decode.
+    if (cinfo.data_precision != 12) {
+      jpeg_destroy_decompress(&cinfo);
+      throw std::runtime_error(
+        "Unsupported JPEG precision: expected 12-bit, got " +
+        std::to_string(cinfo.data_precision));
+    }
+
+    cinfo.out_color_space = JCS_GRAYSCALE;
+    jpeg_start_decompress(&cinfo);
 
     frameInfo_.width = cinfo.output_width;
     frameInfo_.height = cinfo.output_height;
-    frameInfo_.bitsPerSample = 8;
-    frameInfo_.componentCount = 1; //inColorspace == 2 ? 1 : 3;
-    
-    // Prepare output buffer
-      // int pixelFormat = (frameInfo_.componentCount == 1) ? TJPF_GRAY : TJPF_RGB;
+    frameInfo_.bitsPerSample = 12;
+    frameInfo_.componentCount = 1;
 
-    // const size_t destinationSize = frameInfo_.width * frameInfo_.height * tjPixelSize[pixelFormat];
-    int pixelFormat = 1;
-    size_t output_size = cinfo.output_width * cinfo.output_height * pixelFormat;
-
-    // std::vector<uint8_t> output_buffer(output_size);
+    // One 12-bit sample per pixel, stored in a 16-bit-wide J12SAMPLE (short).
+    // Overflow-checked size (capped at 512 MiB of samples) so a malformed
+    // header cannot overflow the computation or force a huge allocation.
+    constexpr uint64_t kMaxOutputSamples = 512ull * 1024ull * 1024ull;
+    const uint64_t width64 = static_cast<uint64_t>(cinfo.output_width);
+    const uint64_t height64 = static_cast<uint64_t>(cinfo.output_height);
+    if (width64 == 0 || height64 == 0) {
+      jpeg_destroy_decompress(&cinfo);
+      throw std::runtime_error("Invalid JPEG dimensions (zero width or height)");
+    }
+    uint64_t output_size64 = width64 * height64;
+    if (output_size64 / width64 != height64 || output_size64 == 0 ||
+        output_size64 > kMaxOutputSamples) {
+      jpeg_destroy_decompress(&cinfo);
+      throw std::runtime_error("Decoded buffer size out of range");
+    }
+    const size_t output_size = static_cast<size_t>(output_size64);
 
     decoded_.resize(output_size);
+    const size_t stride = static_cast<size_t>(cinfo.output_width);
 
-    auto stride = cinfo.output_width * pixelFormat;
-
-    // Process data
+    // 12-bit precision decodes through jpeg12_read_scanlines with a
+    // J12SAMPARRAY (short-based) — the libjpeg-turbo 3.x per-precision API.
+    // decoded_ is std::vector<int16_t>, matching J12SAMPLE.
     while (cinfo.output_scanline < cinfo.output_height) {
-      int16_t* output_data = &decoded_[stride * cinfo.output_scanline];
-      (void)jpeg_read_scanlines(&cinfo, &output_data, 1);
+      J12SAMPROW output_data =
+        reinterpret_cast<J12SAMPROW>(&decoded_[stride * cinfo.output_scanline]);
+      (void)jpeg12_read_scanlines(&cinfo, &output_data, 1);
     }
     jpeg_finish_decompress(&cinfo);
-
-    // Step 7: release JPEG compression object
-
-    // auto data = Uint8ClampedArray.new_(typed_memory_view(output_size, &output_buffer[0]));
-
-    // This is an important step since it will release a good deal of memory.
     jpeg_destroy_decompress(&cinfo);
   }
 
