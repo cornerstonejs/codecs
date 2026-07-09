@@ -30,12 +30,29 @@ and the regression gate is trustworthy.
 
 ## Hardware hygiene (for stable numbers)
 
-- **Dedicate the box to this label.** Register it so it only picks up the
-  `codspeed-bench` label and runs **one job at a time** (the default). Do not
-  co-locate other CI or workloads on it — contention is noise.
-- Pin the CPU: disable turbo boost and, ideally, SMT/hyper-threading; set the
-  CPU governor to `performance`. A VM is fine if it has a pinned vCPU and is
-  otherwise idle.
+This runner hosts the **simulation** gate only, which changes what matters:
+
+- **Simulation is clock- and concurrency-independent.** Cachegrind counts
+  instructions on a *modeled* CPU cache, per process — so turbo boost, SMT,
+  and the CPU governor do **not** affect the numbers, and running benches in
+  parallel does not corrupt them (each valgrind process models its own cache).
+  You do **not** need the strict single-core isolation that wall-clock
+  benchmarking requires.
+- **Multiple cores are a throughput win.** valgrind runs ~60× slower than
+  native, so the job is CPU-bound; the workflow already fans out with
+  `lerna run bench --parallel`, which uses all available cores. More threads →
+  the job finishes faster, with identical instruction counts.
+- **Dedicate the box to this label** and let it run **one GitHub job at a
+  time** (the default). This is about not co-scheduling *other* jobs on the
+  box mid-run, not about intra-job parallelism — that stays on.
+- The only hard requirement for cross-run stability is a **fixed CPU model**
+  (don't migrate the box between different physical CPUs), since the modeled
+  cache is derived from it.
+
+> If the **walltime** job (`codspeed-macro`, `mode: walltime`) is ever moved
+> onto a self-hosted box, this advice inverts: wall-clock needs an isolated,
+> pinned core with turbo/SMT off and nothing else running. Keep walltime and
+> simulation on separate runners.
 
 ## Registering the runner
 
