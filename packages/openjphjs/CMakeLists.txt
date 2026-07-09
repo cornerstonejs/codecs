@@ -15,7 +15,13 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/openjph/CMakeLists.txt")
 endif()
 
 if(EMSCRIPTEN)
-  option(OJPH_DISABLE_INTEL_SIMD "Disables the use of SIMD instructions and associated files" ON)
+  # OpenJPH 0.30.1 builds WASM SIMD by default (OJPH_DISABLE_SIMD=OFF) and emits
+  # -msimd128 + the *_wasm.cpp kernels. Do NOT set the deprecated
+  # OJPH_DISABLE_INTEL_SIMD: 0.30.1 bridges it onto OJPH_DISABLE_SIMD
+  # (extern/openjph/CMakeLists.txt), so the old "=ON" — which used to mean
+  # "skip Intel SIMD, use the WASM path" — now disables ALL SIMD and ships a
+  # ~2x-slower scalar wasm. Keep SIMD explicitly enabled.
+  set(OJPH_DISABLE_SIMD OFF CACHE BOOL "Enable OpenJPH WASM SIMD" FORCE)
 endif()
 
 option(BUILD_SHARED_LIBS "" OFF)
