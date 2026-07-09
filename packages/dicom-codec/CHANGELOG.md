@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.0.10](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.9...@cornerstonejs/dicom-codec@1.0.10) (2026-07-09)
+
+
+### Bug Fixes
+
+* npm publish ([#56](https://github.com/cornerstonejs/codecs/issues/56)) ([1b03a10](https://github.com/cornerstonejs/codecs/commit/1b03a10d9f4ffa06fcd533208aa0ae5d31ce4428))
+* npm publish ([#57](https://github.com/cornerstonejs/codecs/issues/57)) ([30e9d4d](https://github.com/cornerstonejs/codecs/commit/30e9d4db0f94f9711fe541850ccaceaedffd0fed))
+* npm publish ([#59](https://github.com/cornerstonejs/codecs/issues/59)) ([d066ef2](https://github.com/cornerstonejs/codecs/commit/d066ef28dac987ca9c41a449e9330694fef474b4))
+* trigger ci ([#54](https://github.com/cornerstonejs/codecs/issues/54)) ([5afcb5d](https://github.com/cornerstonejs/codecs/commit/5afcb5d895a365a49fc986be0ec1b60ee69cf809))
+
+
+
+
+
 ## [1.0.9](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.8...@cornerstonejs/dicom-codec@1.0.9) (2025-10-22)
 
 **Note:** Version bump only for package @cornerstonejs/dicom-codec
