@@ -1,7 +1,10 @@
 
 add_executable(openjphjs jslib.cpp)
 
-target_link_libraries(openjphjs PRIVATE openjphsimd)
+# OpenJPH 0.30.1 builds a single `openjph` library (SIMD is folded in,
+# architecture-agnostic); the old separate `openjphsimd` target no longer
+# exists. Upstream's own wasm wrapper links `openjph` too.
+target_link_libraries(openjphjs PRIVATE openjph)
 # OpenJPH 0.30.1 moved its public headers under src/core/openjph (and
 # src/core/shared); older releases exposed them on a flatter include path, so
 # our bare `#include <ojph_arch.h>` no longer resolves via the linked target
