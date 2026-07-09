@@ -1,6 +1,17 @@
 
 
-   include_directories("../extern/libjpeg-turbo" "../build/extern/libjpeg-turbo")
+   # libjpeg-turbo 3.x moved its public headers under src/; jconfig.h is
+   # generated into the standalone build dir. turbojpeg-static is consumed as
+   # a pre-built IMPORTED library (built separately by build.sh — 3.x forbids
+   # add_subdirectory).
+   include_directories(
+     "../extern/libjpeg-turbo/src"
+     "${LIBJPEG_TURBO_BUILD_DIR}"
+     "${LIBJPEG_TURBO_BUILD_DIR}/src")
+
+   add_library(turbojpeg-static STATIC IMPORTED)
+   set_target_properties(turbojpeg-static PROPERTIES
+     IMPORTED_LOCATION "${LIBJPEG_TURBO_BUILD_DIR}/libturbojpeg.a")
 
    add_executable(libjpegturbojs jslib.cpp)
 
