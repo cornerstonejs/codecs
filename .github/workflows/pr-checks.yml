@@ -332,23 +332,58 @@ jobs:
   codspeed-bench:
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
-    # Runs on a DEDICATED self-hosted runner with fixed hardware (label
-    # `codspeed-bench`). GitHub's shared runners randomly assign different
+    # Runs on a self-hosted runner dedicated to this repo, on fixed hardware
+    # (label `codspeed-bench`). GitHub's shared runners randomly assign different
     # physical CPUs (Intel Xeon 8370C vs AMD EPYC 7763); simulation-mode
     # instruction counts are derived from the runner CPU's cache model, so a
     # baseline (main) and a PR landing on different CPUs produce spurious
     # "Different runtime environments detected" deltas. One fixed box keeps
     # every run on identical hardware, so Simulation is stable run-to-run.
-    # See docs/ci/self-hosted-runner.md for what the box must provide
-    # (valgrind, node 22, a pinned/isolated CPU) and the cutover steps.
+    # That box ("nashua") is SHARED with the cornerstone3D and OHIF Playwright
+    # runners — three runner processes on one machine, one per repo, each free
+    # to start a job whenever its repo has work. GitHub's `concurrency:` cannot
+    # coordinate across repos, so a filesystem flock mutex
+    # (tools/ci/with-nashua-lock.sh) keeps only one heavy job running at a time;
+    # it wraps the bench command in the "Run CodSpeed benchmarks" step below.
+    # See docs/ci/self-hosted-runner.md for what the box must provide: CodSpeed's
+    # own patched valgrind (NOT the distro valgrind package), libc6-dbg, flock and
+    # a fixed CPU model — node and yarn are provisioned per-job below. That doc
+    # also covers how the shared mutex works and the cutover steps.
     # IMPORTANT: after this lands, the baseline on main must be re-seeded by
     # one main run on THIS runner before PR comparisons are meaningful.
-    runs-on: [self-hosted, codspeed-bench]
+    runs-on: [self-hosted, codspeed-bench, nashua]
+    # Bounded because the bench command can now queue behind a cornerstone3D or
+    # OHIF Playwright run on the shared box: up to NASHUA_LOCK_WAIT (90 min) of
+    # waiting plus the valgrind fan-out itself. Well under GitHub's 360 min
+    # default, so a wedged lock surfaces in hours rather than most of a day.
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # EXACT version, not the '22' range every other job uses. For a range,
+          # setup-node takes any satisfying version already in the runner's tool
+          # cache without checking the network — and on a self-hosted box that
+          # cache persists, so the bench would silently freeze on whichever 22.x
+          # landed there first and jump whenever the box is rebuilt. A V8 patch
+          # bump shifts instruction counts the same way a different CPU does.
+          # 22.23.1 is what the current main baseline was measured on; changing
+          # it is a deliberate re-seed event (see docs/ci/self-hosted-runner.md).
+          node-version: '22.23.1'
+      # nashua has no yarn: setup-node ships node + npm only, GitHub's hosted
+      # images preinstall yarn 1, and the other two repos on this box use pnpm.
+      # Corepack is bundled with node 22 and fetches over Node's own https, so it
+      # works where `npm i -g yarn` is unreliable here — the runner's bundled node
+      # has a corrupted npm ("Cannot find module '../lib/cli.js'"), which is why
+      # OHIF's workflow also went the Corepack route on this box. Pinned to the
+      # same yarn the build job uses rather than Corepack's bundled default, and
+      # activated AFTER setup-node so the shim lands in that node's bin dir.
+      # NOTE: node 25 unbundles corepack — revisit this step before any such bump.
+      - name: Provide yarn 1 via Corepack
+        run: |
+          corepack enable yarn
+          corepack prepare yarn@1.22.22 --activate
+          yarn --version
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -412,7 +447,9 @@ jobs:
         # mode: simulation — the blocking regression gate:
         #   - deterministic: <1% run-to-run drift (verified across 3
         #     runs of identical source)
-        #   - free CI minutes (runs on GitHub-hosted runners)
+        #   - no metered CI minutes (self-hosted runners are not billed;
+        #     they cost shared time on the nashua box instead, which is
+        #     what the flock mutex below rations)
         #   - regression-detection signal is strong even though the
         #     headline numbers are MODELED instruction-time, not real
         #     wall-clock (JS-loop benches inflate 30-100x vs production
@@ -426,6 +463,14 @@ jobs:
         # Pinned to a full version (not the floating @v4) so the
         # instrumentation environment stays identical between the main
         # baseline and PR runs.
+        # The inner command is wrapped in tools/ci/with-nashua-lock.sh, the
+        # cross-repo flock mutex for this shared box (see that script's header).
+        # Taking the lock INSIDE the action's `run` — rather than in an earlier
+        # step — is deliberate on both counts: flock lives and dies with a
+        # process, so it cannot be held across separate workflow steps, and this
+        # way only the CPU-saturating bench fan-out is serialized, leaving the
+        # action's own setup and result upload free to overlap with a Playwright
+        # run on one of the other two repos.
         # Note: vitest 3's hard-coded 60s worker-RPC timer counts real
         # seconds while valgrind slows the process ~60x, so large suites
         # structurally trip "Timeout calling onTaskUpdate" AFTER their
@@ -436,7 +481,7 @@ jobs:
         uses: CodSpeedHQ/action@v4.18.2
         with:
           mode: simulation
-          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
+          run: bash tools/ci/with-nashua-lock.sh yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
 
   codspeed-walltime:
     needs: [detect-changes, build]
@@ -464,7 +509,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Pinned for the same reason as the simulation job above: V8 changes
+          # between patch releases move the numbers, and walltime is if anything
+          # more sensitive than instruction counts. Keep this in step with the
+          # codspeed-bench pin so the two instruments stay comparable.
+          node-version: '22.23.1'
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
