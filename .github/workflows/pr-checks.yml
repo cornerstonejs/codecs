@@ -98,10 +98,13 @@ jobs:
           # a vitest upgrade in the root lockfile) must run the full
           # pipeline with a full bench sweep — previously such PRs matched
           # no package path and skipped CI entirely. tools/ entries count
-          # too: browser-smoke drives the browser-smoke job, and the test
-          # suites import reference derivations from
-          # tools/fixture-verification/gen/ — a change to either must not
-          # land with CI skipped.
+          # too: browser-smoke drives the browser-smoke job, the test suites
+          # import reference derivations from tools/fixture-verification/gen/,
+          # and tools/ci/ holds the flock wrapper the bench command actually
+          # execs — a change to any of them must not land with CI skipped.
+          # Note this forces a FULL bench sweep, which on the shared nashua box
+          # holds the mutex for the duration; that is the same trade already
+          # made for .github/workflows/ changes, and both are rare.
           TOOLCHAIN_PATHS=(
             ".github/workflows/"
             "package.json"
@@ -109,6 +112,7 @@ jobs:
             "vitest.workspace.mjs"
             "babel.config.json"
             "lerna.json"
+            "tools/ci/"
             "tools/dist-size/"
             "tools/browser-smoke/"
             "tools/fixture-verification/"

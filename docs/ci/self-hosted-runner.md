@@ -21,10 +21,13 @@ and the regression gate is trustworthy.
 
 ## What the box must provide
 
-- **OS**: **Ubuntu 22.04 / 24.04 or Debian 11 / 12**, x86_64 or aarch64 — not
-  general "Linux x64" latitude. CodSpeed publishes its patched valgrind `.deb`
-  only for those releases, and the CodSpeed runner bails with "Unsupported system"
-  on anything else. nashua is Ubuntu 24.04 x86_64.
+- **OS**: **Ubuntu 22.04 / 24.04, or Debian 12**, x86_64 or aarch64 — not general
+  "Linux x64" latitude. The CodSpeed runner maps the distro onto one of two deb
+  builds and bails with "Unsupported system" otherwise; at v4.18.2 the guard is
+  literally `version == "22.04" || version == "12"`, so **Debian 11 and Ubuntu
+  20.04 are out**, even though CodSpeed's CLI docs list them as supported (that
+  claim is about the CLI generally, not the valgrind deb targets). Debian 12 maps
+  to the `ubuntu-22.04` asset. nashua is Ubuntu 24.04 x86_64.
 - **CodSpeed's own valgrind build** — see [Valgrind](#valgrind-codspeeds-own-build).
   Do *not* install the distro or snap valgrind.
 - **`libc6-dbg`** (glibc debug symbols) — the CodSpeed runner checks for this
