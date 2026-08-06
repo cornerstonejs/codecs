@@ -1,6 +1,6 @@
 # Self-hosted CodSpeed benchmark runner
 
-The `codspeed-bench` job in `.github/workflows/pr-checks.yml` runs on a
+The `codspeed-bench` job in `.github/workflows/bench.yml` runs on a
 **dedicated self-hosted runner** (`runs-on: [self-hosted, codspeed-bench, nashua]`)
 instead of GitHub's shared pool.
 
@@ -271,7 +271,7 @@ or SIGKILL, so there are no stale locks to clean up. If the lock is busy it logs
 the current holder (from `<lock>.info`) and waits up to `NASHUA_LOCK_WAIT`
 (default 5400s / 90 min) before failing the step.
 
-In `pr-checks.yml` the wrapper sits **inside** the CodSpeed action's `run:`:
+In `bench.yml` the wrapper sits **inside** the CodSpeed action's `run:`:
 
 ```yaml
 run: bash tools/ci/with-nashua-lock.sh yarn lerna run bench --parallel --stream …
