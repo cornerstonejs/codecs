@@ -464,9 +464,11 @@ jobs:
         # See BENCHMARKING.md at the repo root for the full measurement
         # model, how to read the cold/warm bench split, and what the
         # CodSpeed dashboard warnings mean.
-        # Pinned to a full version (not the floating @v4) so the
-        # instrumentation environment stays identical between the main
-        # baseline and PR runs.
+        # Pinned to the commit SHA of v4.18.2 (not the floating @v4, nor the
+        # tag — tags can be moved) so the instrumentation environment stays
+        # byte-identical between the main baseline and PR runs. Bump by
+        # resolving the new tag: gh api repos/CodSpeedHQ/action/git/ref/tags/<tag>
+        # (dereference the annotated tag to its commit).
         # The inner command is wrapped in tools/ci/with-nashua-lock.sh, the
         # cross-repo flock mutex for this shared box (see that script's header).
         # Taking the lock INSIDE the action's `run` — rather than in an earlier
@@ -482,7 +484,7 @@ jobs:
         # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
         # "simulation" to keep that exit-code noise from failing the job
         # (config-level because yarn 1 mangles `--`-forwarded CLI flags).
-        uses: CodSpeedHQ/action@v4.18.2
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         with:
           mode: simulation
           run: bash tools/ci/with-nashua-lock.sh yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
@@ -566,7 +568,7 @@ jobs:
         # processes would contend for cores and add noise — run packages
         # sequentially (--concurrency 1), unlike the simulation job where
         # instruction counting is immune to contention.
-        uses: CodSpeedHQ/action@v4.18.2
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         with:
           mode: walltime
           run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
