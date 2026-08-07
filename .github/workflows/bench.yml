@@ -14,9 +14,9 @@ name: Bench
 #           on the job).
 #
 # PRs that modify CI-defining files (workflows, tools/ci/, root manifests) are
-# only benched pre-merge when the author has write access; for other authors
+# only benched pre-merge when they come from a branch in THIS repo; from a fork
 # the bench is deferred until the change is reviewed and merged, and the merge
-# push benches it on main. Package-only PRs are always benched.
+# push benches it on main. Package-only PRs are always benched, fork or not.
 
 on:
   pull_request:
@@ -67,9 +67,16 @@ jobs:
         env:
           EVENT_NAME: ${{ github.event_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
-          # Relationship of the PR author to this repo, per GitHub
-          # (OWNER / MEMBER / COLLABORATOR / CONTRIBUTOR / ...).
-          AUTHOR_ASSOCIATION: ${{ github.event.pull_request.author_association }}
+          # Whether the PR branch lives in this repo. If it does, someone with
+          # write access pushed it — a fact, unlike anything derivable from the
+          # author's identity. Do NOT substitute
+          # `github.event.pull_request.author_association`: it does not track
+          # repo access in either direction — its MEMBER value only means
+          # "member of the owning org" (no write implied), and a repo admin here
+          # reports CONTRIBUTOR. There is no reliable alternative from inside a
+          # fork PR's run either: the authoritative collaborator-permission API
+          # needs a token with push access, and fork PRs get a read-only one.
+          IS_SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           set -euo pipefail
           ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
@@ -113,13 +120,8 @@ jobs:
           # every path, so treat the PR as CI-touching (full-sweep / defer).
           if [ "$count" -ge 3000 ]; then ci_touched=true; toolchain_touched=true; fi
 
-          writer=false
-          case "$AUTHOR_ASSOCIATION" in
-            OWNER|MEMBER|COLLABORATOR) writer=true ;;
-          esac
-
-          if [ "$ci_touched" = true ] && [ "$writer" = false ]; then
-            echo "::notice::Bench deferred: this PR changes CI-defining files and the author does not have write access. It will be benched on main once the change is reviewed and merged."
+          if [ "$ci_touched" = true ] && [ "$IS_SAME_REPO" != "true" ]; then
+            echo "::notice::Bench deferred: this PR changes CI-defining files and comes from a fork. It will be benched on main once the change is reviewed and merged."
             echo "proceed=false" >> "$GITHUB_OUTPUT"
             echo "bench=[]" >> "$GITHUB_OUTPUT"
             exit 0
@@ -227,6 +229,12 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
+        with:
+          # This runner's workspace persists between jobs, so the default
+          # behaviour of writing the job token into .git/config would leave it on
+          # disk after the job ends. Nothing here needs an authenticated git
+          # remote (CodSpeed reads the commit from the local repo).
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           # EXACT version, not the '22' range every other job uses. For a range,
