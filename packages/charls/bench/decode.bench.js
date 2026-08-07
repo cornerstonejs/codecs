@@ -59,7 +59,9 @@ let coldEnc
 let warmEnc
 if (!skip) {
   const factory = (await import(distPath)).default ?? (await import(distPath))
-  codec = await factory()
+  // Silence wasm stdout/stderr so vitest's console interception never runs
+  // inside a measured bench body (see openjphjs bench for details).
+  codec = await factory({ print: () => {}, printErr: () => {} })
 
   // Cold instances: one per fixture, constructed but never decoded.
   // The bench body will be the first decode call on this instance.
@@ -86,14 +88,21 @@ if (!skip) {
 }
 
 describe.skipIf(skip)("charls JPEG-LS (wasm)", () => {
-  bench("instantiate+destroy JpegLSDecoder", () => {
-    const d = new codec.JpegLSDecoder()
-    d.delete()
+  // Batched x50: a single instantiate+destroy is ~60 µs, where fixed harness
+  // overhead and cache-model variation across runner CPUs dominate; the loop
+  // puts the body in the ms range so the codec work is the signal.
+  bench("instantiate+destroy JpegLSDecoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const d = new codec.JpegLSDecoder()
+      d.delete()
+    }
   })
 
-  bench("instantiate+destroy JpegLSEncoder", () => {
-    const e = new codec.JpegLSEncoder()
-    e.delete()
+  bench("instantiate+destroy JpegLSEncoder x50", () => {
+    for (let i = 0; i < 50; i++) {
+      const e = new codec.JpegLSEncoder()
+      e.delete()
+    }
   })
 
   bench("decode CT1.JLS (.80 lossless, 512x512x16bit) — cold", () => {

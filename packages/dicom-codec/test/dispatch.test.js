@@ -37,6 +37,15 @@ const SUPPORTED_UIDS = [
   "1.2.840.10008.1.2.5",
 ]
 
+// In CI a missing sibling dist means the build/artifact pipeline broke; fail
+// loudly instead of letting describe.skipIf() silently skip the whole suite.
+it.runIf(process.env.CI)("required sibling builds are present in CI", () => {
+  const missing = REQUIRED_BUILDS.filter(
+    (p) => !existsSync(resolve(packagesRoot, p))
+  )
+  expect(missing, `missing dists: ${missing.join(", ")}`).toEqual([])
+})
+
 describe.skipIf(!ALL_BUILT)("dicom-codec dispatcher", () => {
   let dicomCodec
 

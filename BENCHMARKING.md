@@ -5,8 +5,9 @@ what the numbers mean, why they don't match real wall-clock time, and how
 to read warnings from the CodSpeed dashboard.
 
 Bench files live under `packages/*/bench/*.bench.js` and are driven by
-`vitest bench` + `@codspeed/vitest-plugin@^4`. The full pipeline is in
-`.github/workflows/pr-checks.yml` (job: `codspeed-bench`).
+`vitest bench` + `@codspeed/vitest-plugin@^5`. The full pipeline is in
+`.github/workflows/pr-checks.yml` (jobs: `codspeed-bench` and
+`codspeed-walltime`).
 
 ## TL;DR
 
@@ -21,10 +22,10 @@ Bench files live under `packages/*/bench/*.bench.js` and are driven by
   inflates 30–100× vs production V8; for wasm decode kernels it's ~5–15×;
   for pure compute it's roughly 1×.
 
-## Why simulation, not walltime
+## Two instruments: simulation is the gate, walltime is the reality check
 
 CodSpeed has two instruments: `simulation` (Cachegrind) and `walltime`
-(real CPU, statistical sampling on macro-runners).
+(real CPU, statistical sampling on macro-runners). We run **both**:
 
 | | Simulation | Walltime |
 |---|---|---|
@@ -36,9 +37,22 @@ CodSpeed has two instruments: `simulation` (Cachegrind) and `walltime`
 | Honest about JIT tier-up | No (depends on tier at bench time) | Yes |
 | Good for | Regression detection on a PR | Absolute production-like timing |
 
-We chose simulation because regression detection is the primary goal —
-catching "this PR slowed openjpeg by 5%" matters more than knowing the
-exact ms a user's browser will take.
+Simulation is the **blocking gate** because regression detection is the
+primary goal — catching "this PR slowed openjpeg by 5%" matters more than
+knowing the exact ms a user's browser will take, and simulation's <1%
+determinism flags small algorithmic slips that walltime noise would hide.
+
+Walltime runs as a **second, advisory instrument** (`codspeed-walltime`
+job, `continue-on-error: true`) on CodSpeed macro runners — 16-core ARM64
+bare-metal machines. It covers simulation's two blind spots: real-time
+effects (branch prediction, actual caches) that instruction counting
+models away, and the pure-JS packages (`little-endian`/`big-endian`)
+where the no-JIT simulation model is furthest from production V8.
+Walltime benches run packages sequentially (`--concurrency 1`) because
+parallel processes contend for cores and add noise; simulation is immune
+to contention so it keeps `--parallel`. Note the macro runners are ARM64:
+walltime numbers are real milliseconds, but on different silicon than
+most x86 production traffic.
 
 ## How the numbers get inflated
 
