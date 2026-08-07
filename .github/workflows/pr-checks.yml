@@ -409,9 +409,24 @@ jobs:
         env:
           BENCH: ${{ needs.detect-changes.outputs.bench }}
         run: |
+          set -euo pipefail
           flags=""
           for pkg in $(echo "$BENCH" | jq -r '.[]'); do
-            name=$(node -p "require('./packages/$pkg/package.json').name")
+            # Untrusted: fork PRs control this value (it comes from the PR's own
+            # packages/<pkg>/package.json). Validate against npm's name grammar
+            # before it reaches GITHUB_OUTPUT or any command line. Must be a
+            # whole-string check: keep it in node rather than a line-based tool.
+            # Keep in step with the same check in bench.yml.
+            name=$(node -e '
+              const pkg = process.argv[1];
+              const { name } = require(`./packages/${pkg}/package.json`);
+              if (typeof name !== "string" ||
+                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
+                console.error(`::error::Rejected package name for ${pkg}`);
+                process.exit(1);
+              }
+              process.stdout.write(name);
+            ' "$pkg")
             flags="$flags --scope $name"
           done
           echo "Bench scope flags:$flags"
@@ -422,6 +437,12 @@ jobs:
         # sequentially (--concurrency 1), unlike the simulation job where
         # instruction counting is immune to contention.
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
+        env:
+          # Keep this in env, NOT `${{ }}` in the run: below — an env value is
+          # expanded by the shell after the command line is parsed, so it stays
+          # data. Unquoted below on purpose: the flags must word-split into
+          # repeated `--scope <name>` pairs.
+          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
         with:
           mode: walltime
-          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
+          run: yarn lerna run bench --concurrency 1 --stream $SCOPE_FLAGS
