@@ -40,8 +40,10 @@ and the regression gate is trustworthy.
   version (`22.23.1`) rather than the `'22'` range the other jobs use — see
   [Hardware hygiene](#hardware-hygiene-for-stable-numbers) for why. It does not
   need to be pre-installed; the runner user only needs write access to the actions
-  tool cache. The box's own nvm-managed node is irrelevant, since setup-node
-  prepends its install to the job's `PATH`.
+  tool cache. **The box provides no node on `PATH` of its own**, so anything a
+  workflow needs *before* `setup-node` runs will not find one — provision tools
+  after that step, not before. (That is why the Corepack note below sits where it
+  does.)
 - **yarn is *not* required on the box** — and is in fact absent there, since the
   other two repos use pnpm. GitHub's hosted images preinstall yarn 1, which is
   what this workflow used to rely on implicitly. The bench job now provisions it
@@ -85,10 +87,8 @@ and installs it with apt, caching the result under `$HOME/.cache/codspeed-action
 install needs root**, and the CodSpeed runner checks for a non-interactive path
 before taking it: either it is already root, or `sudo -n true` succeeds.
 
-On nashua the GitHub Actions runner's service account deliberately has **no
-passwordless sudo** — that account executes PR-supplied code for a public repo on
-a box shared with two other repos' runners, so a standing root grant is not worth
-it. Valgrind is therefore **pre-installed by hand and held**, which makes the
+On nashua the GitHub Actions runner's service account has **no passwordless
+sudo**, by design. Valgrind is therefore **pre-installed by hand and held**, which makes the
 CodSpeed runner short-circuit: when a new-enough `.codspeed` valgrind *and*
 `libc6-dbg` are already present it never attempts to elevate.
 
@@ -286,13 +286,10 @@ bench run.
 
 ### Operational gotchas
 
-- **The lock files must be owned by `root`, mode 0666, unless every runner runs
-  as the same OS user.** Whichever repo's job runs first creates
-  `/var/tmp/nashua-playwright.lock` owned by that runner's user with mode 0644;
-  a runner under a different user then cannot open it read-write and the step
-  errors with `cannot open lock file`. Check the identities with
-  `grep -H '^User=' /etc/systemd/system/actions.runner.*.service` — that is the
-  identity that matters, not whoever ran `config.sh`.
+- **The lock files must be owned by `root`, mode 0666.** Left to itself, the
+  first job to run creates `/var/tmp/nashua-playwright.lock` owned by that
+  runner's own account with mode 0644, and every other runner then fails to open
+  it read-write with `cannot open lock file`.
 
   Mode alone is not sufficient. `/var/tmp` is world-writable and sticky, so
   `fs.protected_regular` (on by default; check with
@@ -316,9 +313,6 @@ bench run.
   ```
   If the files are deleted, whichever runner recreates them becomes their owner
   and the problem returns; recreate them as root.
-
-  A runner installed as root can open a lock file owned by anyone, so such a
-  runner locks out the others rather than itself.
 - **`/var/tmp`, not `/tmp`**, is deliberate: `/tmp` is frequently a tmpfs and is
   cleaned far more aggressively (systemd-tmpfiles defaults: 10 days for `/tmp`,
   30 for `/var/tmp`), so `/var/tmp` survives reboots and idle weeks.
@@ -337,8 +331,8 @@ bench run.
 
 1. Repo → **Settings → Actions → Runners → New self-hosted runner** → Linux/x64.
 2. Unpack it into its **own directory**, separate from the cornerstone3D and
-   OHIF runners already on the box (each runner needs its own `_work`), and run
-   it as the **same OS user** as those two — see the lock-ownership gotcha above.
+   OHIF runners already on the box (each runner needs its own `_work`). Each
+   runner runs under its **own dedicated OS account**, created ahead of step 4.
 3. Follow the download/configure steps GitHub shows. When configuring, add the
    label the workflow targets:
    `./config.sh --url https://github.com/cornerstonejs/codecs --token <token> --name "OHIF Ubuntu Server - Nashua" --labels codspeed-bench,nashua`
@@ -352,7 +346,8 @@ bench run.
    `Runner name:` in the **Set up job** log of every run and this repo is public,
    so pick a name you are happy publishing (the interactive default is the
    machine's hostname — which is logged as `Machine name:` either way).
-4. Install it as a service so it survives reboots (`./svc.sh install && ./svc.sh start`).
+4. Install it as a service so it survives reboots, naming the account it runs as
+   (`./svc.sh install <account> && ./svc.sh start`).
    Each runner directory installs its own service; the unit is named
    `actions.runner.cornerstonejs-codecs.<runner-name>`.
 5. Confirm it shows **Idle** in Settings → Actions → Runners, and as the runner
