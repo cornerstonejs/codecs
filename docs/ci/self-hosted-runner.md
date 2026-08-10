@@ -286,28 +286,39 @@ bench run.
 
 ### Operational gotchas
 
-- **All three runners should run as the same OS user.** Whichever repo's job
-  runs first *creates* `/var/tmp/nashua-playwright.lock`, owned by that user with
-  mode 0644; a second runner under a different user then fails to open it
-  read-write and the step errors with `cannot open lock file`. Check all three
-  with `grep -H '^User=' /etc/systemd/system/actions.runner.*.service` (that is
-  the identity that matters — not whoever ran `config.sh`). Note the asymmetry:
-  root can open a lock file owned by anyone, so a runner accidentally installed
-  as root locks out the others rather than itself.
+- **The lock files must be owned by `root`, mode 0666, unless every runner runs
+  as the same OS user.** Whichever repo's job runs first creates
+  `/var/tmp/nashua-playwright.lock` owned by that runner's user with mode 0644;
+  a runner under a different user then cannot open it read-write and the step
+  errors with `cannot open lock file`. Check the identities with
+  `grep -H '^User=' /etc/systemd/system/actions.runner.*.service` — that is the
+  identity that matters, not whoever ran `config.sh`.
 
-  If the users must differ, make the files world-writable. When they do not exist
-  yet:
+  Mode alone is not sufficient. `/var/tmp` is world-writable and sticky, so
+  `fs.protected_regular` (on by default; check with
+  `sysctl fs.protected_regular`) permits opening an existing regular file there
+  for writing only if the opener owns the file or the file is owned by the
+  directory's owner. `/var/tmp` is owned by root, so the lock files must be too;
+  otherwise the open fails with `Permission denied` regardless of mode.
+
+  Create them as root:
   ```bash
   sudo install -m 0666 /dev/null /var/tmp/nashua-playwright.lock
   sudo install -m 0666 /dev/null /var/tmp/nashua-playwright.lock.info
   ```
-  When they already exist, `chmod` instead — and only while the box is idle.
-  `chmod` keeps the inode, whereas replacing the file would leave an in-flight
-  job holding a lock on the old inode while the next job locks the new one, so
-  both would run:
+  If they already exist with the wrong owner, fix owner and mode in place, while
+  the box is idle. `chown`/`chmod` keep the inode; replacing the file would leave
+  an in-flight job holding a lock on the old inode while the next job locks the
+  new one, so both would run:
   ```bash
+  sudo chown root:root /var/tmp/nashua-playwright.lock /var/tmp/nashua-playwright.lock.info
   sudo chmod 0666 /var/tmp/nashua-playwright.lock /var/tmp/nashua-playwright.lock.info
   ```
+  If the files are deleted, whichever runner recreates them becomes their owner
+  and the problem returns; recreate them as root.
+
+  A runner installed as root can open a lock file owned by anyone, so such a
+  runner locks out the others rather than itself.
 - **`/var/tmp`, not `/tmp`**, is deliberate: `/tmp` is frequently a tmpfs and is
   cleaned far more aggressively (systemd-tmpfiles defaults: 10 days for `/tmp`,
   30 for `/var/tmp`), so `/var/tmp` survives reboots and idle weeks.
