@@ -1,0 +1,16 @@
+# Review routing for CI-critical paths. Requires an approval from one of the
+# listed owners when a PR touches a matching path (enforced via branch
+# protection's "require review from Code Owners" on main).
+#
+# Notes on how GitHub evaluates this file:
+#   - gitignore-style patterns; the LAST matching pattern wins.
+#   - Owners must have write access or the rule silently does not bind.
+#   - Any single listed owner's approval satisfies the rule; an author's own
+#     approval never counts, so keep at least two owners per rule.
+#   - Only the copy of this file on the PR's base branch is enforced.
+#
+# No default (catch-all) owner: paths not listed here keep the normal review
+# flow.
+
+/.github/   @jbocce @sedghi @wayfarer3130
+/tools/ci/  @jbocce @sedghi @wayfarer3130

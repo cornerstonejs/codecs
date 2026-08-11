@@ -2,7 +2,10 @@ name: PR checks
 
 # Pipeline: builds run as a per-package parallel matrix (wasm compiles are
 # the slow part), then a single test job runs the whole vitest workspace
-# against the built dists, and CodSpeed benches the packages the PR touched.
+# against the built dists. The CodSpeed simulation bench lives in bench.yml,
+# which waits for THIS workflow's dist artifacts and benches the packages
+# the PR touched; the advisory walltime bench stays here (codspeed-walltime
+# below).
 #
 # Toolchain bumps (emsdk image tag below, root package.json/yarn.lock, this
 # workflow itself) force the FULL pipeline including a full bench sweep.
@@ -41,10 +44,9 @@ concurrency:
   group: pr-checks-${{ github.workflow }}-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
+# Job-level permissions where a job needs more (codspeed-walltime).
 permissions:
   contents: read
-  pull-requests: write  # CodSpeed action posts a sticky PR comment
-  id-token: write       # OIDC token used by CodSpeedHQ/action for auth
 
 jobs:
   detect-changes:
@@ -55,9 +57,12 @@ jobs:
     #     missing (no more silently-skipped suites), so any package change
     #     builds the full set. Docs-only changes still skip everything.
     #   bench — only the packages that actually changed. CodSpeed benches
-    #     run under valgrind (the slowest job in the workflow), and a PR
-    #     only needs deltas for what it touched; main re-benches everything
-    #     to keep full baselines.
+    #     run under valgrind (the slowest thing in CI), and a PR only needs
+    #     deltas for what it touched; main re-benches everything to keep
+    #     full baselines. Consumed by codspeed-walltime below; the
+    #     simulation bench in bench.yml computes the same scope from the
+    #     PR's changed-file list — keep TOOLCHAIN_PATHS below in sync with
+    #     the path lists in bench.yml's gate job.
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.list.outputs.packages }}
@@ -98,10 +103,13 @@ jobs:
           # a vitest upgrade in the root lockfile) must run the full
           # pipeline with a full bench sweep — previously such PRs matched
           # no package path and skipped CI entirely. tools/ entries count
-          # too: browser-smoke drives the browser-smoke job, and the test
-          # suites import reference derivations from
-          # tools/fixture-verification/gen/ — a change to either must not
-          # land with CI skipped.
+          # too: browser-smoke drives the browser-smoke job, the test suites
+          # import reference derivations from tools/fixture-verification/gen/,
+          # and tools/ci/ holds the flock wrapper the bench command actually
+          # execs — a change to any of them must not land with CI skipped.
+          # Note this forces a FULL bench sweep, which on the shared nashua box
+          # holds the mutex for the duration; that is the same trade already
+          # made for .github/workflows/ changes, and both are rare.
           TOOLCHAIN_PATHS=(
             ".github/workflows/"
             "package.json"
@@ -109,6 +117,7 @@ jobs:
             "vitest.workspace.mjs"
             "babel.config.json"
             "lerna.json"
+            "tools/ci/"
             "tools/dist-size/"
             "tools/browser-smoke/"
             "tools/fixture-verification/"
@@ -329,110 +338,6 @@ jobs:
       - name: Browser smoke decode
         run: node tools/browser-smoke/run.js
 
-  codspeed-bench:
-    needs: [detect-changes, build]
-    if: needs.detect-changes.outputs.any == 'true'
-    # Pin the OS (not ubuntu-latest) so PR runs are measured in the same
-    # runtime environment as the baseline seeded on main. A drifting
-    # ubuntu-latest image changes the valgrind/toolchain fingerprint between
-    # baseline and PR, which makes CodSpeed report "Different runtime
-    # environments detected" and refuse to trust the comparison. The baseline
-    # on main must be re-seeded after changing this so both sides match.
-    runs-on: ubuntu-24.04
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Download all built dists
-        uses: actions/download-artifact@v4
-        with:
-          pattern: dist-*
-          path: tmp/
-      - name: Replay dists into packages/<pkg>/dist
-        run: |
-          set -e
-          for d in tmp/dist-*; do
-            [ -d "$d" ] || continue
-            pkg=$(basename "$d" | sed 's/^dist-//')
-            mkdir -p "packages/$pkg/dist"
-            shopt -s dotglob nullglob
-            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
-          done
-      - name: Restore node_modules cache
-        id: modules-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
-      - name: Install dependencies
-        if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
-      - name: Log CPU info
-        # GitHub standard runners are randomly assigned different physical
-        # CPUs (e.g. Intel Xeon 8370C vs AMD EPYC 7763) with different cache
-        # sizes and ISA extensions; glibc dispatches different code paths on
-        # each, so even simulation-mode instruction counts shift between
-        # them. CodSpeed flags such comparisons as "different runtime
-        # environments". Logging the CPU makes those warnings diagnosable
-        # at a glance (recommendation from
-        # https://codspeed.io/blog/unrelated-benchmark-regression).
-        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
-      - name: Compute bench scope
-        # Translate the changed-package directory names into lerna --scope
-        # flags so PRs only bench what they touched. Baseline runs (main /
-        # workflow_dispatch) get the full list from detect-changes, which
-        # makes this a no-op filter there.
-        id: scope
-        env:
-          BENCH: ${{ needs.detect-changes.outputs.bench }}
-        run: |
-          flags=""
-          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
-            name=$(node -p "require('./packages/$pkg/package.json').name")
-            flags="$flags --scope $name"
-          done
-          echo "Bench scope flags:$flags"
-          echo "flags=$flags" >> "$GITHUB_OUTPUT"
-      - name: Run CodSpeed benchmarks
-        # CodSpeedHQ/action@v4 sets up CPU simulation (Cachegrind-based
-        # instruction counting on a modeled CPU + cache hierarchy), runs
-        # the inner command under valgrind, uploads to codspeed.io, and
-        # posts/updates a sticky PR comment with the per-bench deltas.
-        # Authenticates via GitHub OIDC (id-token: write above) so no
-        # CODSPEED_TOKEN secret is needed.
-        #
-        # mode: simulation — the blocking regression gate:
-        #   - deterministic: <1% run-to-run drift (verified across 3
-        #     runs of identical source)
-        #   - free CI minutes (runs on GitHub-hosted runners)
-        #   - regression-detection signal is strong even though the
-        #     headline numbers are MODELED instruction-time, not real
-        #     wall-clock (JS-loop benches inflate 30-100x vs production
-        #     V8 due to no JIT under Cachegrind; wasm decode kernels
-        #     inflate ~5-15x; pure native ~1x)
-        # The codspeed-walltime job below complements this with real
-        # wall-clock measurements on CodSpeed macro runners.
-        # See BENCHMARKING.md at the repo root for the full measurement
-        # model, how to read the cold/warm bench split, and what the
-        # CodSpeed dashboard warnings mean.
-        # Pinned to a full version (not the floating @v4) so the
-        # instrumentation environment stays identical between the main
-        # baseline and PR runs.
-        # Note: vitest 3's hard-coded 60s worker-RPC timer counts real
-        # seconds while valgrind slows the process ~60x, so large suites
-        # structurally trip "Timeout calling onTaskUpdate" AFTER their
-        # benches complete. The vitest configs set
-        # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
-        # "simulation" to keep that exit-code noise from failing the job
-        # (config-level because yarn 1 mangles `--`-forwarded CLI flags).
-        uses: CodSpeedHQ/action@v4.18.2
-        with:
-          mode: simulation
-          run: yarn lerna run bench --parallel --stream ${{ steps.scope.outputs.flags }}
-
   codspeed-walltime:
     needs: [detect-changes, build]
     # Gated behind a repository variable: a `runs-on: codspeed-macro` job
@@ -443,13 +348,17 @@ jobs:
     # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
     if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
     # Advisory instrument: real wall-clock numbers (V8 JIT active, real
-    # cache/branch behavior) that complement the simulation gate above —
+    # cache/branch behavior) that complement the simulation gate (bench.yml) —
     # simulation catches small algorithmic slips deterministically,
     # walltime keeps the numbers honest on real hardware and covers the
     # pure-JS packages where the no-JIT simulation model is furthest from
     # production. Failures here must not block the PR while this beds in.
     continue-on-error: true
     timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write  # CodSpeed action posts a sticky PR comment
+      id-token: write       # OIDC token used by CodSpeedHQ/action for auth
     # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
     # low-noise walltime measurement. Requires the CodSpeed GitHub app on
     # an organization account. NOTE: ARM64 — anything cached must be
@@ -459,7 +368,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          # Pinned for the same reason as the simulation job above: V8 changes
+          # between patch releases move the numbers, and walltime is if anything
+          # more sensitive than instruction counts. Keep this in step with the
+          # codspeed-bench pin so the two instruments stay comparable.
+          node-version: '22.23.1'
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -496,9 +409,24 @@ jobs:
         env:
           BENCH: ${{ needs.detect-changes.outputs.bench }}
         run: |
+          set -euo pipefail
           flags=""
           for pkg in $(echo "$BENCH" | jq -r '.[]'); do
-            name=$(node -p "require('./packages/$pkg/package.json').name")
+            # Untrusted: fork PRs control this value (it comes from the PR's own
+            # packages/<pkg>/package.json). Validate against npm's name grammar
+            # before it reaches GITHUB_OUTPUT or any command line. Must be a
+            # whole-string check: keep it in node rather than a line-based tool.
+            # Keep in step with the same check in bench.yml.
+            name=$(node -e '
+              const pkg = process.argv[1];
+              const { name } = require(`./packages/${pkg}/package.json`);
+              if (typeof name !== "string" ||
+                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
+                console.error(`::error::Rejected package name for ${pkg}`);
+                process.exit(1);
+              }
+              process.stdout.write(name);
+            ' "$pkg")
             flags="$flags --scope $name"
           done
           echo "Bench scope flags:$flags"
@@ -508,7 +436,13 @@ jobs:
         # processes would contend for cores and add noise — run packages
         # sequentially (--concurrency 1), unlike the simulation job where
         # instruction counting is immune to contention.
-        uses: CodSpeedHQ/action@v4.18.2
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
+        env:
+          # Keep this in env, NOT `${{ }}` in the run: below — an env value is
+          # expanded by the shell after the command line is parsed, so it stays
+          # data. Unquoted below on purpose: the flags must word-split into
+          # repeated `--scope <name>` pairs.
+          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
         with:
           mode: walltime
-          run: yarn lerna run bench --concurrency 1 --stream ${{ steps.scope.outputs.flags }}
+          run: yarn lerna run bench --concurrency 1 --stream $SCOPE_FLAGS
