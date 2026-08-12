@@ -1,0 +1,19 @@
+name: Doorman test (expected to be blocked)
+
+# Deliberate test of the self-hosted runner's pre-job hook. Exists only on a
+# fork branch and must never be merged. It targets the bench runner so a job is
+# dispatched there; the hook should reject it before the step below runs,
+# because this file does not exist on the base branch.
+
+on: pull_request
+
+permissions:
+  contents: read
+
+jobs:
+  doorman-test:
+    runs-on: [self-hosted, codspeed-bench, nashua]
+    timeout-minutes: 5
+    steps:
+      - name: Should never run
+        run: echo "If you can see this, the doorman did not block the job."
