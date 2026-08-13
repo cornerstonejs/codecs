@@ -1,6 +1,6 @@
 # openjphjs - HTJ2K support
 
-JS/WebAssembly build of [OpenJPH](https://github.com/aous72/OpenJPH)
+JavaScript/WebAssembly build of [OpenJPH](https://github.com/aous72/OpenJPH).
 
 ## Try It Out!
 
