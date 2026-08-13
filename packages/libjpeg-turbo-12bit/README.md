@@ -1,6 +1,6 @@
 # libjpeg-turbojs (12-bit)
 
-JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo) with `WITH12BIT=ON`.
+JavaScript/WebAssembly build of [libjpeg-turbo](https://github.com/libjpeg-turbo) with `WITH12BIT=ON`.
 
 ## Try It Out
 

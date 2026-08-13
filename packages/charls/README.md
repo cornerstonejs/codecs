@@ -1,5 +1,5 @@
 # charls-js
-JS/WebAssembly build of [CharLS](https://github.com/team-charls/charls)
+JavaScript/WebAssembly build of [CharLS](https://github.com/team-charls/charls).
 
 ## Try It Out!
 
