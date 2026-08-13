@@ -118,6 +118,7 @@ jobs:
             "babel.config.json"
             "lerna.json"
             "tools/ci/"
+            "tools/csp/"
             "tools/dist-size/"
             "tools/browser-smoke/"
             "tools/fixture-verification/"

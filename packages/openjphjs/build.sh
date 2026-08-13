@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+
 mkdir -p build
 mkdir -p dist
 (cd build && CXXFLAGS=-msimd128 emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..)
@@ -8,3 +10,4 @@ cp ./build/src/openjphjs.js ./dist
 cp ./build/src/openjphjs.wasm ./dist
 # disable tests for now since CI doesn't like to run with SIMD
 # (cd test/node; npm run test)
+node ../../tools/csp/check-generated-js.js ./dist
