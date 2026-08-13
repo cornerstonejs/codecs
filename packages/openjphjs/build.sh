@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+
 mkdir -p build
 mkdir -p dist
 (cd build && CXXFLAGS=-msimd128 emcmake cmake -DCMAKE_BUILD_TYPE=Debug ..)

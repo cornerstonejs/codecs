@@ -23,7 +23,7 @@ if (javascriptFiles.length === 0) {
 
 const forbiddenDynamicCode = [
   ["eval()", /\beval\s*\(/],
-  ["new Function()", /\bnew\s+Function\s*\(/],
+  ["Function constructor", /\b(?:new\s+)?Function\s*\(/],
   ["Emscripten Function constructor", /\bnewFunc\s*\(\s*Function\s*,/],
 ];
 

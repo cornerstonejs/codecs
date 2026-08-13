@@ -30,5 +30,7 @@ echo "~~~ BUILD:"
 echo "~~~ DIST:"
 (cd dist && dir)
 echo "~~~ TEST:"
-(cd test/node; npm run test)
-node ../../tools/csp/check-generated-js.js ./dist
+test_status=0
+(cd test/node; npm run test) || test_status=$?
+node ../../tools/csp/check-generated-js.js ./dist || exit $?
+exit "${test_status}"
