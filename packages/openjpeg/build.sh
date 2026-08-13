@@ -34,3 +34,4 @@ echo "~~~ DIST:"
 (cd dist && dir)
 echo "~~~ TEST:"
 (cd test/node; npm run test)
+node ../../tools/csp/check-generated-js.js ./dist

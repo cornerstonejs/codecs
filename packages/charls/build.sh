@@ -15,3 +15,4 @@ cp ./build/src/charlswasm_decode.wasm ./dist
 cp ./build/src/charlsjs_decode.js ./dist
 cp ./build/src/charlsjs_decode.js.mem ./dist
 (npm run test:benchmark)
+node ../../tools/csp/check-generated-js.js ./dist
