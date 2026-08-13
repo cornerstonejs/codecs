@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.9](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjph@2.4.8...@cornerstonejs/codec-openjph@2.4.9) (2026-08-13)
+
+**Note:** Version bump only for package @cornerstonejs/codec-openjph
+
+
+
+
+
 ## [2.4.8](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjph@2.4.7...@cornerstonejs/codec-openjph@2.4.8) (2026-07-09)
 
 **Note:** Version bump only for package @cornerstonejs/codec-openjph
