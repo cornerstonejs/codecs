@@ -25,6 +25,7 @@
   "scripts": {
     "build": "bash build.sh",
     "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh libjpeg-turbo-12bit",
     "test": "echo 'libjpeg-turbo-12bit tests skipped (.51 transfer syntax disabled)'",
     "test:ci": "pnpm run test",
     "prepublishOnly": "pnpm run build"

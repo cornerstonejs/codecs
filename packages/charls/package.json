@@ -32,6 +32,7 @@
     "test:benchmark": "cd test/node; node index.js -- --iterations=200",
     "build": "bash build.sh",
     "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh charls",
     "prepublishOnly": "pnpm run build",
     "bench": "vitest bench --run"
   },

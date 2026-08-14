@@ -70,6 +70,20 @@ Transfer Syntax is the language used in DICOM to describe the DICOM file format 
 
 
 
+### Building the wasm codecs
+
+The five wasm codecs (`charls`, `libjpeg-turbo-8bit`, `libjpeg-turbo-12bit`, `openjpeg`, `openjphjs`) need emscripten and cmake 3.17. You do not need to *work* inside a container to get them — `docker:build` mounts the repo into the same toolchain image CI uses and runs the package's `build.sh` there, writing `build/` and `dist/` back onto the host:
+
+```bash
+pnpm docker:build                     # all five
+pnpm docker:build charls openjpeg     # just these
+pnpm --filter @cornerstonejs/codec-openjph docker:build
+```
+
+Initialise a codec's submodule first (`git submodule update --init --recursive packages/<pkg>/extern`); the script checks and tells you if it is missing. On Windows the repo's drive must be shared with Docker Desktop.
+
+The remaining packages (`big-endian`, `little-endian`, `dicom-codec`) are plain JS — build those natively with `pnpm run build`. `.devcontainer/` still works if you prefer it, but note it pins an older emsdk than CI; [tools/docker/Dockerfile](tools/docker/Dockerfile) is the one that matches.
+
 ### CI
 
 The workspace is a [pnpm workspace][pnpm-workspaces]; `pnpm -r run <cmd>` and `pnpm --filter <pkg> run <cmd>` drive every task. Install with `pnpm install` (Corepack picks the pinned pnpm version from `package.json`'s `packageManager` field).
