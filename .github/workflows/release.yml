@@ -178,8 +178,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # version.mjs rewrote dicom-codec's ranges over its siblings, and pnpm
+          # records the importer's specifier — not just the resolution — so the
+          # lockfile is now stale and `pnpm install --frozen-lockfile` would fail
+          # on the NEXT run with ERR_PNPM_OUTDATED_LOCKFILE. (yarn 1's lockfile
+          # had no workspace-local entries, so this is new since the migration.)
+          # --lockfile-only touches nothing but pnpm-lock.yaml.
+          pnpm install --lockfile-only --ignore-scripts
+
           # release-plan.json is a run artifact, not repo content.
-          git add packages/*/package.json packages/*/CHANGELOG.md
+          git add packages/*/package.json packages/*/CHANGELOG.md pnpm-lock.yaml
           git commit -m "chore(release): publish [skip ci]"
 
           jq -r '.[].tag' release-plan.json | while read -r tag; do
@@ -208,17 +216,17 @@ jobs:
         # --ignore-scripts: prepublishOnly re-runs `bash build.sh`, and this
         # runner has no emscripten toolchain. The dist being published is the
         # artifact the build job produced from this same commit.
+        #
+        # publish-order.mjs emits the packages in dependency order, so
+        # dicom-codec goes out after the six siblings whose ranges it carries —
+        # publishing it alphabetically (third) left a window where those ranges
+        # resolved to versions that did not exist yet. It also refuses to emit a
+        # package that claims to ship dist/ but has an empty one.
         run: |
           set -euo pipefail
           published=0
           skipped=0
-          for manifest in packages/*/package.json; do
-            dir=$(basename "$(dirname "$manifest")")
-            read -r name version < <(
-              jq -r 'select(.private != true) | "\(.name) \(.version)"' "$manifest"
-            )
-            [ -n "$name" ] || continue
-
+          while read -r name version dir; do
             if npm view "$name@$version" version >/dev/null 2>&1; then
               echo "$name@$version is already on npm; skipping."
               skipped=$((skipped + 1))
@@ -228,7 +236,7 @@ jobs:
             echo "Publishing $name@$version"
             (cd "packages/$dir" && npm publish --ignore-scripts)
             published=$((published + 1))
-          done
+          done < <(node tools/release/publish-order.mjs)
           echo "::notice::Published $published package(s); $skipped already on npm."
       - name: Create GitHub releases
         # Driven off the tags rather than the plan, for the same retry reason as
@@ -238,11 +246,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          for manifest in packages/*/package.json; do
-            read -r name version < <(
-              jq -r 'select(.private != true) | "\(.name) \(.version)"' "$manifest"
-            )
-            [ -n "$name" ] || continue
+          while read -r name version dir; do
             tag="$name@$version"
 
             git rev-parse -q --verify "refs/tags/$tag" >/dev/null || continue
@@ -255,7 +259,7 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --title "$tag" \
               --generate-notes
-          done
+          done < <(node tools/release/publish-order.mjs)
       - name: Nothing to release
         if: steps.version.outputs.count == '0'
         run: echo "::notice::No conventional commits since the last tags — nothing new to version."

@@ -13,6 +13,8 @@ publishing and git auth is the built-in `GITHUB_TOKEN`.
 - A package's bump comes from the conventional commits touching `packages/<dir>/` since its own last
   tag: a breaking change (`feat!:` or a `BREAKING CHANGE:` body) is a major, any `feat:` is a minor,
   anything else is a patch. No commits, no release.
+- Commits that touched *only* `*.md`, `*.yml`, `*.spec.js` or `*.test.js` do not count — the
+  `ignoreChanges` list carried over from lerna.json. A docs pass releases nothing.
 - Packages that depend on something being released get their caret range rewritten and a patch bump
   of their own, so `dicom-codec` always ships ranges that resolve to the codecs published alongside it.
 - Each bump prepends a `CHANGELOG.md` entry in the same format as the existing history.
@@ -32,13 +34,24 @@ node tools/release/version.mjs --dry-run --json   # machine-readable
 1. Builds every package's `dist` in the emscripten container (matrix job).
 2. Runs the vitest workspace against those exact dists. A failure here stops the release before
    anything is committed, tagged or published.
-3. Runs `version.mjs`, then commits `chore(release): publish [skip ci]` and one annotated tag per
-   released package, and pushes both to `main` with `GITHUB_TOKEN`.
-4. Publishes each package with `npm publish --ignore-scripts` from the built tree. `--ignore-scripts`
-   is deliberate: `prepublishOnly` re-runs `bash build.sh`, and the publish job has no emscripten
-   toolchain — the dist being published is the artifact built in step 1 from the same commit.
+3. Runs `version.mjs`, regenerates `pnpm-lock.yaml` (pnpm records each importer's *specifier*, so
+   rewriting dicom-codec's ranges strands the lockfile and the next `--frozen-lockfile` install
+   fails), then commits `chore(release): publish [skip ci]` and one annotated tag per released
+   package, and pushes to `main` with `GITHUB_TOKEN`.
+4. Publishes each package with `npm publish --ignore-scripts` from the built tree, in the dependency
+   order `publish-order.mjs` computes — dicom-codec goes out after the six siblings whose ranges it
+   carries. `--ignore-scripts` is deliberate: `prepublishOnly` re-runs `bash build.sh`, and the
+   publish job has no emscripten toolchain — the dist being published is the artifact built in
+   step 1 from the same commit.
 5. Creates a GitHub Release per tag. This happens inline rather than in a tag-triggered workflow
    because GitHub suppresses workflow runs for pushes made with `GITHUB_TOKEN`.
+
+`publish-order.mjs` also refuses to emit a package that claims to ship `dist/` but has an empty one,
+which is the only thing standing between a dropped build artifact and an empty package on npm for
+`libjpeg-turbo-12bit` (it has no vitest config, so the test gate never touches it).
+
+Both scripts run on every PR as a dry-run step in `pr-checks.yml`, so they are not first executed
+mid-release.
 
 Every step is idempotent. If a run dies partway through publishing, re-run the workflow from the
 Actions tab (`workflow_dispatch`) and it finishes the job rather than double-publishing: `version.mjs`

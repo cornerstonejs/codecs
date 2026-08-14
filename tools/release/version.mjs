@@ -12,6 +12,7 @@
 // Behaviour it preserves from the old lerna.json config:
 //   - independent versions, one `<name>@<version>` tag per package
 //   - bump chosen from conventional commits touching that package's directory
+//   - commits touching only ignoreChanges paths do not trigger a release
 //   - dependents get their caret range bumped plus a patch release
 //   - CHANGELOG.md entries in the same format lerna's conventional-changelog
 //     preset produced, so old and new entries read alike
@@ -101,6 +102,46 @@ function lastReleaseTag(name) {
 const COMMIT_SEP = String.fromCharCode(0x1f); // git emits it as %x1f
 const RECORD_SEP = String.fromCharCode(0x1e); // git emits it as %x1e
 
+// Carried over verbatim from lerna.json's command.publish.ignoreChanges. That
+// key looked like it applied only to `lerna publish`, but VersionCommand
+// declares publish as an "other command config" and read it too — so this is
+// what stopped a docs-only commit from releasing all eight packages. A commit
+// counts as releasable only if it touches at least one path these globs do
+// NOT match.
+const IGNORE_CHANGES = ['*.md', '*.yml', '*.spec.js', '*.test.js'];
+
+/**
+ * minimatch's `matchBase` behaviour for the simple globs above: a pattern with
+ * no slash is tested against the basename, at any depth.
+ */
+function globToRegExp(glob) {
+  const source = glob
+    .split('*')
+    .map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('[^/]*');
+  return new RegExp(`^${source}$`);
+}
+
+const IGNORE_PATTERNS = IGNORE_CHANGES.map((glob) => ({
+  matchesBasename: !glob.includes('/'),
+  regexp: globToRegExp(glob),
+}));
+
+function isIgnoredPath(filePath) {
+  const basename = filePath.slice(filePath.lastIndexOf('/') + 1);
+  return IGNORE_PATTERNS.some(({ matchesBasename, regexp }) =>
+    regexp.test(matchesBasename ? basename : filePath)
+  );
+}
+
+/** Paths a commit touched inside one package directory. */
+function commitPaths(hash, dir) {
+  return git('show', '--pretty=format:', '--name-only', hash, '--', `packages/${dir}`)
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 /** Commits touching packages/<dir> since the package's last release tag. */
 function commitsSince(tag, dir) {
   const range = tag ? `${tag}..HEAD` : 'HEAD';
@@ -124,6 +165,13 @@ function commitsSince(tag, dir) {
       })
       // Release commits are bookkeeping, not changes worth releasing again.
       .filter((c) => !c.subject.startsWith('chore(release):'))
+      // A commit that touched only ignored paths (docs, workflows, tests) is
+      // not a release. Without this a README pass ships eight npm versions
+      // whose changelogs read only "Version bump only for package ...".
+      .filter((c) => {
+        const paths = commitPaths(c.hash, dir);
+        return paths.length > 0 && !paths.every(isIgnoredPath);
+      })
   );
 }
 

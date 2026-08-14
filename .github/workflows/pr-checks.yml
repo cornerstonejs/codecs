@@ -122,6 +122,11 @@ jobs:
             "tools/dist-size/"
             "tools/browser-smoke/"
             "tools/fixture-verification/"
+            # tools/release/ decides what gets versioned and published. Without
+            # it here, a PR touching only the release scripts matched no path,
+            # got any=false and skipped every job — so their first execution
+            # would be a live release, partway through mutating manifests.
+            "tools/release/"
           )
           for p in "${TOOLCHAIN_PATHS[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
@@ -209,7 +214,13 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          # pnpm-workspace.yaml is in the key on purpose: the lockfile's
+          # settings block records only autoInstallPeers and
+          # excludeLinksFromLockfile, so changing nodeLinker, allowBuilds or
+          # linkWorkspacePackages leaves the lockfile byte-identical. Keying on
+          # the lockfile alone, the cache would hit, the install step would be
+          # skipped, and CI would keep testing the previous node_modules layout.
+          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -236,6 +247,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history + tags so the release dry-run at the end of this job
+          # can walk back to each package's last `<name>@<version>` tag.
+          fetch-depth: 0
+          fetch-tags: true
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -270,12 +286,25 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          # pnpm-workspace.yaml in the key — see the build job's cache step.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
       - name: Test
         run: pnpm exec vitest run
+      - name: Release dry-run
+        # Exercises the release scripts on every PR. They are otherwise only
+        # ever executed by a live release — after the 8-job build matrix, and
+        # partway through mutating manifests, which is a poor place to discover
+        # a syntax error or a bad tag walk. Mutates nothing (--dry-run), and
+        # publish-order.mjs additionally re-checks the topological order and
+        # that every package shipping dist/ actually has one.
+        run: |
+          set -euo pipefail
+          node tools/release/version.mjs --dry-run
+          echo "Publish order:"
+          node tools/release/publish-order.mjs
 
   dist-size:
     # Binary-size regression gate: compares every shipped dist artifact
@@ -340,7 +369,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          # pnpm-workspace.yaml in the key — see the build job's cache step.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -349,7 +379,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright-core install chromium
@@ -421,7 +451,8 @@ jobs:
           # runner.arch matters: this job runs on ARM64 while every other
           # job is x64; sharing a key would restore x64 native binaries
           # (esbuild/rollup) and break vitest.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          # pnpm-workspace.yaml in the key — see the build job's cache step.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile

@@ -107,7 +107,7 @@ jobs:
                 ci_touched=true ;;
             esac
             case "$f" in
-              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*)
+              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*|tools/release/*)
                 toolchain_touched=true ;;
               packages/*)
                 pkg=${f#packages/}; pkg=${pkg%%/*}
@@ -288,7 +288,11 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
+          # pnpm-workspace.yaml is in the key because the lockfile does not
+          # record nodeLinker/allowBuilds/linkWorkspacePackages — without it a
+          # layout change hits the cache and the install step is skipped.
+          # Keep in step with the cache keys in pr-checks.yml.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
