@@ -16,7 +16,7 @@
 #
 # Why codecs takes this lock — NOT for Playwright:
 #   - The bench job saturates every core: valgrind runs ~60x slower than native
-#     and `lerna run bench --parallel` fans out across all of them. The other two
+#     and `pnpm --parallel run bench` fans out across all of them. The other two
 #     repos measure Playwright wall-clock behaviour, which flakes badly under
 #     that load (and their browsers plus valgrind together strain box RAM).
 #   - In the other direction, a starved bench job trips vitest 3's hard-coded 60s

@@ -103,11 +103,11 @@ jobs:
           while IFS= read -r f; do
             [ -n "$f" ] || continue
             case "$f" in
-              .github/*|tools/ci/*|package.json|yarn.lock|vitest.workspace.mjs|babel.config.json|lerna.json)
+              .github/*|tools/ci/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json)
                 ci_touched=true ;;
             esac
             case "$f" in
-              .github/workflows/*|package.json|yarn.lock|vitest.workspace.mjs|babel.config.json|lerna.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*)
+              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*)
                 toolchain_touched=true ;;
               packages/*)
                 pkg=${f#packages/}; pkg=${pkg%%/*}
@@ -211,7 +211,7 @@ jobs:
     # it wraps the bench command in the "Run CodSpeed benchmarks" step below.
     # See docs/ci/self-hosted-runner.md for what the box must provide: CodSpeed's
     # own patched valgrind (NOT the distro valgrind package), libc6-dbg, flock and
-    # a fixed CPU model — node and yarn are provisioned per-job below. That doc
+    # a fixed CPU model — node and pnpm are provisioned per-job below. That doc
     # also covers how the shared mutex works and the cutover steps.
     # IMPORTANT: moving the bench between workflow files (or runners) is a
     # baseline re-seed event: one main run must complete here before PR
@@ -246,20 +246,22 @@ jobs:
           # 22.23.1 is what the current main baseline was measured on; changing
           # it is a deliberate re-seed event (see docs/ci/self-hosted-runner.md).
           node-version: '22.23.1'
-      # nashua has no yarn: setup-node ships node + npm only, GitHub's hosted
-      # images preinstall yarn 1, and the other two repos on this box use pnpm.
-      # Corepack is bundled with node 22 and fetches over Node's own https, so it
-      # works where `npm i -g yarn` is unreliable here — the runner's bundled node
-      # has a corrupted npm ("Cannot find module '../lib/cli.js'"), which is why
-      # OHIF's workflow also went the Corepack route on this box. Pinned to the
-      # same yarn the build job uses rather than Corepack's bundled default, and
-      # activated AFTER setup-node so the shim lands in that node's bin dir.
+      # nashua has no package manager beyond npm: setup-node ships node + npm
+      # only, and GitHub's hosted images are not what runs here. Corepack is
+      # bundled with node 22 and fetches over Node's own https, so it works
+      # where `npm i -g <pm>` is unreliable on this box — the runner's bundled
+      # node has a corrupted npm ("Cannot find module '../lib/cli.js'"), which
+      # is why OHIF's workflow also went the Corepack route here. `corepack
+      # prepare --activate` with no argument installs exactly the version in
+      # the root package.json "packageManager" field, so the bench box can
+      # never drift from the build jobs. Activated AFTER setup-node so the shim
+      # lands in that node's bin dir.
       # NOTE: node 25 unbundles corepack — revisit this step before any such bump.
-      - name: Provide yarn 1 via Corepack
+      - name: Provide pnpm via Corepack
         run: |
-          corepack enable yarn
-          corepack prepare yarn@1.22.22 --activate
-          yarn --version
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -286,10 +288,10 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Log CPU info
         # GitHub standard runners are randomly assigned different physical
         # CPUs (e.g. Intel Xeon 8370C vs AMD EPYC 7763) with different cache
@@ -301,7 +303,7 @@ jobs:
         # https://codspeed.io/blog/unrelated-benchmark-regression).
         run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
       - name: Compute bench scope
-        # Translate the changed-package directory names into lerna --scope
+        # Translate the changed-package directory names into pnpm --filter
         # flags so PRs only bench what they touched. Baseline runs (main /
         # workflow_dispatch) get the full list from the gate, which makes
         # this a no-op filter there.
@@ -326,7 +328,7 @@ jobs:
               }
               process.stdout.write(name);
             ' "$pkg")
-            flags="$flags --scope $name"
+            flags="$flags --filter $name"
           done
           echo "Bench scope flags:$flags"
           echo "flags=$flags" >> "$GITHUB_OUTPUT"
@@ -373,14 +375,15 @@ jobs:
         # benches complete. The vitest configs set
         # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
         # "simulation" to keep that exit-code noise from failing the job
-        # (config-level because yarn 1 mangles `--`-forwarded CLI flags).
+        # (config-level rather than a `--`-forwarded CLI flag, which package
+        # managers have historically mangled).
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         env:
           # Keep this in env, NOT `${{ }}` in the run: below — an env value is
           # expanded by the shell after the command line is parsed, so it stays
           # data. Unquoted below on purpose: the flags must word-split into
-          # repeated `--scope <name>` pairs.
+          # repeated `--filter <name>` pairs.
           SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
         with:
           mode: simulation
-          run: bash tools/ci/with-nashua-lock.sh yarn lerna run bench --parallel --stream $SCOPE_FLAGS
+          run: bash tools/ci/with-nashua-lock.sh pnpm --parallel $SCOPE_FLAGS run bench

@@ -1,0 +1,23 @@
+packages:
+  - packages/*
+
+# Flat node_modules, matching the yarn 1 layout this repo was built against.
+# The codec packages and their build scripts (webpack configs, emscripten glue,
+# vitest suites) resolve dependencies by plain `require`/import from the root,
+# so pnpm's default isolated store would break resolution in several places.
+nodeLinker: hoisted
+
+# dicom-codec depends on its sibling codecs by caret range rather than the
+# workspace: protocol, so that the published manifest needs no rewriting. These
+# two settings make pnpm link the local package whenever its version satisfies
+# the range, which is what yarn workspaces did implicitly.
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+
+strictPeerDependencies: false
+
+# pnpm blocks dependency install scripts unless they are listed here. esbuild
+# (pulled in by vite/vitest) needs its postinstall to place the platform binary;
+# without it every vitest run fails to start.
+allowBuilds:
+  esbuild: true

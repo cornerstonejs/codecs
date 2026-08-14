@@ -1,0 +1,261 @@
+name: Release
+
+# Versions, tags and publishes the codec packages to npm.
+#
+# THE FILENAME OF THIS WORKFLOW IS LOAD-BEARING. Each package's npm trusted
+# publisher is registered against `release.yml` in cornerstonejs/codecs, so npm
+# will reject an OIDC publish coming from any other workflow file. Renaming
+# this file means re-running tools/release/setup-trusted-publishing.sh.
+#
+# This replaces the old CircleCI NPM_PUBLISH job, which needed two long-lived
+# personal credentials: an NPM_TOKEN written to ~/.npmrc, and a maintainer's
+# personal SSH key (the only reason `lerna version` could push past main's
+# branch protection). Both are gone:
+#   - npm auth is OIDC trusted publishing — a short-lived token minted per run
+#     and scoped to this workflow. There is no NPM_TOKEN anywhere.
+#   - git auth is the built-in GITHUB_TOKEN. main's ruleset lists the GitHub
+#     Actions app as a bypass actor so the version commit can land; human
+#     review requirements are unchanged (see tools/release/README.md).
+#
+# Every step is idempotent: version.mjs releases nothing when there are no new
+# conventional commits since a package's last tag, and the publish step skips
+# any version already on the registry. A re-run after a partial failure
+# finishes the job rather than double-publishing.
+
+on:
+  push:
+    branches:
+      - main
+  # Manual re-run after a partial failure (e.g. npm was down mid-publish).
+  workflow_dispatch:
+
+# Never let two releases interleave — they would race on tags and versions.
+# Do not cancel in progress: a half-published release must be allowed to finish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Same wasm build as pr-checks.yml, minus the change detection: a release
+    # publishes whatever moved, and dicom-codec ships ranges over every sibling,
+    # so all dists must be current.
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - charls
+          - libjpeg-turbo-8bit
+          - libjpeg-turbo-12bit
+          - openjpeg
+          - openjphjs
+          - little-endian
+          - big-endian
+          - dicom-codec
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:3.1.74
+    steps:
+      - name: Install pnpm + cmake + C++ build deps
+        run: |
+          apt-get update
+          apt-get -y install build-essential git
+          wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" \
+            | tar --strip-components=1 -xz -C /usr/local
+          apt-get autoremove -y
+          apt-get clean -y
+          rm -rf /var/lib/apt/lists/*
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        # The emsdk image bundles node 20.18.0; pnpm 11 requires >=22.13 and
+        # vite 7 (via vitest 3) requires >=20.19. emcc is unaffected — it uses
+        # the node binary pinned in its own .emscripten config, not PATH.
+        with:
+          node-version: '22'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Allow git to operate on the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Init submodules for this package
+        run: |
+          if [ -d "packages/${{ matrix.package }}/extern" ]; then
+            git submodule update --init --recursive "packages/${{ matrix.package }}/extern"
+          else
+            echo "No extern/ submodule for ${{ matrix.package }}; skipping."
+          fi
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: cd "packages/${{ matrix.package }}" && pnpm run build:ci
+      - name: Ensure dist exists (no-op packages still need a placeholder)
+        run: mkdir -p "packages/${{ matrix.package }}/dist"
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.package }}
+          path: packages/${{ matrix.package }}/dist
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version commit + tags, create releases
+      id-token: write # mint the OIDC token npm exchanges for a publish token
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # version.mjs walks each package's history back to its last
+          # `<name>@<version>` tag, so both history and tags must be present.
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-node@v4
+        with:
+          # npm 12 requires ^22.22.2 || ^24.15.0; 24 keeps headroom.
+          node-version: '24'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Use an npm that speaks trusted publishing
+        # OIDC publishing needs npm >= 11.5.1. Node 24 ships a new enough npm
+        # today, but pinning the floor here keeps the release from silently
+        # falling back to "no auth configured" if that ever changes.
+        run: |
+          npm install --global npm@latest
+          npm --version
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Download built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        # download-artifact lands each artifact in tmp/<name>/; move them where
+        # npm pack expects them. Same step as pr-checks.yml.
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+          ls packages/*/dist 2>/dev/null | head
+      - name: Test
+        # Gate the release on the same vitest workspace pr-checks.yml runs, but
+        # against the exact dists about to be published. Nothing is committed,
+        # tagged or published if this fails. CI=true (set by GitHub) arms the
+        # in-test guards, so a missing or empty dist fails its suite here rather
+        # than silently skipping and shipping.
+        run: pnpm exec vitest run
+      - name: Compute version bumps
+        id: version
+        # Writes package.json versions, dependent ranges and CHANGELOG entries,
+        # and emits release-plan.json describing what to publish.
+        run: |
+          set -euo pipefail
+          node tools/release/version.mjs
+          count=$(jq 'length' release-plan.json)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          jq -r '.[] | "  \(.name): \(.previousVersion) -> \(.version) [\(.releaseType)]"' release-plan.json
+      - name: Commit, tag and push
+        if: steps.version.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # release-plan.json is a run artifact, not repo content.
+          git add packages/*/package.json packages/*/CHANGELOG.md
+          git commit -m "chore(release): publish [skip ci]"
+
+          jq -r '.[].tag' release-plan.json | while read -r tag; do
+            git tag -a "$tag" -m "$tag"
+          done
+
+          # Pushed with GITHUB_TOKEN, which main's ruleset lets bypass the pull
+          # request requirement. Note this push does NOT trigger further
+          # workflow runs (GitHub suppresses them for GITHUB_TOKEN pushes),
+          # which is why the GitHub Releases are created below rather than by a
+          # separate tag-triggered workflow.
+          git push --follow-tags origin HEAD:main
+      - name: Publish to npm
+        # Deliberately NOT gated on the plan. The source of truth is "every
+        # workspace package whose current version is not yet on the registry",
+        # which covers both the normal path (the versions version.mjs just
+        # wrote) and the retry path: if a previous run committed and tagged but
+        # died partway through publishing, version.mjs correctly finds nothing
+        # new to release on the re-run, and this step still finishes the job.
+        #
+        # No .npmrc and no NODE_AUTH_TOKEN: `npm publish` performs the OIDC
+        # exchange itself using the id-token permission above. Provenance is
+        # generated automatically for trusted publishes, which is why every
+        # package's repository.url must point at this repo.
+        #
+        # --ignore-scripts: prepublishOnly re-runs `bash build.sh`, and this
+        # runner has no emscripten toolchain. The dist being published is the
+        # artifact the build job produced from this same commit.
+        run: |
+          set -euo pipefail
+          published=0
+          skipped=0
+          for manifest in packages/*/package.json; do
+            dir=$(basename "$(dirname "$manifest")")
+            read -r name version < <(
+              jq -r 'select(.private != true) | "\(.name) \(.version)"' "$manifest"
+            )
+            [ -n "$name" ] || continue
+
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "$name@$version is already on npm; skipping."
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            echo "Publishing $name@$version"
+            (cd "packages/$dir" && npm publish --ignore-scripts)
+            published=$((published + 1))
+          done
+          echo "::notice::Published $published package(s); $skipped already on npm."
+      - name: Create GitHub releases
+        # Driven off the tags rather than the plan, for the same retry reason as
+        # the publish step. Only tags that actually exist are considered, so a
+        # package whose current version predates this run is left alone.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for manifest in packages/*/package.json; do
+            read -r name version < <(
+              jq -r 'select(.private != true) | "\(.name) \(.version)"' "$manifest"
+            )
+            [ -n "$name" ] || continue
+            tag="$name@$version"
+
+            git rev-parse -q --verify "refs/tags/$tag" >/dev/null || continue
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              continue
+            fi
+
+            echo "Creating release $tag"
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$tag" \
+              --generate-notes
+          done
+      - name: Nothing to release
+        if: steps.version.outputs.count == '0'
+        run: echo "::notice::No conventional commits since the last tags — nothing new to version."

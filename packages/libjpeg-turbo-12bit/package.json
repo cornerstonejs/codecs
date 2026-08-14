@@ -17,12 +17,17 @@
     "README.md",
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/libjpeg-turbo-12bit"
+  },
   "scripts": {
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
+    "build:ci": "pnpm run build",
     "test": "echo 'libjpeg-turbo-12bit tests skipped (.51 transfer syntax disabled)'",
-    "test:ci": "yarn run test",
-    "prepublishOnly": "yarn run build"
+    "test:ci": "pnpm run test",
+    "prepublishOnly": "pnpm run build"
   },
   "author": "",
   "license": "ISC"

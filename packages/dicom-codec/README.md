@@ -29,10 +29,10 @@ v1.0.0: support for browser (dynamic loading included) and node.
 
 ```
 # Restore packages
-yarn
+pnpm install
 
 # Build
-yarn run build
+pnpm run build
 ```
 
 # How to use
@@ -182,7 +182,7 @@ TBD
 ## Testing
 
 ```bash
-yarn run test   # run vitest dispatch + integration tests
+pnpm run test   # run vitest dispatch + integration tests
 ```
 
 The integration tests require every underlying wasm codec's `dist/` to be built

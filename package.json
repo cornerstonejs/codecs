@@ -1,28 +1,28 @@
 {
   "name": "root",
   "private": true,
-  "workspaces": [
-    "packages/*"
-  ],
+  "packageManager": "pnpm@11.21.0",
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.7.1",
     "@vitest/coverage-v8": "^3.2.4",
     "dotenv": "^14.1.0",
-    "lerna": "^8.0.0",
+    "semver": "^7.7.1",
     "vitest": "^3.2.4",
     "playwright-core": "^1.49.0"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=22.13",
+    "pnpm": ">=11"
   },
   "scripts": {
-    "build:all": "lerna run build:ci --parallel --stream",
+    "build:all": "pnpm -r --parallel run build:ci",
     "test": "vitest run",
-    "test:all": "lerna run test:ci --parallel --stream",
-    "bench": "lerna run bench --parallel --stream",
-    "bench:ci": "lerna run bench --parallel --stream",
-    "build:ci": "lerna run build:ci --since main --parallel --stream",
-    "test:ci": "lerna run test:ci --since main --include-dependents --parallel --stream",
-    "build:publish": "lerna run build:ci --parallel --stream"
+    "test:all": "pnpm -r --parallel run test:ci",
+    "bench": "pnpm -r --parallel run bench",
+    "bench:ci": "pnpm -r --parallel run bench",
+    "build:ci": "pnpm --parallel --filter \"...[origin/main]\" run build:ci",
+    "test:ci": "pnpm --parallel --filter \"...[origin/main]\" run test:ci",
+    "build:publish": "pnpm -r --parallel run build:ci",
+    "release:plan": "node tools/release/version.mjs --dry-run"
   }
 }

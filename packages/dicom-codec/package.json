@@ -6,11 +6,16 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/dicom-codec"
+  },
   "scripts": {
     "build": "echo 'Nothing to build' && exit 0",
-    "build:ci": "yarn run build",
+    "build:ci": "pnpm run build",
     "test": "vitest run",
-    "test:ci": "yarn run test",
+    "test:ci": "pnpm run test",
     "test:watch": "vitest",
     "bench": "vitest bench --run"
   },

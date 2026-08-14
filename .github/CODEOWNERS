@@ -12,5 +12,11 @@
 # No default (catch-all) owner: paths not listed here keep the normal review
 # flow.
 
-/.github/   @jbocce @sedghi @wayfarer3130
-/tools/ci/  @jbocce @sedghi @wayfarer3130
+/.github/            @jbocce @sedghi @wayfarer3130
+/tools/ci/           @jbocce @sedghi @wayfarer3130
+# Release-critical: the versioning script the release workflow runs, and the
+# root manifests that decide what CI installs and what npm publishes.
+/tools/release/      @jbocce @sedghi @wayfarer3130
+/package.json        @jbocce @sedghi @wayfarer3130
+/pnpm-workspace.yaml @jbocce @sedghi @wayfarer3130
+/pnpm-lock.yaml      @jbocce @sedghi @wayfarer3130

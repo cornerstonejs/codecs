@@ -13,7 +13,7 @@ This repository is maintained as a monorepo. This means that this repository, in
 │   └── openjpegjs          #
 │
 ├── ...                     # misc. shared configuration
-├── lerna.json              # MonoRepo (Lerna) settings
+├── pnpm-workspace.yaml     # MonoRepo (pnpm workspace) settings
 ├── package.json            # Shared devDependencies and commands
 └── README.md               # This file
 ```
@@ -72,28 +72,21 @@ Transfer Syntax is the language used in DICOM to describe the DICOM file format 
 
 ### CI
 
-We are leveraging `lerna` to version and publish packages. Lerna adds tooling on top of `yarn workspaces` to enable monorepo functionality. Our lerna configuration/usage is confined to:
+The workspace is a [pnpm workspace][pnpm-workspaces]; `pnpm -r run <cmd>` and `pnpm --filter <pkg> run <cmd>` drive every task. Install with `pnpm install` (Corepack picks the pinned pnpm version from `package.json`'s `packageManager` field).
 
-- `package.json`
-- `lerna.json`
-- `.circleci/config.yml`
+Pull requests build and test the packages that changed (compared against the `main` branch), in [.github/workflows/pr-checks.yml](.github/workflows/pr-checks.yml). Merges to `main` version, tag and publish through [.github/workflows/release.yml](.github/workflows/release.yml) — see [tools/release/README.md](tools/release/README.md) for how that works and what the one-time setup was.
 
-Pull requests attempt to build and test packages that have been modified (when compared against the `main` branch). "Semantic commit" messages, and the files included in the commit, help `lerna` determine how package versions should be updated and what to include in changelogs. Example commit messages include:
+"Semantic commit" messages, and the files included in the commit, determine how package versions are updated and what goes into the changelogs. Example commit messages include:
 
 - `fix(charls-decode): should not break when no config option is provided`
 - `feat(encode): add encode API method`
-- `feat(encode): friendlier API method BREAKING_CHANGE`
+- `feat(encode)!: friendlier API method`
 
-You can read more about the specific lerna features we're using here:
+Preview what the next release would publish at any time:
 
-- `lerna run <cmd>`: Used in `package.json`
-- `lerna version`: Used in `.circleci/config.yml`
-- `lerna publish`: Used in `.circleci/config.yml`
-- ["Lerna filter options"][lerna-filter-options]: Used in `package.json` (--since main)
-
-You can read more about semantic commit messages here:
-
-- Semantic commits
+```bash
+pnpm release:plan
+```
 
 ### Benchmarking
 
@@ -130,4 +123,4 @@ what the CodSpeed warnings mean, and how to add new benches.
 -->
 
 
-[lerna-filter-options]: https://github.com/lerna/lerna/tree/main/core/filter-options
+[pnpm-workspaces]: https://pnpm.io/workspaces
