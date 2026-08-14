@@ -16,6 +16,10 @@
 # Environment:
 #   EMSDK_VERSION         emsdk tag to build against (default 3.1.74, = CI)
 #   CODECS_BUILD_IMAGE    override the local image tag
+#   CODECS_KEEP_BUILD=1   keep packages/<pkg>/{build,dist} for a faster
+#                         incremental rebuild. Off by default because stale
+#                         leftovers silently corrupt a build — see the comment
+#                         on the clean step below.
 #
 # Nothing from node_modules is needed inside the container: build.sh uses only
 # node builtins, and the nested test/node packages it runs have no dependencies.
@@ -104,6 +108,28 @@ fi
 for pkg in "${packages[@]}"; do
   echo
   echo "==> Building $pkg"
+
+  # Start from an empty build/ and dist/ unless asked not to. CI always does —
+  # its runners check out fresh — and the packages disagree about it among
+  # themselves: charls clears both, openjpeg clears build/, libjpeg-turbo-12bit
+  # clears dist/, and libjpeg-turbo-8bit and openjphjs clear neither. Both
+  # kinds of leftover cause real damage:
+  #
+  #   build/  a CMakeCache.txt written by a different toolchain is silently
+  #           authoritative — cmake will not apply link flags the cached
+  #           configure never saw. A cache left by the old devcontainer emsdk
+  #           produced artifacts missing -sDYNAMIC_EXECUTION=0/-sEMBIND_AOT=1,
+  #           which build.sh's own CSP check then (correctly) rejected.
+  #   dist/   artifacts the current emsdk no longer emits (the .js.mem files)
+  #           linger forever. dist is in these packages' "files" array, so a
+  #           local publish would ship them, and tools/dist-size/check.js flags
+  #           them as unexplained new artifacts.
+  if [ -n "${CODECS_KEEP_BUILD:-}" ]; then
+    echo "    CODECS_KEEP_BUILD set — reusing packages/$pkg/{build,dist}"
+  else
+    rm -rf "$REPO_ROOT/packages/$pkg/build" "$REPO_ROOT/packages/$pkg/dist"
+  fi
+
   docker run "${run_opts[@]}" "$IMAGE" bash -c "cd 'packages/$pkg' && bash build.sh"
 done
 
