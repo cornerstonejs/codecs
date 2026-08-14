@@ -2,6 +2,37 @@ const logger = require("../utils/logger");
 const processTimer = require("../utils/processTimer");
 
 /**
+ * Emscripten writes a codec's stdout/stderr straight to the console, bypassing
+ * this library's own logging policy. That is not just startup noise: openjph's
+ * HTJ2KDecoder prints a banner from its CONSTRUCTOR, and decode() below builds
+ * a fresh decoder per call — so a consumer decoding a series got one line of
+ * console output per frame, unconditionally.
+ *
+ * Routing print/printErr through the logger makes the codecs obey the same
+ * `setVerbose` flag as the rest of the library: quiet by default, still there
+ * when you turn it on. Set once at module init, which covers everything the
+ * codec prints afterwards.
+ *
+ * It also takes console I/O out of the decode path, which the dicom-codec
+ * dispatch benchmarks measure — vitest intercepts console output and does
+ * stack-trace attribution and source-map mapping per call, all of it inside
+ * the timed body. packages/openjphjs/bench/decode.bench.js already passes
+ * these same overrides for exactly that reason.
+ *
+ * MUST return a fresh object per codec. Emscripten's MODULARIZE wrapper takes
+ * the argument as its Module and mutates it in place — heap views, embind
+ * registrations, the lot. Sharing one object across codecs replays the first
+ * codec's registrations into the second, which fails as
+ * "Cannot register public name 'getVersion' twice".
+ */
+function emscriptenModuleOverrides() {
+  return {
+    print: (message) => logger.log(message),
+    printErr: (message) => logger.error(message),
+  };
+}
+
+/**
  * Change by reference the given codecConfig and set related Encoder/Decoder from codec.
  *
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
@@ -39,12 +70,12 @@ async function initialize(
 
   return new Promise((resolve, reject) => {
     if (codecModule) {
-      codecModule().then((codec) => {
+      codecModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
     } else if (codecWasmModule) {
-      codecWasmModule().then((codec) => {
+      codecWasmModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
