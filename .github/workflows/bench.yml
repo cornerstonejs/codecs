@@ -107,7 +107,7 @@ jobs:
                 ci_touched=true ;;
             esac
             case "$f" in
-              .github/workflows/*|package.json|yarn.lock|vitest.workspace.mjs|babel.config.json|lerna.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*)
+              .github/workflows/*|package.json|yarn.lock|vitest.workspace.mjs|babel.config.json|lerna.json|tools/ci/*|tools/csp/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*)
                 toolchain_touched=true ;;
               packages/*)
                 pkg=${f#packages/}; pkg=${pkg%%/*}

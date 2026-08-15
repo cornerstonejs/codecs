@@ -12,6 +12,7 @@ DICOM codecs for JavaScript, with browser and Node.js support.
 | JpegLossless      	| 1.2.840.10008.1.2.4.57 1.2.840.10008.1.2.4.70                	|    X   	|    -   	|        X        	|       -       	|
 | Jpegls            	| 1.2.840.10008.1.2.4.80 1.2.840.10008.1.2.4.81                	|    X   	|    X   	|        X        	|       X       	|
 | Jpeg2000          	| 1.2.840.10008.1.2.4.90 1.2.840.10008.1.2.4.91                	|    X   	|    X   	|        X        	|       X       	|
+| JpegXL            	| 1.2.840.10008.1.2.4.110 1.2.840.10008.1.2.4.111 1.2.840.10008.1.2.4.112 	|    X   	|  X except .111 	|        X        	|       X       	|
 | RleLossless       	| 1.2.840.10008.1.2.5                                          	|    X   	|    -   	|        -        	|       -       	|
 | HTJ2K             	| 1.2.840.10008.1.2.202 (201,203 as well)                      	|    X   	|    X   	|        X        	|       X       	|
 
@@ -177,7 +178,18 @@ Parameters (**It does not mutate any param** ):
 
 ## TransferSyntax Specific Encoding Options
 
-TBD
+### JPEG XL
+
+Transfer syntax `1.2.840.10008.1.2.4.110` always uses lossless encoding.
+Transfer syntax `1.2.840.10008.1.2.4.111` supports decoding only because the
+pixel encoder does not create JPEG reconstruction data.
+
+Transfer syntax `1.2.840.10008.1.2.4.112` accepts these encoding options:
+
+- `lossless`: Boolean, defaults to `true`.
+- `distance`: Number from 0 to 25 for lossy encoding.
+- `effort`: Integer from 1 to 9.
+- `decodingSpeed`: Integer from 0 to 4.
 
 ## Testing
 

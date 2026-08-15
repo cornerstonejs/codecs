@@ -223,6 +223,8 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
     "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
   );
 
+  const encodedImageFrame = getImageFrame(encodedTypedArray).slice();
+
   // cleanup allocated memory
   encoderInstance.delete();
 
@@ -231,7 +233,7 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   };
 
   return {
-    imageFrame: getImageFrame(encodedTypedArray),
+    imageFrame: encodedImageFrame,
     imageInfo: getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
@@ -276,6 +278,7 @@ function decode(context, codecConfig, imageFrame, imageInfo) {
 
   // get information about the decoded image
   const decodedImageInfo = decoderInstance.getFrameInfo();
+  const decodedImageFrame = getImageFrame(decodedTypedArray).slice();
 
   // cleanup allocated memory
   decoderInstance.delete();
@@ -285,7 +288,7 @@ function decode(context, codecConfig, imageFrame, imageInfo) {
   };
 
   return {
-    imageFrame: getImageFrame(decodedTypedArray),
+    imageFrame: decodedImageFrame,
     imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
     processInfo,
   };
