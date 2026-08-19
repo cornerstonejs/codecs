@@ -19,10 +19,10 @@ Using npm:
 $ npm install @cornerstonejs/openjpegjs
 ```
 
-Using yarn:
+Using pnpm:
 
 ```bash
-$ yarn add @cornerstonejs/openjpegjs
+$ pnpm add @cornerstonejs/openjpegjs
 ```
 
 Using unpkg CDN:
@@ -125,16 +125,16 @@ It can be difficult to contribute if your environment is not setup correctly. I 
 2. Command Pallete --> `Remote-Containers: Open Folder in Container`
 
 ### How to Run
-- Run `yarn install` in the main codecs folder
+- Run `pnpm install` in the main codecs folder
 - Run `git submodule update --init --recursive` in the main codecs folder to initiate submodules
 - Go to packages/openjpeg folder
-- Run `yarn build`
+- Run `pnpm run build`
 
 ## Testing
 
 ```bash
-yarn run build   # compile wasm into dist/
-yarn run test    # run vitest against dist/
+pnpm run build   # compile wasm into dist/
+pnpm run test    # run vitest against dist/
 ```
 
 Tests skip cleanly when `dist/` is absent.

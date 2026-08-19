@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjpeg",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "JS/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg)",
   "main": "dist/openjpegjs.js",
   "publishConfig": {
@@ -22,11 +22,12 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:ci": "yarn run test",
+    "test:ci": "pnpm run test",
     "test:watch": "vitest",
     "test:benchmark": "cd test/node; node index.js",
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh openjpeg",
     "build:ui": "webpack --config ./.webpack/webpack.config.js",
     "start": " webpack-dev-server --config ./.webpack/webpack.config.js",
     "prepublishOnly": "bash build.sh",
@@ -35,14 +36,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://localhost"
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/openjpeg"
   },
   "author": "",
   "license": "MIT",
   "bugs": {
-    "url": "https://localhost"
+    "url": "https://github.com/cornerstonejs/codecs/issues"
   },
-  "homepage": "https://localhost",
+  "homepage": "https://github.com/cornerstonejs/codecs#readme",
   "files": [
     "package.json",
     "README.md",

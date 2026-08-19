@@ -2,6 +2,47 @@ const logger = require("../utils/logger");
 const processTimer = require("../utils/processTimer");
 
 /**
+ * Emscripten writes a codec's stdout/stderr straight to the console, bypassing
+ * this library's own logging policy. That is not just startup noise: openjph's
+ * HTJ2KDecoder prints a banner from its CONSTRUCTOR, and decode() below builds
+ * a fresh decoder per call — so a consumer decoding a series got one line of
+ * console output per frame, unconditionally.
+ *
+ * Routing `print` through the logger makes that stdout chatter obey the same
+ * `setVerbose` flag as the rest of the library: quiet by default, still there
+ * when you turn it on. Set once at module init, which covers everything the
+ * codec prints afterwards.
+ *
+ * `printErr` is deliberately NOT overridden. logger.error is gated on the same
+ * `verbose` flag as logger.log, so routing stderr through it would silence real
+ * decode failures — not just banners — for every consumer that never called
+ * setVerbose. Nothing is lost by leaving it alone: openjph's noise is INFO and
+ * WARN, and ojph_message.cpp points both of those at stdout (only OJPH_ERROR
+ * uses stderr). So emscripten's default printErr — an unconditional
+ * console.error — stays in place for the messages that matter.
+ *
+ * It also takes console I/O out of the decode path for consumers, which is
+ * worth having on its own. It is NOT, however, what the dicom-codec dispatch
+ * benchmark measures: this override was once thought to explain CodSpeed's
+ * -25% Simulation result on "HTJ2K Lossless (.201)", and removing it entirely
+ * was measured at 189.0ms against 188.1ms with it — no effect. Whatever that
+ * regression is, it is not this. Do not re-add that claim without a bench run
+ * behind it. packages/openjphjs/bench/decode.bench.js overrides the same hook
+ * as a no-op, for its own reasons.
+ *
+ * MUST return a fresh object per codec. Emscripten's MODULARIZE wrapper takes
+ * the argument as its Module and mutates it in place — heap views, embind
+ * registrations, the lot. Sharing one object across codecs replays the first
+ * codec's registrations into the second, which fails as
+ * "Cannot register public name 'getVersion' twice".
+ */
+function emscriptenModuleOverrides() {
+  return {
+    print: (message) => logger.log(message),
+  };
+}
+
+/**
  * Change by reference the given codecConfig and set related Encoder/Decoder from codec.
  *
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
@@ -39,12 +80,12 @@ async function initialize(
 
   return new Promise((resolve, reject) => {
     if (codecModule) {
-      codecModule().then((codec) => {
+      codecModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
     } else if (codecWasmModule) {
-      codecWasmModule().then((codec) => {
+      codecWasmModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);

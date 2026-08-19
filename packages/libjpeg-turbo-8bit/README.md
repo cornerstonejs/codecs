@@ -9,8 +9,8 @@ Try it in your browser [here](https://chafey.github.com/libjpeg-turbojs/test/bro
 ## Testing
 
 ```bash
-yarn run build   # compile wasm into dist/
-yarn run test    # run vitest against dist/
+pnpm run build   # compile wasm into dist/
+pnpm run test    # run vitest against dist/
 ```
 
 Tests skip cleanly when `dist/` is absent, so a clean clone won't fail before the

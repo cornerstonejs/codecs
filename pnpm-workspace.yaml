@@ -1,0 +1,65 @@
+packages:
+  - packages/*
+
+# Flat node_modules, matching the yarn 1 layout this repo was built against.
+# The codec packages and their build scripts (webpack configs, emscripten glue,
+# vitest suites) resolve dependencies by plain `require`/import from the root,
+# so pnpm's default isolated store would break resolution in several places.
+nodeLinker: hoisted
+
+# dicom-codec depends on its sibling codecs by caret range rather than the
+# workspace: protocol, so that the published manifest needs no rewriting. These
+# two settings make pnpm link the local package whenever its version satisfies
+# the range, which is what yarn workspaces did implicitly.
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+
+strictPeerDependencies: false
+
+# pnpm-lock.yaml was generated fresh from the manifests rather than translated
+# from yarn.lock, so every build/transform tool reachable through a caret range
+# floated forward across the migration. That is not what a package-manager swap
+# should change: the same source must produce the same output as it did under
+# yarn, or the CodSpeed baselines and dist-size baselines are measuring the new
+# toolchain rather than this repo.
+#
+# esbuild is the one that reaches the benchmarks. The dispatch benches import
+# packages/dicom-codec/src/index.js as SOURCE, so vite transforms it through
+# esbuild inside the timed region -- a different esbuild emits different JS for
+# the measured code without changing a single committed artifact. Both are held
+# at the exact versions yarn.lock resolved on main:
+#
+#   esbuild  0.28.1   (main) vs 0.28.2  (fresh resolution)
+#   rollup   4.62.2   (main) vs 4.62.4  (fresh resolution)
+#
+# Still floated, deliberately, because neither reaches the benched code path:
+# webpack 5.93.0 -> 5.109.2 and terser 5.31.3 -> 5.50.0. Those two DID change
+# the little-endian/big-endian bundles (index.js grew 877 -> 1050 bytes on a
+# newer webpack runtime), which is the likely cause of the little-endian
+# WallTime deltas -- worth revisiting separately.
+overrides:
+  esbuild: 0.28.1
+  rollup: 4.62.2
+  webpack: 5.93.0
+  terser: 5.31.3
+
+# Every install in this repo — local, CI and release — must match the committed
+# lockfile. CI already defaults to this, but setting it here means a manifest
+# edit fails fast locally instead of quietly resolving something new that then
+# breaks `--frozen-lockfile` in CI. Updating deps is an explicit act:
+# `pnpm add`/`pnpm update`, or `pnpm install --no-frozen-lockfile`.
+#
+# release.yml:"Commit, tag and push" is the one place that opts out, because it
+# has to regenerate the lockfile after version.mjs rewrites the sibling ranges.
+frozenLockfile: true
+
+# pnpm blocks dependency install scripts unless they are listed here. esbuild
+# (pulled in by vite/vitest) needs its postinstall to place the platform binary;
+# without it every vitest run fails to start.
+#
+# Keep this list minimal. release.yml installs with these settings in a job that
+# can push to main, so every entry here is third-party code that runs next to
+# those credentials. Widening the list to silence an install error is not a
+# local decision.
+allowBuilds:
+  esbuild: true
