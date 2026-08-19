@@ -287,14 +287,35 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
  * @param {TypedArray} imageFrame current image frame pixels.
  * @param {ExtendedImageInfo} imageInfo previous image info object.
+ * @param {*} [options] process options.
+ * @param {boolean} [options.reuseDecoder=false] keep one decoder instance on
+ *   codecConfig and reuse it across calls instead of constructing and deleting
+ *   one per frame. Opt-in per codec: a decoder that carries state between
+ *   decodes, or whose retained buffers grow, must not set it.
  * @returns Object containing decoded image frame and imageInfo (current) data
  *
  */
-function decode(context, codecConfig, imageFrame, imageInfo) {
+function decode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   if (!imageFrame?.length) {
     throw new Error("Image frame not defined for decoding");
   }
-  const decoderInstance = new codecConfig.Decoder();
+
+  // Constructing a wasm decoder is not cheap — it allocates heap, registers
+  // embind bindings and, for openjph, ran its constructor banner through the
+  // console. Doing that per frame dominated series decoding: it is the bulk of
+  // the gap between dispatching HTJ2K through this factory and calling
+  // openjphjs directly. Reused decoders are held on codecConfig, which is the
+  // per-codec singleton the wrapper modules already share.
+  const reuseDecoder = options.reuseDecoder === true;
+  let decoderInstance;
+  if (reuseDecoder) {
+    if (!codecConfig.reusedDecoder) {
+      codecConfig.reusedDecoder = new codecConfig.Decoder();
+    }
+    decoderInstance = codecConfig.reusedDecoder;
+  } else {
+    decoderInstance = new codecConfig.Decoder();
+  }
 
   const { length } = imageFrame;
   // get pointer to the source/encoded bit stream buffer in WASM memory
@@ -318,8 +339,13 @@ function decode(context, codecConfig, imageFrame, imageInfo) {
   // get information about the decoded image
   const decodedImageInfo = decoderInstance.getFrameInfo();
 
-  // cleanup allocated memory
-  decoderInstance.delete();
+  // cleanup allocated memory — except when reusing, where the whole point is
+  // that this instance survives to the next call. openjphjs' decoder-reuse
+  // test covers the consequence that matters: retained buffers must not make
+  // successive decodes progressively slower.
+  if (!reuseDecoder) {
+    decoderInstance.delete();
+  }
 
   const processInfo = {
     duration: context.timer.getDuration(),

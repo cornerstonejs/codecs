@@ -29,7 +29,9 @@ async function decode(imageFrame, imageInfo) {
     codecWasmModule,
     codecWrapper.decoderName,
     (context) => {
-      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
+      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo, {
+        reuseDecoder: true,
+      });
     }
   );
 }
