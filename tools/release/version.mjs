@@ -65,6 +65,19 @@ function readWorkspace() {
       continue;
     }
 
+    // A publishable manifest whose version is not valid semver has to fail
+    // here, during discovery, before anything is written. `semver.inc` returns
+    // null rather than throwing, so the alternative is a plan carrying
+    // "version": null, a `<name>@null` tag pushed to main, and the failure
+    // surfacing only when `npm publish` rejects it — after the release commit
+    // has already landed.
+    if (!semver.valid(manifest.version)) {
+      throw new Error(
+        `packages/${dir}/package.json has version ${JSON.stringify(manifest.version)}, ` +
+          `which is not a valid semver version. Fix the manifest before releasing.`
+      );
+    }
+
     packages.set(manifest.name, { name: manifest.name, dir, manifestPath, manifest });
   }
 
@@ -224,9 +237,17 @@ const SECTIONS = [
   ['revert', 'Reverts'],
 ];
 
-function renderEntry({ name, previousVersion, nextVersion, commits, date }) {
-  const heading = previousVersion
-    ? `## [${nextVersion}](${REPO_URL}/compare/${name}@${previousVersion}...${name}@${nextVersion}) (${date})`
+/**
+ * The compare link is built from `previousTag` — the tag lastReleaseTag()
+ * actually resolved — rather than from the manifest's previous version. The two
+ * can disagree: a manifest bumped without a matching tag (a hand edit, or a
+ * release that committed but died before pushing tags) would otherwise produce
+ * a `compare/<name>@<version>...` link to a ref that does not exist, i.e. a 404
+ * in the changelog. With no previous tag at all, fall back to a plain heading.
+ */
+function renderEntry({ name, previousTag, nextVersion, commits, date }) {
+  const heading = previousTag
+    ? `## [${nextVersion}](${REPO_URL}/compare/${previousTag}...${name}@${nextVersion}) (${date})`
     : `## ${nextVersion} (${date})`;
 
   const lines = [heading, ''];
@@ -300,6 +321,7 @@ function buildPlan(packages) {
       name: pkg.name,
       dir: pkg.dir,
       previousVersion,
+      previousTag: tag,
       nextVersion: semver.inc(previousVersion, releaseType),
       releaseType,
       commits,
@@ -327,6 +349,7 @@ function buildPlan(packages) {
           name: pkg.name,
           dir: pkg.dir,
           previousVersion: pkg.manifest.version,
+          previousTag: lastReleaseTag(pkg.name),
           nextVersion: semver.inc(pkg.manifest.version, 'patch'),
           releaseType: 'patch',
           commits: [],
@@ -373,7 +396,7 @@ function applyPlan(packages, bumps) {
 
     const entry = renderEntry({
       name: bump.name,
-      previousVersion: bump.previousVersion,
+      previousTag: bump.previousTag,
       nextVersion: bump.nextVersion,
       commits: bump.commits,
       date,

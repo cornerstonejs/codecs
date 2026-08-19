@@ -31,16 +31,35 @@ set -euo pipefail
 REPO="${REPO:-cornerstonejs/codecs}"
 WORKFLOW="${WORKFLOW:-release.yml}"
 
-PACKAGES=(
-  "@cornerstonejs/codec-big-endian"
-  "@cornerstonejs/codec-charls"
-  "@cornerstonejs/codec-libjpeg-turbo-8bit"
-  "@cornerstonejs/codec-libjpeg-turbo-12bit"
-  "@cornerstonejs/codec-little-endian"
-  "@cornerstonejs/codec-openjpeg"
-  "@cornerstonejs/codec-openjph"
-  "@cornerstonejs/dicom-codec"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Read from the workspace rather than hardcoded, so the list cannot drift. A
+# package added or renamed without a trusted publisher of its own does not fail
+# here — it fails at `npm publish`, partway through a live release, after the
+# version commit and tags have already landed on main.
+#
+# node rather than jq: npm is a prerequisite of this script, so node is
+# guaranteed present and jq is not.
+mapfile -t PACKAGES < <(
+  node -e '
+    const fs = require("fs");
+    const path = require("path");
+    const dir = path.join(process.argv[1], "packages");
+
+    for (const entry of fs.readdirSync(dir).sort()) {
+      const manifest = path.join(dir, entry, "package.json");
+      if (!fs.existsSync(manifest)) continue;
+      const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"));
+      if (pkg.private || !pkg.name) continue;
+      console.log(pkg.name);
+    }
+  ' "$ROOT"
 )
+
+if [ ${#PACKAGES[@]} -eq 0 ]; then
+  echo "No publishable packages found under $ROOT/packages." >&2
+  exit 1
+fi
 
 require_npm_version() {
   local current required="11.15.0"

@@ -86,9 +86,11 @@ The remaining packages (`big-endian`, `little-endian`, `dicom-codec`) are plain 
 
 ### CI
 
-The workspace is a [pnpm workspace][pnpm-workspaces]; `pnpm -r run <cmd>` and `pnpm --filter <pkg> run <cmd>` drive every task. Install with `pnpm install` (Corepack picks the pinned pnpm version from `package.json`'s `packageManager` field).
+The workspace is a [pnpm workspace][pnpm-workspaces]; `pnpm -r run <cmd>` and `pnpm --filter <pkg> run <cmd>` drive every task. Install with `pnpm install` (Corepack picks the pinned pnpm version — and verifies its hash — from `package.json`'s `packageManager` field).
 
-Pull requests build and test the packages that changed (compared against the `main` branch), in [.github/workflows/pr-checks.yml](.github/workflows/pr-checks.yml). Merges to `main` version, tag and publish through [.github/workflows/release.yml](.github/workflows/release.yml) — see [tools/release/README.md](tools/release/README.md) for how that works and what the one-time setup was.
+`pnpm-workspace.yaml` sets `frozenLockfile: true`, so `pnpm install` reproduces the committed lockfile and fails if a manifest has drifted from it, locally exactly as in CI. Changing dependencies is an explicit act: `pnpm add`, `pnpm update`, or `pnpm install --no-frozen-lockfile`, and the resulting `pnpm-lock.yaml` belongs in the commit.
+
+[.github/workflows/pr-checks.yml](.github/workflows/pr-checks.yml) decides what a pull request runs by diffing against `main`. A docs-only change skips everything; any package change builds the **full** set of packages (dicom-codec's integration tests decode through every sibling's `dist`, so a partial build would just skip suites) and then runs the whole vitest workspace as a single command. Only the benchmarks are narrowed to the packages that actually changed. Merges to `main` version, tag and publish through [.github/workflows/release.yml](.github/workflows/release.yml) — see [tools/release/README.md](tools/release/README.md) for how that works and what the one-time setup was.
 
 "Semantic commit" messages, and the files included in the commit, determine how package versions are updated and what goes into the changelogs. Example commit messages include:
 

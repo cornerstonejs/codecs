@@ -16,8 +16,23 @@ preferWorkspacePackages: true
 
 strictPeerDependencies: false
 
+# Every install in this repo — local, CI and release — must match the committed
+# lockfile. CI already defaults to this, but setting it here means a manifest
+# edit fails fast locally instead of quietly resolving something new that then
+# breaks `--frozen-lockfile` in CI. Updating deps is an explicit act:
+# `pnpm add`/`pnpm update`, or `pnpm install --no-frozen-lockfile`.
+#
+# release.yml:"Commit, tag and push" is the one place that opts out, because it
+# has to regenerate the lockfile after version.mjs rewrites the sibling ranges.
+frozenLockfile: true
+
 # pnpm blocks dependency install scripts unless they are listed here. esbuild
 # (pulled in by vite/vitest) needs its postinstall to place the platform binary;
 # without it every vitest run fails to start.
+#
+# Keep this list minimal. release.yml installs with these settings in a job that
+# can push to main, so every entry here is third-party code that runs next to
+# those credentials. Widening the list to silence an install error is not a
+# local decision.
 allowBuilds:
   esbuild: true

@@ -169,11 +169,21 @@ jobs:
       image: emscripten/emsdk:3.1.74
     steps:
       - name: Install cmake + C++ build deps
+        # Digest-checked rather than piped straight into tar; same pin as
+        # release.yml's build job. From
+        # https://cmake.org/files/v3.17/cmake-3.17.4-SHA-256.txt.
+        env:
+          CMAKE_TARBALL: cmake-3.17.4-Linux-x86_64.tar.gz
+          CMAKE_SHA256: 126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3
         run: |
+          set -euo pipefail
           apt-get update
           apt-get -y install build-essential git
-          wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" \
-            | tar --strip-components=1 -xz -C /usr/local
+          # /tmp, not the workspace: this step runs before actions/checkout.
+          wget -q -O "/tmp/${CMAKE_TARBALL}" "https://cmake.org/files/v3.17/${CMAKE_TARBALL}"
+          echo "${CMAKE_SHA256}  /tmp/${CMAKE_TARBALL}" | sha256sum -c -
+          tar --strip-components=1 -xzf "/tmp/${CMAKE_TARBALL}" -C /usr/local
+          rm -f "/tmp/${CMAKE_TARBALL}"
           apt-get autoremove -y
           apt-get clean -y
           rm -rf /var/lib/apt/lists/*
@@ -214,13 +224,22 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          # pnpm-workspace.yaml is in the key on purpose: the lockfile's
-          # settings block records only autoInstallPeers and
-          # excludeLinksFromLockfile, so changing nodeLinker, allowBuilds or
-          # linkWorkspacePackages leaves the lockfile byte-identical. Keying on
-          # the lockfile alone, the cache would hit, the install step would be
-          # skipped, and CI would keep testing the previous node_modules layout.
-          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          # The key covers EVERY input to `pnpm install`, not just the lockfile,
+          # because a hit skips the install step below — and with it the
+          # --frozen-lockfile check. Specifically:
+          #   - pnpm-workspace.yaml: the lockfile's settings block records only
+          #     autoInstallPeers and excludeLinksFromLockfile, so changing
+          #     nodeLinker, allowBuilds, frozenLockfile or linkWorkspacePackages
+          #     leaves the lockfile byte-identical while changing the layout
+          #     installed. Keying on the lockfile alone, the cache would hit and
+          #     CI would keep testing the previous node_modules tree.
+          #   - package.json + packages/*/package.json: a manifest edit that has
+          #     not been reflected in the lockfile must reach the install step so
+          #     --frozen-lockfile can reject it, rather than being masked by a
+          #     stale cache entry. The root manifest also carries the
+          #     packageManager pin, so a pnpm bump invalidates too.
+          # Keep the same hashFiles(...) inputs in all four pnpm-modules keys.
+          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -252,6 +271,10 @@ jobs:
           # can walk back to each package's last `<name>@<version>` tag.
           fetch-depth: 0
           fetch-tags: true
+          # Do not leave GITHUB_TOKEN in .git/config. This job installs
+          # dependencies and runs the release scripts against PR code; none of
+          # that needs an authenticated remote, only local history and tags.
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -286,8 +309,9 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          # pnpm-workspace.yaml in the key — see the build job's cache step.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -369,8 +393,9 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          # pnpm-workspace.yaml in the key — see the build job's cache step.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -451,8 +476,9 @@ jobs:
           # runner.arch matters: this job runs on ARM64 while every other
           # job is x64; sharing a key would restore x64 native binaries
           # (esbuild/rollup) and break vitest.
-          # pnpm-workspace.yaml in the key — see the build job's cache step.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile

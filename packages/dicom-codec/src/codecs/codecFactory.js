@@ -8,16 +8,25 @@ const processTimer = require("../utils/processTimer");
  * a fresh decoder per call — so a consumer decoding a series got one line of
  * console output per frame, unconditionally.
  *
- * Routing print/printErr through the logger makes the codecs obey the same
+ * Routing `print` through the logger makes that stdout chatter obey the same
  * `setVerbose` flag as the rest of the library: quiet by default, still there
  * when you turn it on. Set once at module init, which covers everything the
  * codec prints afterwards.
  *
+ * `printErr` is deliberately NOT overridden. logger.error is gated on the same
+ * `verbose` flag as logger.log, so routing stderr through it would silence real
+ * decode failures — not just banners — for every consumer that never called
+ * setVerbose. Nothing is lost by leaving it alone: openjph's noise is INFO and
+ * WARN, and ojph_message.cpp points both of those at stdout (only OJPH_ERROR
+ * uses stderr). So emscripten's default printErr — an unconditional
+ * console.error — stays in place for the messages that matter.
+ *
  * It also takes console I/O out of the decode path, which the dicom-codec
  * dispatch benchmarks measure — vitest intercepts console output and does
  * stack-trace attribution and source-map mapping per call, all of it inside
- * the timed body. packages/openjphjs/bench/decode.bench.js already passes
- * these same overrides for exactly that reason.
+ * the timed body. packages/openjphjs/bench/decode.bench.js overrides the same
+ * hook for exactly that reason (as a no-op there, since a bench has no logger
+ * to answer to).
  *
  * MUST return a fresh object per codec. Emscripten's MODULARIZE wrapper takes
  * the argument as its Module and mutates it in place — heap views, embind
@@ -28,7 +37,6 @@ const processTimer = require("../utils/processTimer");
 function emscriptenModuleOverrides() {
   return {
     print: (message) => logger.log(message),
-    printErr: (message) => logger.error(message),
   };
 }
 

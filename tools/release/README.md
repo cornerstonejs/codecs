@@ -31,20 +31,41 @@ node tools/release/version.mjs --dry-run --json   # machine-readable
 
 ## What the workflow does
 
-1. Builds every package's `dist` in the emscripten container (matrix job).
-2. Runs the vitest workspace against those exact dists. A failure here stops the release before
-   anything is committed, tagged or published.
-3. Runs `version.mjs`, regenerates `pnpm-lock.yaml` (pnpm records each importer's *specifier*, so
-   rewriting dicom-codec's ranges strands the lockfile and the next `--frozen-lockfile` install
-   fails), then commits `chore(release): publish [skip ci]` and one annotated tag per released
-   package, and pushes to `main` with `GITHUB_TOKEN`.
-4. Publishes each package with `npm publish --ignore-scripts` from the built tree, in the dependency
-   order `publish-order.mjs` computes — dicom-codec goes out after the six siblings whose ranges it
-   carries. `--ignore-scripts` is deliberate: `prepublishOnly` re-runs `bash build.sh`, and the
-   publish job has no emscripten toolchain — the dist being published is the artifact built in
-   step 1 from the same commit.
-5. Creates a GitHub Release per tag. This happens inline rather than in a tag-triggered workflow
-   because GitHub suppresses workflow runs for pushes made with `GITHUB_TOKEN`.
+Four jobs, in order. The split is a permission boundary, not tidiness: GitHub scopes
+`permissions:` to a whole job, never to a step, so every right a job asks for is held by all the
+third-party code that runs in it — the `actions/*` it calls and any dependency install scripts.
+
+| Job | Permissions | Installs deps? |
+| --- | --- | --- |
+| `build` | `contents: read` | yes |
+| `release` | `contents: write` | yes |
+| `publish` | `id-token: write` (+ `contents: read`) | **no** |
+| `github-releases` | `contents: write` | **no** |
+
+`pnpm install` therefore never runs in a job that can publish to npm, and the job holding the OIDC
+token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node builtins only).
+
+1. **`build`** — every package's `dist`, in the emscripten container (matrix job). Read-only, but its
+   artifacts are what reaches npm, so its actions are SHA-pinned like the rest.
+2. **`release`** — runs the vitest workspace against those exact dists (a failure here stops the
+   release before anything is committed, tagged or published), then `version.mjs`, then regenerates
+   `pnpm-lock.yaml` (pnpm records each importer's *specifier*, so rewriting dicom-codec's ranges
+   strands the lockfile and the next `--frozen-lockfile` install fails), commits
+   `chore(release): publish [skip ci]` and one annotated tag per released package, and pushes to
+   `main` with `GITHUB_TOKEN`. The token is passed to `git push` in the remote URL rather than
+   persisted into `.git/config` by `actions/checkout`, so it is not sitting on disk while `pnpm
+   install` runs. The job outputs the pushed commit SHA.
+3. **`publish`** — checks out that SHA, replays the dists, and publishes each package with
+   `npm publish --ignore-scripts` in the dependency order `publish-order.mjs` computes — dicom-codec
+   goes out after the six siblings whose ranges it carries. `--ignore-scripts` is deliberate:
+   `prepublishOnly` re-runs `bash build.sh`, and this job has no emscripten toolchain — the dist
+   being published is the artifact built in step 1 from the same commit. npm's version comes from
+   the exactly-pinned `node-version` (v24.19.0 → npm 11.17.0, past the 11.5.1 OIDC floor), so there
+   is no `npm install --global npm@latest` re-downloading an unpinned publisher every release.
+4. **`github-releases`** — a GitHub Release per tag, from the package list `publish` uploaded. It is
+   a separate job so `gh release create`'s `contents: write` never coexists with the OIDC publish
+   token, and it happens here rather than in a tag-triggered workflow because GitHub suppresses
+   workflow runs for pushes made with `GITHUB_TOKEN`.
 
 `publish-order.mjs` also refuses to emit a package that claims to ship `dist/` but has an empty one,
 which is the only thing standing between a dropped build artifact and an empty package on npm for
@@ -55,9 +76,10 @@ mid-release.
 
 Every step is idempotent. If a run dies partway through publishing, re-run the workflow from the
 Actions tab (`workflow_dispatch`) and it finishes the job rather than double-publishing: `version.mjs`
-correctly finds nothing new to version (the commit and tags already landed), and steps 4 and 5 work
-from "every package whose current version is not yet on npm / has no release yet" rather than from
-that run's plan.
+correctly finds nothing new to version (the commit and tags already landed) and the `release` job
+falls back to reporting the triggering commit as the one to publish from, while `publish` and
+`github-releases` work from "every package whose current version is not yet on npm / has no release
+yet" rather than from that run's plan.
 
 ## One-time setup
 

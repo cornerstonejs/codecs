@@ -31,9 +31,12 @@ set -euo pipefail
 
 REPO="${REPO:-cornerstonejs/codecs}"
 
-# The built-in GITHUB_TOKEN acts as the "GitHub Actions" app installation.
-# Its app id is stable across GitHub: gh api apps/github-actions --jq .id
-GITHUB_ACTIONS_APP_ID=15368
+# The built-in GITHUB_TOKEN acts as the "GitHub Actions" app installation, and
+# the bypass actor below is keyed on that app's id. Resolved at runtime rather
+# than hardcoded to 15368: the value differs on GitHub Enterprise Server, and a
+# wrong id produces a ruleset that looks correct but silently fails to let the
+# release workflow push.
+GITHUB_ACTIONS_APP_ID=$(gh api apps/github-actions --jq .id)
 
 echo "Current protection on $REPO main:"
 gh api "repos/$REPO/branches/main/protection" || true

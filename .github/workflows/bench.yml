@@ -97,17 +97,22 @@ jobs:
           # bench orchestration there.
           ci_touched=false
           # Toolchain paths force a full bench sweep — same list as
-          # detect-changes in pr-checks.yml.
+          # TOOLCHAIN_PATHS in pr-checks.yml's detect-changes job. The
+          # duplication is deliberate: this workflow is what the self-hosted
+          # nashua runner has to trust, so it stays short and rarely changes
+          # rather than being folded back into pr-checks.yml. It does mean both
+          # lists must be edited together — a path here but not there skips the
+          # full pipeline, and there but not here skips the bench sweep.
           toolchain_touched=false
           changed=()
           while IFS= read -r f; do
             [ -n "$f" ] || continue
             case "$f" in
-              .github/*|tools/ci/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json)
+              .github/*|tools/ci/*|tools/csp/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json)
                 ci_touched=true ;;
             esac
             case "$f" in
-              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*|tools/release/*)
+              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/csp/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*|tools/release/*)
                 toolchain_touched=true ;;
               packages/*)
                 pkg=${f#packages/}; pkg=${pkg%%/*}
