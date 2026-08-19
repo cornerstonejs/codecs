@@ -21,12 +21,14 @@ const processTimer = require("../utils/processTimer");
  * uses stderr). So emscripten's default printErr — an unconditional
  * console.error — stays in place for the messages that matter.
  *
- * It also takes console I/O out of the decode path, which the dicom-codec
- * dispatch benchmarks measure — vitest intercepts console output and does
- * stack-trace attribution and source-map mapping per call, all of it inside
- * the timed body. packages/openjphjs/bench/decode.bench.js overrides the same
- * hook for exactly that reason (as a no-op there, since a bench has no logger
- * to answer to).
+ * It also takes console I/O out of the decode path for consumers, which is
+ * worth having on its own. It is NOT, however, what the dicom-codec dispatch
+ * benchmark measures: this override was once thought to explain CodSpeed's
+ * -25% Simulation result on "HTJ2K Lossless (.201)", and removing it entirely
+ * was measured at 189.0ms against 188.1ms with it — no effect. Whatever that
+ * regression is, it is not this. Do not re-add that claim without a bench run
+ * behind it. packages/openjphjs/bench/decode.bench.js overrides the same hook
+ * as a no-op, for its own reasons.
  *
  * MUST return a fresh object per codec. Emscripten's MODULARIZE wrapper takes
  * the argument as its Module and mutates it in place — heap views, embind
