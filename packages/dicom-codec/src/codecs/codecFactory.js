@@ -76,21 +76,14 @@ async function initialize(
     return Promise.resolve(true);
   }
 
-  // ===================================================================
-  // TEMPORARY EXPERIMENT — DO NOT MERGE. Reverting to the pre-a54b437
-  // call shape (no Module override) to find out whether passing
-  // emscriptenModuleOverrides() is what CodSpeed's Simulation gate is
-  // measuring as -24.69% on "HTJ2K Lossless (.201)". Revert after the
-  // bench reports. See the PR discussion.
-  // ===================================================================
   return new Promise((resolve, reject) => {
     if (codecModule) {
-      codecModule().then((codec) => {
+      codecModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
     } else if (codecWasmModule) {
-      codecWasmModule().then((codec) => {
+      codecWasmModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
