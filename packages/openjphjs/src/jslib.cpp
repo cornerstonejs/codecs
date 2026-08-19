@@ -18,6 +18,29 @@ namespace ojph {
   bool init_cpu_ext_level(int& level);
 }
 
+// OpenJPH's INFO messages are developer chatter rather than consumer signal,
+// and they go to STDOUT, so emscripten forwards them to console.log:
+//
+//   - HTJ2KDecoder's constructor emits "v06 HTJ2K Decoder" on EVERY
+//     construction. A consumer decoding a series got one line per frame.
+//   - Resilient decoding of a truncated codestream adds "File terminated
+//     early" per decode, and with streaming support that is the NORMAL case,
+//     not an anomaly.
+//
+// Raising the threshold to WARN drops both while leaving warnings and errors
+// intact -- including HTJ2KDecoder's own decode diagnostics, which are
+// OJPH_WARN precisely so they survive this.
+//
+// This replaces the two source patches the cornerstonejs OpenJPH fork used to
+// carry (the `resilient` default and a commented-out OJPH_INFO); the fork now
+// tracks upstream with zero delta. See cornerstonejs/OpenJPH#6.
+//
+// Static initialiser so the level is set before any binding below can run.
+static const bool kOjphMessageLevelConfigured = []() {
+  ojph::set_message_level(ojph::OJPH_MSG_WARN);
+  return true;
+}();
+
 static std::string getVersion() {
   std::string version = buf;
   return version;
