@@ -89,8 +89,11 @@ jobs:
         env:
           CMAKE_TARBALL: cmake-3.17.4-Linux-x86_64.tar.gz
           CMAKE_SHA256: 126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3
+        # NO `set -euo pipefail` here: the emsdk image has no bash, so this
+        # container job's steps run as `sh -e {0}` and dash rejects
+        # `-o pipefail`. `-e` is already on, and the digest check is the last
+        # command in its pipeline, so a mismatch still fails the step.
         run: |
-          set -euo pipefail
           apt-get update
           apt-get -y install build-essential git
           # /tmp, not the workspace: this step runs before actions/checkout.
