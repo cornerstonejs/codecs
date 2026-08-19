@@ -1,6 +1,6 @@
 # libjpeg-turbojs
 
-JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo).
+JavaScript/WebAssembly build of [libjpeg-turbo](https://github.com/libjpeg-turbo).
 
 ## Try It Out
 

@@ -2,7 +2,7 @@
 
 
 
-This library is a JavaScript port made possible by [emscripten](https://emscripten.org/) and [Chris Hafey](https://github.com/chafey). It is a JavaScript and WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg).
+This JavaScript/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/openjpeg) is made possible by [Emscripten](https://emscripten.org/) and [Chris Hafey](https://github.com/chafey).
 
 ## Table of Contents
 

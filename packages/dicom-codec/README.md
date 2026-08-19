@@ -1,6 +1,6 @@
 # dicom-codec
 
-DICOM Codecs for JavaScript (browser and node support).
+DICOM codecs for JavaScript, with browser and Node.js support.
 
 # Features (v1.0.1)
 | codec name        	| transferSyntaxUID(s)                                         	| decode 	| encode 	| external codec 	| js/wasm based 	|
