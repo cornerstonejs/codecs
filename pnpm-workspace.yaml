@@ -40,6 +40,8 @@ strictPeerDependencies: false
 overrides:
   esbuild: 0.28.1
   rollup: 4.62.2
+  webpack: 5.93.0
+  terser: 5.31.3
 
 # Every install in this repo — local, CI and release — must match the committed
 # lockfile. CI already defaults to this, but setting it here means a manifest
