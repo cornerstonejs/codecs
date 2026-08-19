@@ -14,6 +14,12 @@ target_include_directories(openjphjs PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../extern/openjph/src/core/shared)
 target_compile_options(openjphjs PRIVATE -DOJPH_ENABLE_WASM_SIMD -msimd128)
 target_compile_features(openjphjs PUBLIC cxx_std_11)
+# DISABLE_EXCEPTION_CATCHING=0 (double negative: exception catching ENABLED) is
+# required, not a preference. HTJ2KDecoder::decode wraps read_headers and the
+# tile-decode loop in try/catch so a truncated codestream degrades to a partial
+# image instead of aborting; with catching disabled emscripten compiles those
+# handlers out and the throw terminates the module. Costs some wasm size, which
+# is why dist-size may need re-baselining.
 set_target_properties(
     openjphjs 
     PROPERTIES 
@@ -21,7 +27,7 @@ set_target_properties(
       -O3 \
       -s WASM=1 \
       --bind \
-      -s DISABLE_EXCEPTION_CATCHING=1 \
+      -s DISABLE_EXCEPTION_CATCHING=0 \
       -s ASSERTIONS=0 \
       -s MODULARIZE=1 \
       -s NO_EXIT_RUNTIME=1 \

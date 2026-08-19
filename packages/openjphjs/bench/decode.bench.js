@@ -8,16 +8,11 @@
 // "warm" = a shared decoder/encoder that has already done 5 decode/encode
 // passes at module load (untimed). The bench body is the 6th+ call.
 //
-// Important caveat for HTJ2K: cornerstone3D's decodeHTJ2K.ts:69 actually
-// creates a fresh `new HTJ2KDecoder()` for every frame (a comment in
-// that file notes reuse is "much slower for some reason"). So for
-// HTJ2K specifically, the production-cost approximation is:
+// HTJ2K production path (dicom-codec / cornerstone codecs) reuses a single
+// HTJ2KDecoder across frames. Per-frame cost ≈ decode — warm.
 //
-//   per-frame cost ≈ instantiate+destroy HTJ2KDecoder + decode — cold
-//
-// The "warm" HTJ2K decode bench remains useful for regression detection
-// on the openjph decoder kernel itself, but isn't what cornerstone3D
-// actually pays per frame.
+// "cold" benches still model a fresh decoder per frame for lifecycle regressions.
+// "warm" benches model the reused-decoder production path.
 //
 // Bench bodies are symmetric between cold and warm — the only difference
 // is module-load state, so the cold/warm delta isolates first-call

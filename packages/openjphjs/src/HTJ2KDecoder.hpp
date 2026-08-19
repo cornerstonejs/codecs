@@ -118,10 +118,22 @@ public:
   /// </summary>
   void readHeader()
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+    }
+    catch (const std::exception &e)
+    {
+      // WARN, not INFO: jslib.cpp raises OpenJPH's message threshold to WARN to
+      // silence the per-construction banner, so an INFO here would be dropped
+      // exactly when something went wrong. Reported rather than rethrown so a
+      // truncated stream degrades to a partial result -- frameInfo_ keeps
+      // whatever the header yielded before the failure.
+      OJPH_WARN(0x00010020, "readHeader failed: %s", e.what());
+    }
   }
 
   /// <summary>
@@ -148,11 +160,21 @@ public:
   /// </summary>
   void decode()
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, 0);
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, 0);
+    }
+    catch (const std::exception &e)
+    {
+      // This is THE truncated-stream path: resilient mode decodes as far as the
+      // data allows and then throws. Swallowing it here is what turns "partial
+      // codestream" into "partial image" rather than a hard failure.
+      OJPH_WARN(0x00010021, "decode failed (likely truncated stream): %s", e.what());
+    }
   }
 
   /// <summary>
@@ -163,11 +185,18 @@ public:
   /// </summary>
   void decodeSubResolution(size_t decompositionLevel)
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, decompositionLevel);
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, decompositionLevel);
+    }
+    catch (const std::exception &e)
+    {
+      OJPH_WARN(0x00010022, "decodeSubResolution failed: %s", e.what());
+    }
   }
 
   /// <summary>
