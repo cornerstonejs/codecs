@@ -10,7 +10,29 @@
 # same environment. This image is the one that matches CI.
 
 ARG EMSDK_VERSION=3.1.74
-FROM emscripten/emsdk:${EMSDK_VERSION}
+
+# amd64 is not incidental: cmake.org published no Linux aarch64 archive until
+# 3.20, so the 3.17.4 tarball below is x86_64-only.
+#
+# The default tag is already safe — emscripten/emsdk:3.1.74 is a single-arch
+# amd64 manifest, so even an arm64 host pulls amd64 and runs it emulated (slower
+# than native, but the same bytes CI builds, which is the point of this file).
+# The pin is for EMSDK_VERSION overrides: emsdk also publishes arch-suffixed
+# tags, and `EMSDK_VERSION=3.1.74-arm64` builds an arm64 image with an x86_64
+# cmake in it — an image that builds fine and then fails as an exec format error
+# partway through a codec build, 20 layers down in cmake output.
+#
+# The pin alone only downgrades that to a BuildKit warning (the base image is
+# still pulled for its own arch), so the `cmake --version` below turns it into a
+# failed image build. Belt and braces, but the failure mode it replaces is
+# genuinely hard to read.
+#
+# Overriding BUILD_PLATFORM means supplying an arm64 cmake as well. It exists as
+# an ARG rather than inline because BuildKit lints a constant `--platform`
+# (FromPlatformFlagConstDisallowed) — a rule aimed at multi-platform builds,
+# which is not something this single-arch toolchain image does.
+ARG BUILD_PLATFORM=linux/amd64
+FROM --platform=${BUILD_PLATFORM} emscripten/emsdk:${EMSDK_VERSION}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -23,6 +45,11 @@ RUN apt-get update \
     && echo "126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3  /tmp/cmake.tar.gz" | sha256sum -c - \
     && tar --strip-components=1 -xzf /tmp/cmake.tar.gz -C /usr/local \
     && rm -f /tmp/cmake.tar.gz \
+    # Prove the binary actually runs here. Extracting an x86_64 cmake into an
+    # arm64 image succeeds silently (see the BUILD_PLATFORM note above); this is
+    # what makes that fail now, with a readable message, instead of during a
+    # codec build later.
+    && cmake --version \
     # node 22 on PATH, matching CI's setup-node step. emcc is unaffected: it
     # invokes the node pinned in its own .emscripten config, not this one.
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \

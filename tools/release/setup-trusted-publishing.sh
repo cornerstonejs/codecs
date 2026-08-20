@@ -40,21 +40,30 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 #
 # node rather than jq: npm is a prerequisite of this script, so node is
 # guaranteed present and jq is not.
-mapfile -t PACKAGES < <(
-  node -e '
-    const fs = require("fs");
-    const path = require("path");
-    const dir = path.join(process.argv[1], "packages");
+#
+# Via a temp file rather than `mapfile < <(node ...)`: process substitution's
+# exit status is invisible to `set -e`, and the scanner prints as it walks, so a
+# manifest that fails to parse halfway through would leave mapfile holding the
+# packages emitted before the throw — and this script would go on to report
+# success having configured only some of them.
+SCAN_OUTPUT=$(mktemp)
+trap 'rm -f "$SCAN_OUTPUT"' EXIT
 
-    for (const entry of fs.readdirSync(dir).sort()) {
-      const manifest = path.join(dir, entry, "package.json");
-      if (!fs.existsSync(manifest)) continue;
-      const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"));
-      if (pkg.private || !pkg.name) continue;
-      console.log(pkg.name);
-    }
-  ' "$ROOT"
-)
+node -e '
+  const fs = require("fs");
+  const path = require("path");
+  const dir = path.join(process.argv[1], "packages");
+
+  for (const entry of fs.readdirSync(dir).sort()) {
+    const manifest = path.join(dir, entry, "package.json");
+    if (!fs.existsSync(manifest)) continue;
+    const pkg = JSON.parse(fs.readFileSync(manifest, "utf8"));
+    if (pkg.private || !pkg.name) continue;
+    console.log(pkg.name);
+  }
+' "$ROOT" >"$SCAN_OUTPUT"
+
+mapfile -t PACKAGES <"$SCAN_OUTPUT"
 
 if [ ${#PACKAGES[@]} -eq 0 ]; then
   echo "No publishable packages found under $ROOT/packages." >&2
