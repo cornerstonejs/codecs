@@ -6,10 +6,11 @@ cd packages/openjpeg
 ./setup-dev.sh
 docker-compose -f docker-compose.dev.yml up -d
 
-# Create yarn links
-yarn link
-cd ../../cornerstone3D && yarn link "@cornerstonejs/codec-openjpeg"
-cd packages/dicomImageLoader && yarn link "@cornerstonejs/codec-openjpeg"
+# Point cornerstone3D at this working copy. `pnpm link <path>` is run from the
+# CONSUMER and takes the source directory, so there is no global link state to
+# clean up afterwards (undo with `pnpm unlink @cornerstonejs/codec-openjpeg`).
+cd ../../cornerstone3D/packages/dicomImageLoader
+pnpm link ../../../codecs/packages/openjpeg
 ```
 
 ## Daily Development
@@ -18,7 +19,7 @@ cd packages/dicomImageLoader && yarn link "@cornerstonejs/codec-openjpeg"
 cd packages/openjpeg && docker-compose -f docker-compose.dev.yml up
 
 # 2. Start cornerstone3D (separate terminal)
-cd cornerstone3D && yarn run example local
+cd cornerstone3D && pnpm run example local
 
 # 3. Edit C files in packages/openjpeg/extern/openjpeg/src/lib/openjp2/
 # 4. Docker auto-rebuilds → Hard refresh browser (Cmd+Shift+R)
