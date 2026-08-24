@@ -34,7 +34,12 @@ ARG EMSDK_VERSION=3.1.74
 ARG BUILD_PLATFORM=linux/amd64
 FROM --platform=${BUILD_PLATFORM} emscripten/emsdk:${EMSDK_VERSION}
 
-ENV DEBIAN_FRONTEND=noninteractive
+# ARG, not ENV: build args are in the environment for every RUN below but do not
+# persist into the image, so containers and derived images keep Debian's default
+# frontend. An `ENV DEBIAN_FRONTEND=...` here would have to be reset at the end
+# of the file, and that reset is itself a persisted var (`docker run` reported
+# DEBIAN_FRONTEND=dialog), which is what this replaces.
+ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
     && apt-get -y install --no-install-recommends build-essential git ca-certificates curl \
@@ -61,6 +66,13 @@ RUN apt-get update \
 # The emscripten cache is written during the first build of each port (zlib
 # etc.). Make it writable by any uid so `docker run --user $(id -u)` — which
 # tools/docker/build.sh uses on Linux to keep dist/ host-owned — still works.
-RUN chmod -R a+rwX "$(dirname "$(dirname "$(which emcc)")")/cache" 2>/dev/null || true
-
-ENV DEBIAN_FRONTEND=dialog
+#
+# The path comes from `em-config CACHE`, not from `which emcc`: the cache sits
+# next to emcc in /emsdk/upstream/emscripten, so walking up two directories
+# aimed this chmod at /emsdk/upstream/cache -- a path that does not exist in the
+# image. `2>/dev/null || true` then swallowed the error, so the step did nothing
+# at all; the base image happens to ship the real cache world-writable, so
+# --user builds worked anyway. No error suppression here for that reason: this
+# image already prefers a loud failed build over a quietly broken one (see
+# `cmake --version` above).
+RUN chmod -R a+rwX "$(em-config CACHE)"
