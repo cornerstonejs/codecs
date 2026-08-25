@@ -14,7 +14,11 @@
 #   pnpm --filter @cornerstonejs/codec-openjph docker:build
 #
 # Environment:
-#   EMSDK_VERSION         emsdk tag to build against (default 3.1.74, = CI)
+#   EMSDK_VERSION         emsdk tag to build against (default 3.1.74, = CI).
+#                         Must be a tag with an amd64 image: the Dockerfile pins
+#                         linux/amd64 because cmake 3.17.4 ships no arm64 build,
+#                         so emsdk's `-arm64` tags fail the image build. On
+#                         Apple Silicon the image runs emulated.
 #   CODECS_BUILD_IMAGE    override the local image tag
 #   CODECS_KEEP_BUILD=1   keep packages/<pkg>/{build,dist} for a faster
 #                         incremental rebuild. Off by default because stale

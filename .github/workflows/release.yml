@@ -152,10 +152,12 @@ jobs:
     permissions:
       contents: write # push the version commit + tags
     outputs:
-      # The commit the later jobs must publish from: the version commit if one
-      # was made, otherwise the commit that triggered the run (the retry path,
-      # where the versions are already on main but the publish did not finish).
-      sha: ${{ steps.push.outputs.sha || github.sha }}
+      # The commit the later jobs must publish from, in order of preference:
+      #   1. the version commit this run just pushed;
+      #   2. the version commit an EARLIER run pushed, recovered from main —
+      #      see the "Nothing to release" step for why github.sha is wrong here;
+      #   3. the triggering commit, when nothing has ever been versioned for it.
+      sha: ${{ steps.push.outputs.sha || steps.nothing.outputs.sha || github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -266,8 +268,48 @@ jobs:
 
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Nothing to release
+        id: nothing
         if: steps.version.outputs.count == '0'
-        run: echo "::notice::No conventional commits since the last tags — nothing new to version."
+        # Two very different situations land here, and they need different shas.
+        #
+        # The ordinary one: no new conventional commits, nothing to publish.
+        #
+        # The one that bites: "Re-run all jobs" on a run that already pushed its
+        # version commit and tags, but whose publish job then failed. A re-run
+        # keeps the ORIGINAL github.sha, so version.mjs walks `<tag>..HEAD` with
+        # HEAD at the pre-version commit — an ancestor of the tag — finds no
+        # commits, and correctly reports nothing to release. But github.sha's
+        # manifests still carry the PREVIOUS versions, so publishing from it
+        # would offer npm the versions already on the registry, skip all of
+        # them, and report "Published 0 packages" while the versions that were
+        # actually tagged on main never ship. version.mjs then finds nothing new
+        # on every later run, so it stays broken until someone unpicks it by
+        # hand.
+        #
+        # So recover that commit: walk forward from the triggering commit to
+        # main's tip and take the first release commit on the direct ancestry
+        # path. That is the one an earlier run of THIS sha pushed — later
+        # releases are not on the path, and a genuine no-op finds nothing and
+        # leaves the fallback to github.sha alone.
+        run: |
+          set -euo pipefail
+          echo "::notice::No conventional commits since the last tags — nothing new to version."
+
+          # origin/main is present because checkout fetched with fetch-depth: 0.
+          if ! git rev-parse -q --verify origin/main >/dev/null; then
+            echo "::warning::origin/main not available; publishing from ${GITHUB_SHA}."
+            exit 0
+          fi
+
+          for commit in $(git rev-list --reverse --ancestry-path "${GITHUB_SHA}..origin/main"); do
+            case "$(git log -1 --format=%s "$commit")" in
+              'chore(release):'*)
+                echo "::notice::Recovered version commit $commit from an earlier run; publishing from it."
+                echo "sha=$commit" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+          done
 
   publish:
     # The ONLY job that can publish to npm, and it installs no dependencies —
