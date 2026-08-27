@@ -132,21 +132,38 @@ case "$BYPASS" in
     # to main without review.
     #
     # So the write-enabled keys are listed here rather than merely counted, and
-    # the operator is asked to look. A leftover key from a retired CI system is
-    # the case that matters: it stops being an unused credential and becomes one
-    # that bypasses branch protection.
+    # the operator has to acknowledge the list by name before the ruleset is
+    # created. A leftover key from a retired CI system is the case that matters:
+    # it stops being an unused credential and becomes one that bypasses branch
+    # protection. This repo had exactly that -- a read-write `Codecs CircleCI`
+    # key, years after CircleCI stopped running here. A warning printed above a
+    # y/N prompt is too easy to scroll past for a privilege escalation that
+    # silent, hence the typed acknowledgement.
     WRITE_KEYS=$(gh repo deploy-key list --repo "$REPO" 2>/dev/null | grep -F 'read-write' || true)
     if [ -z "$WRITE_KEYS" ]; then
       echo "WARNING: $REPO has no write-enabled deploy key, so the release still" >&2
       echo "         cannot push. Do STEP 1-DEPLOY-KEY 1-3." >&2
+      echo >&2
     else
-      echo "Write-enabled deploy keys that this ruleset will let bypass review:"
+      echo "These write-enabled deploy keys will ALL be able to push to main,"
+      echo "bypassing pull request review, once this ruleset exists:"
+      echo
       printf '%s\n' "$WRITE_KEYS" | sed 's/^/  /'
       echo
-      echo "Delete any that are not the release key:"
+      echo "Delete any that are not the release key, then re-run:"
       echo "  gh repo deploy-key delete <id> --repo $REPO"
+      echo
+      if [ "${DEPLOY_KEYS_AUDITED:-}" = "1" ]; then
+        echo "DEPLOY_KEYS_AUDITED=1 set; skipping the acknowledgement prompt."
+      else
+        read -r -p "Type 'audited' if every key above is meant to have that: " ack
+        if [ "$ack" != "audited" ]; then
+          echo "Aborted -- nothing was changed." >&2
+          exit 1
+        fi
+      fi
+      echo
     fi
-    echo
     ;;
 
   app)

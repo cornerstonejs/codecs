@@ -236,11 +236,26 @@ jobs:
         # this step no-ops on a fork, before the one-time setup has been done, or
         # when the deploy-key route below is used instead. See
         # tools/release/setup-branch-ruleset.sh for both setups.
+        #
+        # Deliberately NOT continue-on-error. If RELEASE_APP_ID is set and
+        # minting fails, this job stops rather than quietly pushing with the
+        # deploy key instead. Falling through would swap a token scoped to
+        # Contents: write and expiring in an hour for one with write access to
+        # the whole repo and no expiry -- a downgrade nobody asked for, in a
+        # pipeline that publishes to npm, discoverable only by reading the log of
+        # a release that appeared to succeed. A broken App config should be
+        # fixed; the action validates the private key up front and retries
+        # transient 5xx itself, so what reaches here is a real misconfiguration,
+        # and --atomic means the failed run leaves no debris to clean up.
         if: steps.version.outputs.count != '0' && vars.RELEASE_APP_ID != ''
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ vars.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Narrow the token to what the push needs. Without this it inherits
+          # every permission the installation holds, so a later widening of the
+          # App silently widens the release token too.
+          permission-contents: write
       - name: Commit, tag and push
         id: push
         if: steps.version.outputs.count != '0'
