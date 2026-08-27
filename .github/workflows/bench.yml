@@ -395,4 +395,33 @@ jobs:
           SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
         with:
           mode: simulation
-          run: bash tools/ci/with-nashua-lock.sh pnpm --parallel $SCOPE_FLAGS run bench
+          # --workspace-concurrency=1, matching codspeed-walltime in
+          # pr-checks.yml. NOT merely dropping --parallel: pnpm's default
+          # workspace concurrency is 4, so removing the flag alone would still
+          # run four packages' bench processes against each other.
+          #
+          # This job used to run all eight in parallel, on the premise -- stated
+          # in codspeed-walltime's own comment -- that instruction counting is
+          # immune to contention. That premise does not survive #76. The charls
+          # bench `decode CT-512x512-near-lossless.JLS (.81 near-lossless) —
+          # warm` was reported as a 19.8ms -> 37.9ms regression on a commit
+          # whose entire diff was one vitest file, with charls' source and its
+          # built wasm byte-identical to main's and its real wall-clock bench
+          # duration unchanged (26.7s vs 27.5s). The same -47.76% appeared again
+          # on the next commit, so it was reproducible rather than flake. Per
+          # package completion times from that run put charls at 27s in, sharing
+          # the box with six or seven siblings, while dicom-codec then ran alone
+          # for ~5m54s -- i.e. the packages are measured under wildly different
+          # neighbours, and #76 changed what those neighbours do (its openjph
+          # benches got 3-7.4x faster).
+          #
+          # Whatever the mechanism inside Cachegrind, a gate that measures eight
+          # packages simultaneously cannot attribute a per-package delta, and it
+          # spent #76 blaming an untouched package. Serial costs ~3 minutes:
+          # dicom-codec alone is ~6m of the 6m22s bench step, and the job
+          # timeout is 100 minutes.
+          #
+          # Landing this resets the comparison basis for every bench measured
+          # under contention, so the first main run after merge is the new
+          # baseline -- expect one round of large apparent deltas there.
+          run: bash tools/ci/with-nashua-lock.sh pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench

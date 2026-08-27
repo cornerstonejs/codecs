@@ -221,13 +221,77 @@ jobs:
           count=$(jq 'length' release-plan.json)
           echo "count=$count" >> "$GITHUB_OUTPUT"
           jq -r '.[] | "  \(.name): \(.previousVersion) -> \(.version) [\(.releaseType)]"' release-plan.json
+      - name: Mint a push token from the release GitHub App
+        id: app-token
+        # The built-in GITHUB_TOKEN CANNOT push to main, and no repository
+        # setting can grant it that: main's protection requires a pull request,
+        # and the "GitHub Actions" app it authenticates as (id 15368) is owned by
+        # `github`, not by this org. Adding it as a ruleset bypass actor is
+        # rejected outright -- "Actor GitHub Actions integration must be part of
+        # the ruleset source or owner organization" (HTTP 422). An org-owned app
+        # is the supported way to let CI push to a protected branch without a
+        # human's personal credential in the pipeline.
+        #
+        # Configured with an org/repo VARIABLE plus a SECRET, both optional, so
+        # this step no-ops on a fork, before the one-time setup has been done, or
+        # when the deploy-key route below is used instead. See
+        # tools/release/setup-branch-ruleset.sh for both setups.
+        #
+        # Deliberately NOT continue-on-error. If RELEASE_APP_ID is set and
+        # minting fails, this job stops rather than quietly pushing with the
+        # deploy key instead. Falling through would swap a token scoped to
+        # Contents: write and expiring in an hour for one with write access to
+        # the whole repo and no expiry -- a downgrade nobody asked for, in a
+        # pipeline that publishes to npm, discoverable only by reading the log of
+        # a release that appeared to succeed. A broken App config should be
+        # fixed; the action validates the private key up front and retries
+        # transient 5xx itself, so what reaches here is a real misconfiguration,
+        # and --atomic means the failed run leaves no debris to clean up.
+        if: steps.version.outputs.count != '0' && vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Narrow the token to what the push needs. Without this it inherits
+          # every permission the installation holds, so a later widening of the
+          # App silently widens the release token too.
+          permission-contents: write
       - name: Commit, tag and push
         id: push
         if: steps.version.outputs.count != '0'
         env:
-          GH_TOKEN: ${{ github.token }}
+          # Three credentials, in order of preference. Both of the first two work
+          # because main's ruleset lists them as bypass actors; GITHUB_TOKEN
+          # cannot be listed at all (see the app-token step) and is only here so
+          # that forks and a not-yet-configured repo still reach the push and
+          # report something useful instead of failing earlier and vaguer.
+          #
+          #   1. App token   — org-owned App. Best: scoped to Contents: write,
+          #                    expires in an hour, and belongs to the org.
+          #                    Requires an ORG OWNER to create and install it.
+          #   2. Deploy key  — repo-scoped SSH key with write access. Slightly
+          #                    blunter (write to the whole repo, no expiry) but a
+          #                    REPO ADMIN can set it up alone, and like the App it
+          #                    is not tied to any individual's account.
+          #   3. GITHUB_TOKEN — declined by main's protection. Warns below.
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          APP_TOKEN_CONFIGURED: ${{ steps.app-token.outputs.token != '' }}
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
         run: |
           set -euo pipefail
+
+          # Resolved before any git work so the log says which credential is in
+          # play before it matters.
+          if [ "$APP_TOKEN_CONFIGURED" = "true" ]; then
+            PUSH_VIA=app
+          elif [ -n "${RELEASE_DEPLOY_KEY:-}" ]; then
+            PUSH_VIA=deploy-key
+          else
+            PUSH_VIA=github-token
+            echo "::warning::Neither RELEASE_APP_ID nor RELEASE_DEPLOY_KEY is configured, so this push uses GITHUB_TOKEN, which main's branch protection will decline. See tools/release/setup-branch-ruleset.sh (the deploy-key route needs only repo admin)."
+          fi
+          echo "Pushing via: $PUSH_VIA"
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -257,14 +321,46 @@ jobs:
             git tag -a "$tag" -m "$tag"
           done
 
-          # Pushed with GITHUB_TOKEN, which main's ruleset lets bypass the pull
-          # request requirement. The token goes in the remote URL because
-          # checkout was told not to persist it (see above). Note this push does
-          # NOT trigger further workflow runs (GitHub suppresses them for
-          # GITHUB_TOKEN pushes), which is why the GitHub Releases are created
-          # by a later job rather than by a separate tag-triggered workflow.
-          git push --follow-tags \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+          # Pushed with whichever credential main's ruleset lists as a bypass
+          # actor. (An earlier comment here said GITHUB_TOKEN could do this; it
+          # cannot -- see the app-token step.) Credentials are passed per-push
+          # rather than persisted, because checkout was told not to keep them in
+          # .git/config while `pnpm install` runs.
+          #
+          # The commit message carries [skip ci], and it is load-bearing on BOTH
+          # of the routes that can actually push. GitHub suppresses workflow runs
+          # only for pushes made with GITHUB_TOKEN; an App-token push and a
+          # deploy-key push are both ordinary pushes and WOULD retrigger this
+          # workflow on main. [skip ci] is what stops that being a release loop,
+          # so do not remove it -- on either route.
+          #
+          # --atomic: all refs land or none do. Without it git updates each ref
+          # independently, and the 2026-08-24 run (32733067241) showed what that
+          # costs -- `! [remote rejected] HEAD -> main (protected branch hook
+          # declined)` while all eight version tags pushed successfully anyway.
+          # That left them pointing at a `chore(release): publish` commit which
+          # is not an ancestor of main, so every later run died at `git tag -a`
+          # with "tag already exists" before it even reached this push, and the
+          # recovery needed a human deleting eight remote tags. A rejected
+          # branch update must not be able to publish tags for a release that
+          # did not happen.
+          if [ "$PUSH_VIA" = "deploy-key" ]; then
+            # Key material into a file the runner discards with the job, never
+            # onto a command line. IdentitiesOnly stops any agent key being tried
+            # first; accept-new is safe on an ephemeral runner with no prior
+            # known_hosts to be spoofed against.
+            key_file=$(mktemp)
+            printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$key_file"
+            chmod 600 "$key_file"
+            export GIT_SSH_COMMAND="ssh -i $key_file -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            trap 'rm -f "$key_file"' EXIT
+
+            git push --atomic --follow-tags \
+              "git@github.com:${GITHUB_REPOSITORY}.git" HEAD:main
+          else
+            git push --atomic --follow-tags \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+          fi
 
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Nothing to release
