@@ -55,6 +55,16 @@ function hasCodec(transferSyntaxUID) {
   return !!codecsMap[transferSyntaxUID];
 }
 
+/**
+ * Every distinct codec module, deduplicated — codecsMap points several transfer
+ * syntaxes at the same module.
+ *
+ * @returns {Array<Object>} codec modules.
+ */
+function getCodecs() {
+  return [...new Set(Object.values(codecsMap))];
+}
+
 function getCodec(transferSyntaxUID) {
   const codec = codecsMap[transferSyntaxUID];
   if (!codec) {
@@ -112,4 +122,5 @@ function adaptImageInfo(imageInfo) {
 
 exports.adaptImageInfo = adaptImageInfo;
 exports.getCodec = getCodec;
+exports.getCodecs = getCodecs;
 exports.hasCodec = hasCodec;

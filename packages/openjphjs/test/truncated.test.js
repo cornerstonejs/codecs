@@ -211,6 +211,129 @@ describe("openjphjs HTJ2K decode performance", () => {
   )
 })
 
+describe("openjphjs HTJ2K decode failure reporting", () => {
+  let codec
+
+  // Too short to hold a SIZ marker, so read_headers throws before decode_ runs.
+  const UNPARSEABLE = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8])
+
+  beforeAll(async () => {
+    if (isBuilt) codec = await loadModule(modulePath)
+  })
+
+  it.skipIf(!isBuilt)("a successful decode reports a valid header and no error", () => {
+    const decoder = new codec.HTJ2KDecoder()
+    decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+    decoder.decode()
+
+    expect(decoder.getIsHeaderValid()).toBe(true)
+    expect(decoder.getLastErrorMessage()).toBe("")
+    decoder.delete()
+  })
+
+  it.skipIf(!isBuilt)(
+    "an unparseable codestream reports an invalid header and zeroed geometry",
+    () => {
+      const decoder = new codec.HTJ2KDecoder()
+      decoder.getEncodedBuffer(UNPARSEABLE.length).set(UNPARSEABLE)
+      decoder.decode()
+
+      // decode() deliberately does not throw. If neither of these is checked,
+      // the failure is invisible to the caller — that is the whole reason they
+      // exist.
+      expect(decoder.getIsHeaderValid()).toBe(false)
+      expect(decoder.getLastErrorMessage()).not.toBe("")
+
+      // On a fresh decoder these were reading uninitialised members before.
+      expect(decoder.getFrameInfo().width).toBe(0)
+      expect(decoder.getFrameInfo().height).toBe(0)
+      expect(decoder.getNumDecompositions()).toBe(0)
+      expect(decoder.calculateSizeAtDecompositionLevel(0)).toEqual({
+        width: 0,
+        height: 0,
+      })
+      decoder.delete()
+    }
+  )
+
+  it.skipIf(!isBuilt)(
+    "a failed header on a REUSED decoder does not report the previous frame's geometry",
+    () => {
+      const decoder = new codec.HTJ2KDecoder()
+
+      decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+      decoder.decode()
+      expect(decoder.getFrameInfo().width).toBe(512)
+
+      decoder.getEncodedBuffer(UNPARSEABLE.length).set(UNPARSEABLE)
+      decoder.decode()
+
+      expect(decoder.getIsHeaderValid()).toBe(false)
+      expect(decoder.getLastErrorMessage()).not.toBe("")
+
+      // The dangerous case: reporting 512x512 here would describe the previous
+      // slice as if it were this one.
+      expect(decoder.getFrameInfo().width).toBe(0)
+      expect(decoder.getFrameInfo().height).toBe(0)
+      expect(decoder.getNumDecompositions()).toBe(0)
+
+      // And note what is NOT fixed at this layer: decode_ never ran, so the
+      // decoded buffer still holds the previous frame byte for byte. There is
+      // no way to make that safe from inside the decoder — the buffer is the
+      // decoder's own storage — which is exactly why a caller must treat
+      // getIsHeaderValid() === false as "discard this result".
+      expect(decoder.getDecodedBuffer().length).toBe(512 * 512 * 2)
+
+      decoder.delete()
+    }
+  )
+
+  it.skipIf(!isBuilt)(
+    "a decode that aborts after the buffer is sized leaves no pixels from the previous frame",
+    () => {
+      // Regression test for decode_ using resize() instead of assign().
+      // resize() only value-initialises NEW elements, so any decode that sizes
+      // the buffer and then aborts before filling it kept the previous frame's
+      // pixels in the untouched bytes — on a reused decoder, silently.
+      //
+      // Reaching that window takes an abort AFTER the resize, which truncation
+      // does not provide: swept over CT1.j2c at every length from 60 bytes up
+      // and at 875 single-byte corruptions, not one input aborts mid-decode.
+      // Resilient mode absorbs a short codestream as zero coefficients and
+      // reports success, and a header too damaged to parse aborts BEFORE the
+      // resize. restrict_input_resolution() is the reachable one: a
+      // decomposition level past what the codestream carries throws with the
+      // buffer already resized and not one byte written.
+      const decoder = new codec.HTJ2KDecoder()
+
+      decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+      decoder.decode()
+      const full = Uint8Array.from(decoder.getDecodedBuffer())
+      expect(full.some((byte) => byte !== 0)).toBe(true)
+
+      const tooDeep = decoder.getNumDecompositions() + 1
+      decoder.getEncodedBuffer(ct1Encoded.length).set(ct1Encoded)
+      decoder.decodeSubResolution(tooDeep)
+
+      // Header parsed, decode did not: the "partial" case, and the only one of
+      // the two that a caller can distinguish from a clean success without
+      // getLastErrorMessage().
+      expect(decoder.getIsHeaderValid()).toBe(true)
+      expect(decoder.getLastErrorMessage()).not.toBe("")
+
+      const aborted = Uint8Array.from(decoder.getDecodedBuffer())
+      expect(aborted.length).toBeGreaterThan(0)
+
+      // Before the fix these bytes were the previous slice's pixels — measured
+      // at 125 of 128 non-zero.
+      const nonZero = aborted.reduce((n, byte) => n + (byte !== 0 ? 1 : 0), 0)
+      expect(nonZero).toBe(0)
+
+      decoder.delete()
+    }
+  )
+})
+
 describe("openjphjs HTJ2K decoder reuse (memory release)", () => {
   let codec
 

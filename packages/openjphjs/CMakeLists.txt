@@ -14,6 +14,16 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/openjph/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
+# Drop the deprecated option this project used to set. Deleting the
+# `option(OJPH_DISABLE_INTEL_SIMD ... ON)` line below does NOT remove it from an
+# existing build/CMakeCache.txt, and upstream bridges it onto OJPH_DISABLE_SIMD
+# with a plain `set()` whenever it is DEFINED -- which shadows the cache value
+# forced below. So an incremental build in a tree configured before this change
+# would silently keep producing the scalar wasm the comment below warns about.
+# `unset(... CACHE)` removes the stale entry; on a fresh tree it is a no-op.
+# Unconditional: native configurations can carry the same stale entry.
+unset(OJPH_DISABLE_INTEL_SIMD CACHE)
+
 if(EMSCRIPTEN)
   # OpenJPH 0.30.1 builds WASM SIMD by default (OJPH_DISABLE_SIMD=OFF) and emits
   # -msimd128 + the *_wasm.cpp kernels. Do NOT set the deprecated

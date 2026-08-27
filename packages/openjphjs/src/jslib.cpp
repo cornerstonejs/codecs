@@ -93,6 +93,12 @@ EMSCRIPTEN_BINDINGS(HTJ2KDecoder) {
     .function("decode", &HTJ2KDecoder::decode)
     .function("decodeSubResolution", &HTJ2KDecoder::decodeSubResolution)
     .function("getFrameInfo", &HTJ2KDecoder::getFrameInfo)
+    // decode()/readHeader() report failure by returning normally with these set
+    // rather than throwing, because a truncated codestream is a normal input for
+    // streaming HTJ2K. Callers MUST check them; the OJPH_WARN that accompanies a
+    // failure goes to stdout and is a diagnostic, not the signal.
+    .function("getIsHeaderValid", &HTJ2KDecoder::getIsHeaderValid)
+    .function("getLastErrorMessage", &HTJ2KDecoder::getLastErrorMessage)
     .function("getDownSample", &HTJ2KDecoder::getDownSample)
     .function("getNumDecompositions", &HTJ2KDecoder::getNumDecompositions)
     .function("getIsReversible", &HTJ2KDecoder::getIsReversible)
