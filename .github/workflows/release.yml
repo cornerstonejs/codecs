@@ -327,11 +327,12 @@ jobs:
           # rather than persisted, because checkout was told not to keep them in
           # .git/config while `pnpm install` runs.
           #
-          # The commit message carries [skip ci] and that matters for the deploy
-          # key: GitHub suppresses workflow runs for GITHUB_TOKEN pushes and App
-          # tokens are likewise not user credentials, but a deploy-key push is an
-          # ordinary push and WOULD retrigger this workflow on main. [skip ci] is
-          # what stops that being a release loop, so do not remove it.
+          # The commit message carries [skip ci], and it is load-bearing on BOTH
+          # of the routes that can actually push. GitHub suppresses workflow runs
+          # only for pushes made with GITHUB_TOKEN; an App-token push and a
+          # deploy-key push are both ordinary pushes and WOULD retrigger this
+          # workflow on main. [skip ci] is what stops that being a release loop,
+          # so do not remove it -- on either route.
           #
           # --atomic: all refs land or none do. Without it git updates each ref
           # independently, and the 2026-08-24 run (32733067241) showed what that

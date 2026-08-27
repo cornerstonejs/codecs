@@ -168,17 +168,16 @@ why it works without org access.
 > [!WARNING]
 > The `DeployKey` bypass actor takes `actor_id: null` — it is a **category, not a specific key**.
 > Every write-enabled deploy key on the repo, present and future, can then push to `main` without
-> review. The script lists them and asks you to look. Audit before enabling, and delete any left over
-> from retired CI:
+> review. The script lists them and makes you acknowledge the list by name before it creates
+> anything. Audit before enabling, and delete any left over from retired CI — a key nobody uses stops
+> being merely unused and becomes one that bypasses branch protection:
 >
 > ```bash
 > gh repo deploy-key list --repo cornerstonejs/codecs
 > gh repo deploy-key delete <id> --repo cornerstonejs/codecs
 > ```
 >
-> As of this writing there is a read-write key `Codecs CircleCI` (id 108740348, added 2024-09-18).
-> CircleCI no longer runs anything for this repo, so it should be deleted rather than promoted into a
-> credential that bypasses branch protection.
+> The release key is the only write-enabled key that should appear. Anything else is a finding.
 
 #### Route B — GitHub App (org owner)
 
@@ -206,10 +205,10 @@ bypass actor. Review requirements for humans are unchanged: 1 approving review, 
 stale reviews dismissed on push, last-push approval, no force pushes, no branch deletion. See the
 script's header for why the classic rule has to go rather than sit alongside the ruleset.
 
-One behavioural note for the deploy-key route: GitHub suppresses workflow runs for `GITHUB_TOKEN`
-pushes, and App tokens are likewise not user credentials, but a deploy-key push is an ordinary push
-and *would* retrigger the release workflow on `main`. The `[skip ci]` in the release commit message
-is what prevents a loop — do not remove it.
+One behavioural note that applies to both routes: GitHub suppresses workflow runs only for pushes
+made with `GITHUB_TOKEN`. An App-token push and a deploy-key push are both ordinary pushes and
+*would* retrigger the release workflow on `main`. The `[skip ci]` in the release commit message is
+what prevents a loop — do not remove it, whichever route you set up.
 
 3. **Verify**, then re-run the failed Release workflow:
 
