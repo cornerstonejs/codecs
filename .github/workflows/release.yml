@@ -233,8 +233,9 @@ jobs:
         # human's personal credential in the pipeline.
         #
         # Configured with an org/repo VARIABLE plus a SECRET, both optional, so
-        # this step no-ops on a fork or before the one-time setup has been done.
-        # See tools/release/setup-branch-ruleset.sh for that setup.
+        # this step no-ops on a fork, before the one-time setup has been done, or
+        # when the deploy-key route below is used instead. See
+        # tools/release/setup-branch-ruleset.sh for both setups.
         if: steps.version.outputs.count != '0' && vars.RELEASE_APP_ID != ''
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
@@ -244,19 +245,37 @@ jobs:
         id: push
         if: steps.version.outputs.count != '0'
         env:
-          # The app token when configured; otherwise GITHUB_TOKEN, which gets as
-          # far as the push and is then declined. Falling back rather than
-          # failing early keeps the version/changelog/tag work visible in the log
-          # (and keeps forks working), but the warning below says what is wrong so
-          # nobody has to re-derive it from "protected branch hook declined".
+          # Three credentials, in order of preference. Both of the first two work
+          # because main's ruleset lists them as bypass actors; GITHUB_TOKEN
+          # cannot be listed at all (see the app-token step) and is only here so
+          # that forks and a not-yet-configured repo still reach the push and
+          # report something useful instead of failing earlier and vaguer.
+          #
+          #   1. App token   — org-owned App. Best: scoped to Contents: write,
+          #                    expires in an hour, and belongs to the org.
+          #                    Requires an ORG OWNER to create and install it.
+          #   2. Deploy key  — repo-scoped SSH key with write access. Slightly
+          #                    blunter (write to the whole repo, no expiry) but a
+          #                    REPO ADMIN can set it up alone, and like the App it
+          #                    is not tied to any individual's account.
+          #   3. GITHUB_TOKEN — declined by main's protection. Warns below.
           GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
           APP_TOKEN_CONFIGURED: ${{ steps.app-token.outputs.token != '' }}
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
         run: |
           set -euo pipefail
 
-          if [ "$APP_TOKEN_CONFIGURED" != "true" ]; then
-            echo "::warning::RELEASE_APP_ID is not set, so this push uses GITHUB_TOKEN, which main's branch protection will decline. An org owner must complete the one-time setup in tools/release/setup-branch-ruleset.sh."
+          # Resolved before any git work so the log says which credential is in
+          # play before it matters.
+          if [ "$APP_TOKEN_CONFIGURED" = "true" ]; then
+            PUSH_VIA=app
+          elif [ -n "${RELEASE_DEPLOY_KEY:-}" ]; then
+            PUSH_VIA=deploy-key
+          else
+            PUSH_VIA=github-token
+            echo "::warning::Neither RELEASE_APP_ID nor RELEASE_DEPLOY_KEY is configured, so this push uses GITHUB_TOKEN, which main's branch protection will decline. See tools/release/setup-branch-ruleset.sh (the deploy-key route needs only repo admin)."
           fi
+          echo "Pushing via: $PUSH_VIA"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -287,14 +306,17 @@ jobs:
             git tag -a "$tag" -m "$tag"
           done
 
-          # Pushed with the release App's token, which main's ruleset lists as a
-          # bypass actor for the pull request requirement. (It previously said
-          # GITHUB_TOKEN could do this; it cannot -- see the app-token step.) The
-          # token goes in the remote URL because checkout was told not to persist
-          # it (see above). Note this push does NOT trigger further workflow runs
-          # -- GitHub suppresses them for GITHUB_TOKEN pushes, and an App token
-          # is likewise not a user credential -- which is why the GitHub Releases
-          # are created by a later job rather than by a tag-triggered workflow.
+          # Pushed with whichever credential main's ruleset lists as a bypass
+          # actor. (An earlier comment here said GITHUB_TOKEN could do this; it
+          # cannot -- see the app-token step.) Credentials are passed per-push
+          # rather than persisted, because checkout was told not to keep them in
+          # .git/config while `pnpm install` runs.
+          #
+          # The commit message carries [skip ci] and that matters for the deploy
+          # key: GitHub suppresses workflow runs for GITHUB_TOKEN pushes and App
+          # tokens are likewise not user credentials, but a deploy-key push is an
+          # ordinary push and WOULD retrigger this workflow on main. [skip ci] is
+          # what stops that being a release loop, so do not remove it.
           #
           # --atomic: all refs land or none do. Without it git updates each ref
           # independently, and the 2026-08-24 run (32733067241) showed what that
@@ -306,8 +328,23 @@ jobs:
           # recovery needed a human deleting eight remote tags. A rejected
           # branch update must not be able to publish tags for a release that
           # did not happen.
-          git push --atomic --follow-tags \
-            "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+          if [ "$PUSH_VIA" = "deploy-key" ]; then
+            # Key material into a file the runner discards with the job, never
+            # onto a command line. IdentitiesOnly stops any agent key being tried
+            # first; accept-new is safe on an ephemeral runner with no prior
+            # known_hosts to be spoofed against.
+            key_file=$(mktemp)
+            printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$key_file"
+            chmod 600 "$key_file"
+            export GIT_SSH_COMMAND="ssh -i $key_file -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            trap 'rm -f "$key_file"' EXIT
+
+            git push --atomic --follow-tags \
+              "git@github.com:${GITHUB_REPOSITORY}.git" HEAD:main
+          else
+            git push --atomic --follow-tags \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+          fi
 
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
       - name: Nothing to release

@@ -3,10 +3,11 @@
 Releases are fully automated: merge to `main`, and
 [.github/workflows/release.yml](../../.github/workflows/release.yml) versions, tags, publishes and
 writes the GitHub Releases. npm auth is OIDC trusted publishing, so there is no npm token to
-rotate. Git auth for the one push to `main` is an org-owned GitHub App (`RELEASE_APP_ID` +
-`RELEASE_APP_PRIVATE_KEY`) — the built-in `GITHUB_TOKEN` cannot push to a PR-protected branch and
-cannot be granted a ruleset bypass, since the app it authenticates as is owned by `github` rather
-than by this org. See [§2 below](#2-main-branch-ruleset).
+rotate. Git auth for the one push to `main` is either a repo deploy key (`RELEASE_DEPLOY_KEY`) or an
+org-owned GitHub App (`RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY`) — the built-in `GITHUB_TOKEN`
+cannot push to a PR-protected branch and cannot be granted a ruleset bypass, since the app it
+authenticates as is owned by `github` rather than by this org. See
+[§2 below](#2-a-push-credential-for-main--the-branch-ruleset).
 
 ## How a release is decided
 
@@ -115,9 +116,21 @@ After the first green release, harden on npmjs.com: set each package's *Publishi
 "Require two-factor authentication and disallow tokens", and delete the old `NPM_TOKEN` from the
 CircleCI project (CircleCI no longer runs anything for this repo — the project should be disabled).
 
-### 2. Release GitHub App + `main` branch ruleset
+### 2. A push credential for `main` + the branch ruleset
 
-**Must be done by an organization owner** — repo admin cannot create or install the App.
+Two routes. **The deploy-key route needs only repo admin**; the App route is better hygiene but
+requires an organization owner. `release.yml` accepts either and prefers the App when both exist.
+
+| | Deploy key | GitHub App |
+|---|---|---|
+| Who can set it up | repo admin | **org owner** |
+| Scope | write to the whole repo | `Contents: write` |
+| Lifetime | no expiry | token expires hourly |
+| Bypass granularity | **every** write-enabled deploy key on the repo | that one App |
+| Secrets | `RELEASE_DEPLOY_KEY` | `RELEASE_APP_ID` + `RELEASE_APP_PRIVATE_KEY` |
+
+Neither is a personal credential, which is the thing to preserve — the point of moving off
+CircleCI's arrangement was that releases must not depend on one person's key.
 
 The release job needs to push the version commit to `main`, which requires a pull request. The
 built-in `GITHUB_TOKEN` cannot be exempted from that: the "GitHub Actions" app it authenticates as
@@ -128,12 +141,49 @@ its owning org, so GitHub rejects it with
 422 Actor GitHub Actions integration must be part of the ruleset source or owner organization
 ```
 
-An org-owned App is the supported route. Unlike a PAT it belongs to the org rather than a person, so
-it does not break when someone's token expires or they leave.
+A **deploy key** or an **org-owned App** can both be listed as bypass actors. A deploy key belongs to
+the repository, so it satisfies "part of the ruleset source" with no ownership question — which is
+why it works without org access.
 
-1. **Create and install the App** — the full UI walkthrough is STEP 1 in
-   [setup-branch-ruleset.sh](setup-branch-ruleset.sh)'s header. Summary: create
-   `cornerstonejs-release` under the org with **Contents: read and write** and nothing else, no
+#### Route A — deploy key (repo admin)
+
+1. **Create the key and store both halves.** Full walkthrough is `STEP 1-DEPLOY-KEY` in
+   [setup-branch-ruleset.sh](setup-branch-ruleset.sh)'s header. Summary:
+
+   ```bash
+   ssh-keygen -t ed25519 -N '' -C 'codecs release' -f ./codecs-release-key
+   gh repo deploy-key add ./codecs-release-key.pub \
+     --repo cornerstonejs/codecs --title 'codecs release' --allow-write
+   gh secret set RELEASE_DEPLOY_KEY --repo cornerstonejs/codecs < ./codecs-release-key
+   rm ./codecs-release-key ./codecs-release-key.pub
+   ```
+
+2. **Migrate the branch protection:**
+
+   ```bash
+   gh auth login          # as a repo admin
+   bash tools/release/setup-branch-ruleset.sh
+   ```
+
+> [!WARNING]
+> The `DeployKey` bypass actor takes `actor_id: null` — it is a **category, not a specific key**.
+> Every write-enabled deploy key on the repo, present and future, can then push to `main` without
+> review. The script lists them and asks you to look. Audit before enabling, and delete any left over
+> from retired CI:
+>
+> ```bash
+> gh repo deploy-key list --repo cornerstonejs/codecs
+> gh repo deploy-key delete <id> --repo cornerstonejs/codecs
+> ```
+>
+> As of this writing there is a read-write key `Codecs CircleCI` (id 108740348, added 2024-09-18).
+> CircleCI no longer runs anything for this repo, so it should be deleted rather than promoted into a
+> credential that bypasses branch protection.
+
+#### Route B — GitHub App (org owner)
+
+1. **Create and install the App** — walkthrough is `STEP 1-APP` in the script's header. Summary:
+   create `cornerstonejs-release` under the org with **Contents: read and write** and nothing else, no
    webhook, generate a private key, install it on `codecs` only, then
 
    ```bash
@@ -146,14 +196,20 @@ it does not break when someone's token expires or they leave.
 
    ```bash
    gh auth login                     # as the org owner
-   gh auth refresh -s admin:org      # ruleset writes need this scope
-   RELEASE_APP_SLUG=cornerstonejs-release bash tools/release/setup-branch-ruleset.sh
+   BYPASS=app RELEASE_APP_SLUG=cornerstonejs-release bash tools/release/setup-branch-ruleset.sh
    ```
 
-   Replaces main's classic branch protection with an equivalent ruleset listing that App as a bypass
-   actor. Review requirements for humans are unchanged: 1 approving review, code-owner review, stale
-   reviews dismissed on push, last-push approval, no force pushes, no branch deletion. See the
-   script's header for why the classic rule has to go rather than sit alongside the ruleset.
+#### Either route
+
+The script replaces main's classic branch protection with an equivalent ruleset listing the chosen
+bypass actor. Review requirements for humans are unchanged: 1 approving review, code-owner review,
+stale reviews dismissed on push, last-push approval, no force pushes, no branch deletion. See the
+script's header for why the classic rule has to go rather than sit alongside the ruleset.
+
+One behavioural note for the deploy-key route: GitHub suppresses workflow runs for `GITHUB_TOKEN`
+pushes, and App tokens are likewise not user credentials, but a deploy-key push is an ordinary push
+and *would* retrigger the release workflow on `main`. The `[skip ci]` in the release commit message
+is what prevents a loop — do not remove it.
 
 3. **Verify**, then re-run the failed Release workflow:
 
