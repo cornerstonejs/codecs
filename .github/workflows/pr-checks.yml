@@ -519,8 +519,10 @@ jobs:
       - name: Run CodSpeed benchmarks (walltime)
         # Walltime measures actual elapsed time, so parallel benchmark
         # processes would contend for cores and add noise — run packages
-        # sequentially (--workspace-concurrency=1), unlike the simulation job
-        # where instruction counting is immune to contention.
+        # sequentially (--workspace-concurrency=1). The simulation job in
+        # bench.yml now does the same: it was left parallel on the premise that
+        # instruction counting is immune to contention, and #76 showed it is
+        # not. See the comment on that job's run step.
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         env:
           # Keep this in env, NOT `${{ }}` in the run: below — an env value is
