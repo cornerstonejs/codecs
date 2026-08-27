@@ -18,6 +18,29 @@ namespace ojph {
   bool init_cpu_ext_level(int& level);
 }
 
+// OpenJPH's INFO messages are developer chatter rather than consumer signal,
+// and they go to STDOUT, so emscripten forwards them to console.log:
+//
+//   - HTJ2KDecoder's constructor emits "v06 HTJ2K Decoder" on EVERY
+//     construction. A consumer decoding a series got one line per frame.
+//   - Resilient decoding of a truncated codestream adds "File terminated
+//     early" per decode, and with streaming support that is the NORMAL case,
+//     not an anomaly.
+//
+// Raising the threshold to WARN drops both while leaving warnings and errors
+// intact -- including HTJ2KDecoder's own decode diagnostics, which are
+// OJPH_WARN precisely so they survive this.
+//
+// This replaces the two source patches the cornerstonejs OpenJPH fork used to
+// carry (the `resilient` default and a commented-out OJPH_INFO); the fork now
+// tracks upstream with zero delta. See cornerstonejs/OpenJPH#6.
+//
+// Static initialiser so the level is set before any binding below can run.
+static const bool kOjphMessageLevelConfigured = []() {
+  ojph::set_message_level(ojph::OJPH_MSG_WARN);
+  return true;
+}();
+
 static std::string getVersion() {
   std::string version = buf;
   return version;
@@ -70,6 +93,12 @@ EMSCRIPTEN_BINDINGS(HTJ2KDecoder) {
     .function("decode", &HTJ2KDecoder::decode)
     .function("decodeSubResolution", &HTJ2KDecoder::decodeSubResolution)
     .function("getFrameInfo", &HTJ2KDecoder::getFrameInfo)
+    // decode()/readHeader() report failure by returning normally with these set
+    // rather than throwing, because a truncated codestream is a normal input for
+    // streaming HTJ2K. Callers MUST check them; the OJPH_WARN that accompanies a
+    // failure goes to stdout and is a diagnostic, not the signal.
+    .function("getIsHeaderValid", &HTJ2KDecoder::getIsHeaderValid)
+    .function("getLastErrorMessage", &HTJ2KDecoder::getLastErrorMessage)
     .function("getDownSample", &HTJ2KDecoder::getDownSample)
     .function("getNumDecompositions", &HTJ2KDecoder::getNumDecompositions)
     .function("getIsReversible", &HTJ2KDecoder::getIsReversible)

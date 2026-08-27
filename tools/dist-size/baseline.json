@@ -105,12 +105,12 @@
   },
   "openjphjs": {
     "openjphjs.js": {
-      "raw": 114126,
-      "gzip": 28495
+      "raw": 58074,
+      "gzip": 14859
     },
     "openjphjs.wasm": {
-      "raw": 2295156,
-      "gzip": 672818
+      "raw": 299791,
+      "gzip": 96272
     }
   }
 }
