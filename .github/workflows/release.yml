@@ -263,7 +263,18 @@ jobs:
           # NOT trigger further workflow runs (GitHub suppresses them for
           # GITHUB_TOKEN pushes), which is why the GitHub Releases are created
           # by a later job rather than by a separate tag-triggered workflow.
-          git push --follow-tags \
+          #
+          # --atomic: all refs land or none do. Without it git updates each ref
+          # independently, and the 2026-08-24 run (32733067241) showed what that
+          # costs -- `! [remote rejected] HEAD -> main (protected branch hook
+          # declined)` while all eight version tags pushed successfully anyway.
+          # That left them pointing at a `chore(release): publish` commit which
+          # is not an ancestor of main, so every later run died at `git tag -a`
+          # with "tag already exists" before it even reached this push, and the
+          # recovery needed a human deleting eight remote tags. A rejected
+          # branch update must not be able to publish tags for a release that
+          # did not happen.
+          git push --atomic --follow-tags \
             "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
 
           echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
