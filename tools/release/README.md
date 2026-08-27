@@ -2,8 +2,11 @@
 
 Releases are fully automated: merge to `main`, and
 [.github/workflows/release.yml](../../.github/workflows/release.yml) versions, tags, publishes and
-writes the GitHub Releases. There are no release secrets to rotate — npm auth is OIDC trusted
-publishing and git auth is the built-in `GITHUB_TOKEN`.
+writes the GitHub Releases. npm auth is OIDC trusted publishing, so there is no npm token to
+rotate. Git auth for the one push to `main` is an org-owned GitHub App (`RELEASE_APP_ID` +
+`RELEASE_APP_PRIVATE_KEY`) — the built-in `GITHUB_TOKEN` cannot push to a PR-protected branch and
+cannot be granted a ruleset bypass, since the app it authenticates as is owned by `github` rather
+than by this org. See [§2 below](#2-main-branch-ruleset).
 
 ## How a release is decided
 
@@ -52,9 +55,14 @@ token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node b
    `pnpm-lock.yaml` (pnpm records each importer's *specifier*, so rewriting dicom-codec's ranges
    strands the lockfile and the next `--frozen-lockfile` install fails), commits
    `chore(release): publish [skip ci]` and one annotated tag per released package, and pushes to
-   `main` with `GITHUB_TOKEN`. The token is passed to `git push` in the remote URL rather than
-   persisted into `.git/config` by `actions/checkout`, so it is not sitting on disk while `pnpm
-   install` runs. The job outputs the pushed commit SHA.
+   `main` with a token minted per-run from the release App. The token is passed to `git push` in the
+   remote URL rather than persisted into `.git/config` by `actions/checkout`, so it is not sitting on
+   disk while `pnpm install` runs. The job outputs the pushed commit SHA.
+
+   The push is `--atomic`: without it a declined branch update still publishes the tags, which is how
+   run [32733067241](https://github.com/cornerstonejs/codecs/actions/runs/32733067241) left eight
+   version tags on a commit that never reached `main` and wedged every later release at
+   `git tag -a` with "tag already exists".
 3. **`publish`** — checks out that SHA, replays the dists, and publishes each package with
    `npm publish --ignore-scripts` in the dependency order `publish-order.mjs` computes — dicom-codec
    goes out after the six siblings whose ranges it carries. `--ignore-scripts` is deliberate:
@@ -107,14 +115,52 @@ After the first green release, harden on npmjs.com: set each package's *Publishi
 "Require two-factor authentication and disallow tokens", and delete the old `NPM_TOKEN` from the
 CircleCI project (CircleCI no longer runs anything for this repo — the project should be disabled).
 
-### 2. `main` branch ruleset
+### 2. Release GitHub App + `main` branch ruleset
 
-```bash
-gh auth login                     # as a repo admin
-bash tools/release/setup-branch-ruleset.sh
+**Must be done by an organization owner** — repo admin cannot create or install the App.
+
+The release job needs to push the version commit to `main`, which requires a pull request. The
+built-in `GITHUB_TOKEN` cannot be exempted from that: the "GitHub Actions" app it authenticates as
+(id 15368) is owned by `github`, and a ruleset only accepts bypass actors belonging to the repo or
+its owning org, so GitHub rejects it with
+
+```
+422 Actor GitHub Actions integration must be part of the ruleset source or owner organization
 ```
 
-Replaces main's classic branch protection with an equivalent ruleset that lets the GitHub Actions app
-bypass the pull-request requirement, so the release job can push the version commit. Review
-requirements for humans are unchanged. See the script's header for why the classic rule has to go
-rather than sit alongside the ruleset.
+An org-owned App is the supported route. Unlike a PAT it belongs to the org rather than a person, so
+it does not break when someone's token expires or they leave.
+
+1. **Create and install the App** — the full UI walkthrough is STEP 1 in
+   [setup-branch-ruleset.sh](setup-branch-ruleset.sh)'s header. Summary: create
+   `cornerstonejs-release` under the org with **Contents: read and write** and nothing else, no
+   webhook, generate a private key, install it on `codecs` only, then
+
+   ```bash
+   gh variable set RELEASE_APP_ID --repo cornerstonejs/codecs --body '<App ID>'
+   gh secret   set RELEASE_APP_PRIVATE_KEY --repo cornerstonejs/codecs < /path/to/key.pem
+   rm /path/to/key.pem
+   ```
+
+2. **Migrate the branch protection:**
+
+   ```bash
+   gh auth login                     # as the org owner
+   gh auth refresh -s admin:org      # ruleset writes need this scope
+   RELEASE_APP_SLUG=cornerstonejs-release bash tools/release/setup-branch-ruleset.sh
+   ```
+
+   Replaces main's classic branch protection with an equivalent ruleset listing that App as a bypass
+   actor. Review requirements for humans are unchanged: 1 approving review, code-owner review, stale
+   reviews dismissed on push, last-push approval, no force pushes, no branch deletion. See the
+   script's header for why the classic rule has to go rather than sit alongside the ruleset.
+
+3. **Verify**, then re-run the failed Release workflow:
+
+   ```bash
+   gh api repos/cornerstonejs/codecs/rulesets
+   gh api repos/cornerstonejs/codecs/branches/main/protection   # expect 404
+   ```
+
+If `RELEASE_APP_ID` is unset the release still runs and fails at the push, but logs a warning naming
+this section rather than only `protected branch hook declined`.
