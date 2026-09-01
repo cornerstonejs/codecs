@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjxl",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "WASM build of libjxl (JPEG XL) for DICOM, with the decoder and encoder as separate modules",
   "license": "BSD-3-Clause",
   "type": "module",

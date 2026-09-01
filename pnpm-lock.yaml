@@ -71,7 +71,7 @@ importers:
         specifier: ^1.2.5
         version: link:../libjpeg-turbo-8bit
       '@cornerstonejs/codec-libjxl':
-        specifier: ^1.0.0
+        specifier: ^1.1.0
         version: link:../libjxl
       '@cornerstonejs/codec-little-endian':
         specifier: ^0.0.8
