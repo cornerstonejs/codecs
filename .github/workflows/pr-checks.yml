@@ -196,12 +196,13 @@ jobs:
         # Shallow checkout: builds only need the working tree (full history
         # is only required by detect-changes for the merge-base diff).
       - uses: actions/setup-node@v4
-        # The emsdk image bundles node 20.18.0, which fails both pnpm 11's
-        # engine check (needs >=22.13) and vite 7's (via vitest 3). Put node 22
-        # on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes the
-        # node binary pinned in its own .emscripten config, not the one on PATH.
+        # The emsdk image bundles node 20.18.0 — end of life since 2026-04-30,
+        # and it fails pnpm 11's engine check (needs >=22.13) anyway. Put node
+        # 24 on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes
+        # the node binary pinned in its own .emscripten config, not the one on
+        # PATH.
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         # `corepack prepare --activate` with no argument installs exactly the
         # version in the root package.json "packageManager" field, so CI and
@@ -282,7 +283,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -370,7 +371,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -450,7 +451,7 @@ jobs:
           # between patch releases move the numbers, and walltime is if anything
           # more sensitive than instruction counts. Keep this in step with the
           # codspeed-bench pin so the two instruments stay comparable.
-          node-version: '22.23.1'
+          node-version: '24.20.0'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm

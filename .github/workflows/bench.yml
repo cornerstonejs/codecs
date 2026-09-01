@@ -242,18 +242,18 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          # EXACT version, not the '22' range every other job uses. For a range,
+          # EXACT version, not the '24' range every other job uses. For a range,
           # setup-node takes any satisfying version already in the runner's tool
           # cache without checking the network — and on a self-hosted box that
-          # cache persists, so the bench would silently freeze on whichever 22.x
+          # cache persists, so the bench would silently freeze on whichever 24.x
           # landed there first and jump whenever the box is rebuilt. A V8 patch
           # bump shifts instruction counts the same way a different CPU does.
-          # 22.23.1 is what the current main baseline was measured on; changing
+          # 24.20.0 is what the current main baseline was measured on; changing
           # it is a deliberate re-seed event (see docs/ci/self-hosted-runner.md).
-          node-version: '22.23.1'
+          node-version: '24.20.0'
       # nashua has no package manager beyond npm: setup-node ships node + npm
       # only, and GitHub's hosted images are not what runs here. Corepack is
-      # bundled with node 22 and fetches over Node's own https, so it works
+      # still bundled with node 24 and fetches over Node's own https, so it works
       # where `npm i -g <pm>` is unreliable on this box — the runner's bundled
       # node has a corrupted npm ("Cannot find module '../lib/cli.js'"), which
       # is why OHIF's workflow also went the Corepack route here. `corepack

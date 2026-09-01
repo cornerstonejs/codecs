@@ -11,7 +11,7 @@
     "playwright-core": "^1.49.0"
   },
   "engines": {
-    "node": ">=22.13",
+    "node": ">=24",
     "pnpm": ">=11"
   },
   "scripts": {
