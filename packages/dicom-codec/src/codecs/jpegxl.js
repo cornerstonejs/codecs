@@ -121,14 +121,39 @@ async function loadEncoder() {
   return module.default(getModuleOptions("@cornerstonejs/codec-libjxl/encodewasm"));
 }
 
+/**
+ * Under Node, hands the module its .wasm as a buffer.
+ *
+ * The shipped modules are built with -sENVIRONMENT=web,worker (see the
+ * libjxl CMakeLists for why: including `node` makes the ES6 glue emit
+ * `await import("node:module")`, which rspack and webpack reject as an
+ * unhandled scheme). Nothing in that glue reads the file off disk, so
+ * supplying wasmBinary is what makes them load outside a browser at all.
+ *
+ * process.getBuiltinModule, not require(). This file is CommonJS, so a plain
+ * require("fs") is statically visible to bundlers, which then try to resolve a
+ * node builtin for a browser target — and require.resolve() would be rewritten
+ * to a bundler module id rather than a path. The previous version dodged both
+ * by evaluating the string "require", at the cost of putting a dynamic-code
+ * call into every consumer's browser bundle: the isNode guard stops it
+ * running, but not from being there, and a strict CSP forbids the call site
+ * regardless — and a scan of the source cannot tell the two apart, which is
+ * why the token is avoided here entirely. That is the same property
+ * the CSP-safe codegen work established for the generated glue, and the source
+ * should not be the one place that gives it back.
+ *
+ * getBuiltinModule needs Node >= 22.3; this package requires >= 24.
+ */
 function getModuleOptions(wasmModule) {
   if (!isNode) {
     return {};
   }
 
-  const nodeRequire = eval("require");
-  const fs = nodeRequire("fs");
-  return { wasmBinary: fs.readFileSync(nodeRequire.resolve(wasmModule)) };
+  const { createRequire } = process.getBuiltinModule("module");
+  const { readFileSync } = process.getBuiltinModule("fs");
+  return {
+    wasmBinary: readFileSync(createRequire(__filename).resolve(wasmModule)),
+  };
 }
 
 /**

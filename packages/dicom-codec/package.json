@@ -20,7 +20,7 @@
     "bench": "vitest bench --run"
   },
   "engines": {
-    "node": ">=0.14"
+    "node": ">=24"
   },
   "author": "",
   "license": "ISC",

@@ -4,6 +4,9 @@
   "description": "WASM build of libjxl (JPEG XL) for DICOM, with the decoder and encoder as separate modules",
   "license": "BSD-3-Clause",
   "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
   "publishConfig": {
     "access": "public"
   },
