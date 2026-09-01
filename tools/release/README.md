@@ -214,19 +214,31 @@ What stops that being a loop is the guard on each workflow's root job:
 ```yaml
 if: >-
   github.event_name != 'push'
-  || !startsWith(github.event.head_commit.message, 'chore(release): publish')
+  || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+  && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
 ```
 
-So the release commit's **subject line is load-bearing**. `release.yml` writes it, and `release.yml`,
-`pr-checks.yml` and `bench.yml` all match on it — change the wording in one place and you must change
-it in all four.
+(The continuation lines sit at the same indent on purpose. A `>-` folded scalar keeps a real newline
+before any *more*-indented line, which would embed one in the expression.)
 
-This deliberately does not use `[skip ci]`. GitHub scans the entire head-commit message for that
-keyword, body included, and a squash merge concatenates every commit message on the branch into the
-body — so a PR that merely *mentions* `[skip ci]` in prose disables every workflow for its merge
-commit, creating no run at all to notice. That is exactly what happened to
-[#89](https://github.com/cornerstonejs/codecs/pull/89), whose commits explained why the release
-commit carried the keyword. Anchoring on the subject cannot be tripped by prose.
+Both halves are written by the `release` job, a few lines apart — the `git config user.email` and the
+`git commit -m`. **Change either and you must change it in all four files**, or the version commit
+stops being recognised and gets a full CI run plus a bench that seeds a duplicate CodSpeed baseline.
+
+Two things this deliberately is not:
+
+- **Not `[skip ci]`.** GitHub scans the entire head-commit message for that keyword, body included,
+  and a squash merge concatenates every commit message on the branch into the body — so a PR that
+  merely *mentions* `[skip ci]` in prose disables every workflow for its merge commit, creating no
+  run at all to notice. That is exactly what happened to
+  [#89](https://github.com/cornerstonejs/codecs/pull/89), whose commits explained why the release
+  commit carried the keyword. Anchoring on the subject cannot be tripped by prose.
+- **Not `==` on the message.** GitHub strips the trailing newline, so equality would match today, but
+  it stops matching the moment the release commit grows a body — a commit template, a
+  `prepare-commit-msg` hook, a second `-m`. That failure is silent. Equality also would not buy the
+  precision it looks like it buys: a human can type the exact subject as easily as a prefix. The
+  author clause is what makes the match precise, because only the release job can produce that
+  identity.
 
 3. **Verify**, then re-run the failed Release workflow:
 

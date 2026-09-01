@@ -75,9 +75,25 @@ jobs:
     # startsWith on the subject cannot be tripped that way. Prose about the
     # release commit is not the release commit, and a commit message can now
     # discuss `[skip ci]`, or this guard, without disabling CI.
+    #
+    # The author clause is what makes the match precise. Anchoring on the
+    # subject alone would let any commit whose subject opens with that prefix
+    # skip CI, and an exact `==` on the message does not fix that either -- a
+    # human can type the exact subject just as easily as a prefix. Identity can
+    # only be produced by the `git config` two steps below, so the guard now
+    # asks the question it actually means: is this OUR version commit?
+    #
+    # Deliberately not `==` on the message. GitHub does strip the trailing
+    # newline (verified against the API for 6635578), so equality would work
+    # today -- but it silently stops matching the moment the release commit
+    # grows a body, which a commit template, a prepare-commit-msg hook or a
+    # second `-m` would do. That failure is invisible and lands in the worst
+    # place: the release commit gets benched, seeding a duplicate CodSpeed
+    # baseline. Prefix + identity fails safe where equality fails silent.
     if: >-
       github.event_name != 'push'
-      || !startsWith(github.event.head_commit.message, 'chore(release): publish')
+      || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
     # Same wasm build as pr-checks.yml, minus the change detection: a release
     # publishes whatever moved, and dicom-codec ships ranges over every sibling,
     # so all dists must be current.
@@ -311,6 +327,11 @@ jobs:
           fi
           echo "Pushing via: $PUSH_VIA"
 
+          # This email is load-bearing, not cosmetic: it is the second half of
+          # the guard on every workflow's root job (the first is the subject
+          # below). Change it here and the version commit stops being
+          # recognised as ours, so the release commit gets a full CI run and a
+          # bench that seeds a duplicate baseline.
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
@@ -334,10 +355,10 @@ jobs:
 
           # release-plan.json is a run artifact, not repo content.
           git add packages/*/package.json packages/*/CHANGELOG.md pnpm-lock.yaml
-          # The subject is load-bearing: every workflow's root job is gated on
-          # `startsWith(head_commit.message, 'chore(release): publish')` so this
-          # push does not retrigger CI. Change the wording here and you must
-          # change it in release.yml, pr-checks.yml and bench.yml together.
+          # The subject is load-bearing: every workflow's root job skips a push
+          # whose head commit starts with this subject AND carries the bot
+          # identity set above. Change the wording here and you must change it
+          # in release.yml, pr-checks.yml and bench.yml together.
           git commit -m "chore(release): publish"
 
           jq -r '.[].tag' release-plan.json | while read -r tag; do

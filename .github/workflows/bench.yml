@@ -47,11 +47,13 @@ jobs:
     # are no dist artifacts to wait for anyway: pr-checks skips that commit too.
     #
     # Subject-anchored rather than the `[skip ci]` this replaces -- GitHub's
-    # keyword scan reads the whole commit message, body included. See
-    # release.yml's build job for what that cost.
+    # keyword scan reads the whole commit message, body included. The author
+    # clause keeps a human commit that happens to open with the same subject
+    # from skipping the bench. See release.yml's build job for what that cost.
     if: >-
       github.event_name != 'push'
-      || !startsWith(github.event.head_commit.message, 'chore(release): publish')
+      || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
     runs-on: ubuntu-latest
     # Generous because this job WAITS for the PR checks wasm builds to finish
     # (poll deadline 90 min below) before handing over to the bench.
