@@ -7,8 +7,8 @@ name: PR checks
 # the PR touched; the advisory walltime bench stays here (codspeed-walltime
 # below).
 #
-# Toolchain bumps (emsdk image tag below, root package.json/yarn.lock, this
-# workflow itself) force the FULL pipeline including a full bench sweep.
+# Toolchain bumps (emsdk image tag below, root package.json/pnpm-lock.yaml,
+# this workflow itself) force the FULL pipeline including a full bench sweep.
 # Expect such a PR to also need:
 #   1. tools/dist-size/baseline.json regenerated from that PR's own CI
 #      artifacts: gh run download <run-id> --pattern 'dist-*' -d tmp/ then
@@ -115,15 +115,20 @@ jobs:
           TOOLCHAIN_PATHS=(
             ".github/workflows/"
             "package.json"
-            "yarn.lock"
+            "pnpm-lock.yaml"
+            "pnpm-workspace.yaml"
             "vitest.workspace.mjs"
             "babel.config.json"
-            "lerna.json"
             "tools/ci/"
             "tools/csp/"
             "tools/dist-size/"
             "tools/browser-smoke/"
             "tools/fixture-verification/"
+            # tools/release/ decides what gets versioned and published. Without
+            # it here, a PR touching only the release scripts matched no path,
+            # got any=false and skipped every job — so their first execution
+            # would be a live release, partway through mutating manifests.
+            "tools/release/"
           )
           for p in "${TOOLCHAIN_PATHS[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
@@ -174,13 +179,27 @@ jobs:
     container:
       image: emscripten/emsdk:3.1.74
     steps:
-      - name: Install yarn + cmake + C++ build deps
+      - name: Install cmake + C++ build deps
+        # Digest-checked rather than piped straight into tar; same pin as
+        # release.yml's build job. From
+        # https://cmake.org/files/v3.17/cmake-3.17.4-SHA-256.txt.
+        env:
+          CMAKE_TARBALL: cmake-3.17.4-Linux-x86_64.tar.gz
+          CMAKE_SHA256: 126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3
+        # NO `set -euo pipefail` here. The emsdk image has no bash, so GitHub
+        # runs every step in this container job as `sh -e {0}` and dash rejects
+        # `-o pipefail` outright ("Illegal option -o pipefail", exit 2). It is
+        # not needed either: `-e` is already on, and the digest check below is
+        # the LAST command in its pipeline, so its failure is what the shell
+        # sees. Same applies to release.yml's build job.
         run: |
-          npm install --global yarn@1.22.22
           apt-get update
           apt-get -y install build-essential git
-          wget -qO- "https://cmake.org/files/v3.17/cmake-3.17.4-Linux-x86_64.tar.gz" \
-            | tar --strip-components=1 -xz -C /usr/local
+          # /tmp, not the workspace: this step runs before actions/checkout.
+          wget -q -O "/tmp/${CMAKE_TARBALL}" "https://cmake.org/files/v3.17/${CMAKE_TARBALL}"
+          echo "${CMAKE_SHA256}  /tmp/${CMAKE_TARBALL}" | sha256sum -c -
+          tar --strip-components=1 -xzf "/tmp/${CMAKE_TARBALL}" -C /usr/local
+          rm -f "/tmp/${CMAKE_TARBALL}"
           apt-get autoremove -y
           apt-get clean -y
           rm -rf /var/lib/apt/lists/*
@@ -188,12 +207,20 @@ jobs:
         # Shallow checkout: builds only need the working tree (full history
         # is only required by detect-changes for the merge-base diff).
       - uses: actions/setup-node@v4
-        # The emsdk image bundles node 20.18.0, which fails vite 7's engine
-        # check (needs >=20.19) during yarn install. Put node 22 on PATH for
-        # yarn/webpack; emscripten is unaffected — emcc invokes the node
-        # binary pinned in its own .emscripten config, not the one on PATH.
+        # The emsdk image bundles node 20.18.0, which fails both pnpm 11's
+        # engine check (needs >=22.13) and vite 7's (via vitest 3). Put node 22
+        # on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes the
+        # node binary pinned in its own .emscripten config, not the one on PATH.
         with:
           node-version: '22'
+      - name: Provide pnpm via Corepack
+        # `corepack prepare --activate` with no argument installs exactly the
+        # version in the root package.json "packageManager" field, so CI and
+        # local dev never drift.
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
       - name: Allow git to operate on the workspace
         # The container runs as root but the workspace is owned by the
         # checkout action's user, which makes git complain about
@@ -213,12 +240,27 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+          # The key covers EVERY input to `pnpm install`, not just the lockfile,
+          # because a hit skips the install step below — and with it the
+          # --frozen-lockfile check. Specifically:
+          #   - pnpm-workspace.yaml: the lockfile's settings block records only
+          #     autoInstallPeers and excludeLinksFromLockfile, so changing
+          #     nodeLinker, allowBuilds, frozenLockfile or linkWorkspacePackages
+          #     leaves the lockfile byte-identical while changing the layout
+          #     installed. Keying on the lockfile alone, the cache would hit and
+          #     CI would keep testing the previous node_modules tree.
+          #   - package.json + packages/*/package.json: a manifest edit that has
+          #     not been reflected in the lockfile must reach the install step so
+          #     --frozen-lockfile can reject it, rather than being masked by a
+          #     stale cache entry. The root manifest also carries the
+          #     packageManager pin, so a pnpm bump invalidates too.
+          # Keep the same hashFiles(...) inputs in all four pnpm-modules keys.
+          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Build
-        run: cd "packages/${{ matrix.package }}" && yarn run build:ci
+        run: cd "packages/${{ matrix.package }}" && pnpm run build:ci
       - name: Ensure dist exists (no-op packages still need a placeholder)
         run: mkdir -p "packages/${{ matrix.package }}/dist"
       - name: Upload dist
@@ -231,18 +273,32 @@ jobs:
 
   test:
     # One job for the whole vitest workspace: per-package test jobs spent far
-    # more on runner setup (checkout, node, artifact download, yarn install)
-    # than on the few seconds of vitest itself, and dicom-codec's suite needs
-    # every sibling dist anyway. CI=true (set by GitHub) arms the in-test
-    # guards: a missing dist FAILS its suite instead of silently skipping.
+    # more on runner setup (checkout, node, artifact download, install) than on
+    # the few seconds of vitest itself, and dicom-codec's suite needs every
+    # sibling dist anyway. CI=true (set by GitHub) arms the in-test guards: a
+    # missing dist FAILS its suite instead of silently skipping.
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history + tags so the release dry-run at the end of this job
+          # can walk back to each package's last `<name>@<version>` tag.
+          fetch-depth: 0
+          fetch-tags: true
+          # Do not leave GITHUB_TOKEN in .git/config. This job installs
+          # dependencies and runs the release scripts against PR code; none of
+          # that needs an authenticated remote, only local history and tags.
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -269,12 +325,26 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Test
-        run: npx vitest run
+        run: pnpm exec vitest run
+      - name: Release dry-run
+        # Exercises the release scripts on every PR. They are otherwise only
+        # ever executed by a live release — after the 8-job build matrix, and
+        # partway through mutating manifests, which is a poor place to discover
+        # a syntax error or a bad tag walk. Mutates nothing (--dry-run), and
+        # publish-order.mjs additionally re-checks the topological order and
+        # that every package shipping dist/ actually has one.
+        run: |
+          set -euo pipefail
+          node tools/release/version.mjs --dry-run
+          echo "Publish order:"
+          node tools/release/publish-order.mjs
 
   dist-size:
     # Binary-size regression gate: compares every shipped dist artifact
@@ -312,6 +382,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -334,19 +409,21 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
-          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Cache Playwright chromium
         id: pw-cache
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install chromium
         if: steps.pw-cache.outputs.cache-hit != 'true'
-        run: npx playwright-core install chromium
+        run: pnpm exec playwright-core install chromium
       - name: Browser smoke decode
         run: node tools/browser-smoke/run.js
 
@@ -385,6 +462,11 @@ jobs:
           # more sensitive than instruction counts. Keep this in step with the
           # codspeed-bench pin so the two instruments stay comparable.
           node-version: '22.23.1'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -410,10 +492,12 @@ jobs:
           # runner.arch matters: this job runs on ARM64 while every other
           # job is x64; sharing a key would restore x64 native binaries
           # (esbuild/rollup) and break vitest.
-          key: modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('yarn.lock') }}
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Log CPU info
         run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
       - name: Compute bench scope
@@ -439,22 +523,24 @@ jobs:
               }
               process.stdout.write(name);
             ' "$pkg")
-            flags="$flags --scope $name"
+            flags="$flags --filter $name"
           done
           echo "Bench scope flags:$flags"
           echo "flags=$flags" >> "$GITHUB_OUTPUT"
       - name: Run CodSpeed benchmarks (walltime)
         # Walltime measures actual elapsed time, so parallel benchmark
         # processes would contend for cores and add noise — run packages
-        # sequentially (--concurrency 1), unlike the simulation job where
-        # instruction counting is immune to contention.
+        # sequentially (--workspace-concurrency=1). The simulation job in
+        # bench.yml now does the same: it was left parallel on the premise that
+        # instruction counting is immune to contention, and #76 showed it is
+        # not. See the comment on that job's run step.
         uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
         env:
           # Keep this in env, NOT `${{ }}` in the run: below — an env value is
           # expanded by the shell after the command line is parsed, so it stays
           # data. Unquoted below on purpose: the flags must word-split into
-          # repeated `--scope <name>` pairs.
+          # repeated `--filter <name>` pairs.
           SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
         with:
           mode: walltime
-          run: yarn lerna run bench --concurrency 1 --stream $SCOPE_FLAGS
+          run: pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench

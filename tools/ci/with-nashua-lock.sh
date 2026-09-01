@@ -15,10 +15,13 @@
 # so the mutex lives on the box's filesystem instead.
 #
 # Why codecs takes this lock — NOT for Playwright:
-#   - The bench job saturates every core: valgrind runs ~60x slower than native
-#     and `lerna run bench --parallel` fans out across all of them. The other two
-#     repos measure Playwright wall-clock behaviour, which flakes badly under
-#     that load (and their browsers plus valgrind together strain box RAM).
+#   - The bench job saturates every core: valgrind runs ~60x slower than native,
+#     and the command this wraps fans out across all of them. That command is
+#     `pnpm --parallel --filter <pkg> ... run bench` — the package filters come
+#     from .github/workflows/bench.yml, not from this script, which only takes
+#     the lock and execs whatever it was given. The other two repos measure
+#     Playwright wall-clock behaviour, which flakes badly under that load (and
+#     their browsers plus valgrind together strain box RAM).
 #   - In the other direction, a starved bench job trips vitest 3's hard-coded 60s
 #     worker-RPC timer, which counts REAL seconds while valgrind stretches the
 #     process — so contention turns a slow job into a noisy one.

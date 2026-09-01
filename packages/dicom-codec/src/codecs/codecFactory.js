@@ -2,6 +2,47 @@ const logger = require("../utils/logger");
 const processTimer = require("../utils/processTimer");
 
 /**
+ * Emscripten writes a codec's stdout/stderr straight to the console, bypassing
+ * this library's own logging policy. That is not just startup noise: openjph's
+ * HTJ2KDecoder prints a banner from its CONSTRUCTOR, and decode() below builds
+ * a fresh decoder per call — so a consumer decoding a series got one line of
+ * console output per frame, unconditionally.
+ *
+ * Routing `print` through the logger makes that stdout chatter obey the same
+ * `setVerbose` flag as the rest of the library: quiet by default, still there
+ * when you turn it on. Set once at module init, which covers everything the
+ * codec prints afterwards.
+ *
+ * `printErr` is deliberately NOT overridden. logger.error is gated on the same
+ * `verbose` flag as logger.log, so routing stderr through it would silence real
+ * decode failures — not just banners — for every consumer that never called
+ * setVerbose. Nothing is lost by leaving it alone: openjph's noise is INFO and
+ * WARN, and ojph_message.cpp points both of those at stdout (only OJPH_ERROR
+ * uses stderr). So emscripten's default printErr — an unconditional
+ * console.error — stays in place for the messages that matter.
+ *
+ * It also takes console I/O out of the decode path for consumers, which is
+ * worth having on its own. It is NOT, however, what the dicom-codec dispatch
+ * benchmark measures: this override was once thought to explain CodSpeed's
+ * -25% Simulation result on "HTJ2K Lossless (.201)", and removing it entirely
+ * was measured at 189.0ms against 188.1ms with it — no effect. Whatever that
+ * regression is, it is not this. Do not re-add that claim without a bench run
+ * behind it. packages/openjphjs/bench/decode.bench.js overrides the same hook
+ * as a no-op, for its own reasons.
+ *
+ * MUST return a fresh object per codec. Emscripten's MODULARIZE wrapper takes
+ * the argument as its Module and mutates it in place — heap views, embind
+ * registrations, the lot. Sharing one object across codecs replays the first
+ * codec's registrations into the second, which fails as
+ * "Cannot register public name 'getVersion' twice".
+ */
+function emscriptenModuleOverrides() {
+  return {
+    print: (message) => logger.log(message),
+  };
+}
+
+/**
  * Change by reference the given codecConfig and set related Encoder/Decoder from codec.
  *
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
@@ -39,12 +80,12 @@ async function initialize(
 
   return new Promise((resolve, reject) => {
     if (codecModule) {
-      codecModule().then((codec) => {
+      codecModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
     } else if (codecWasmModule) {
-      codecWasmModule().then((codec) => {
+      codecWasmModule(emscriptenModuleOverrides()).then((codec) => {
         setCodec(codecConfig, encoderName, decoderName, codec);
         resolve(true);
       }, reject);
@@ -189,6 +230,34 @@ function getImageFrame(typedArray) {
 }
 
 /**
+ * Copies a codec buffer out of WASM memory into a JS-owned typed array.
+ *
+ * The codecs' getDecodedBuffer()/getEncodedBuffer() hand back an emscripten
+ * `typed_memory_view` — a live window onto the wasm heap, owned by the codec
+ * instance, NOT a copy. Every way that instance can move on invalidates it:
+ *
+ *   - `delete()` frees the underlying vector, so the view aliases memory the
+ *     allocator is free to hand to anything else;
+ *   - reusing the instance (see `reuseDecoder`) overwrites the same bytes on the
+ *     next decode, so a caller holding views for frames 1..n of a series would
+ *     find every one of them showing frame n;
+ *   - a decode that grows the heap detaches the view's ArrayBuffer outright, and
+ *     reads then throw.
+ *
+ * So the copy is not an optimisation trade-off — returning the view is wrong in
+ * all three cases. It costs one memcpy of the frame against a decode, and it is
+ * what makes reuse safe.
+ *
+ * @param {TypedArray} typedArray a view into WASM memory.
+ * @returns {TypedArray} an equivalent array backed by its own ArrayBuffer.
+ */
+function copyFromWasm(typedArray) {
+  // slice() preserves the element type and returns a fresh buffer at offset 0,
+  // which also keeps the 16-bit views getPixelData() builds correctly aligned.
+  return getImageFrame(typedArray).slice();
+}
+
+/**
  * Encode imageFrame using Encoder from the given local param.
  *
  * Its the common encode process for js/wasm codec's based.
@@ -223,7 +292,10 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
     "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
   );
 
-  const encodedImageFrame = getImageFrame(encodedTypedArray).slice();
+  // Copy BEFORE delete(): see copyFromWasm. delete() frees the vector this view
+  // points into, so returning the view alone hands the caller memory the wasm
+  // allocator may reissue at any time.
+  const encodedCopy = copyFromWasm(encodedTypedArray);
 
   // cleanup allocated memory
   encoderInstance.delete();
@@ -233,7 +305,7 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   };
 
   return {
-    imageFrame: encodedImageFrame,
+    imageFrame: encodedCopy,
     imageInfo: getTargetImageInfo(imageInfo, imageInfo),
     processInfo,
   };
@@ -248,14 +320,43 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
  * @param {CodecWrapper} codecConfig codec wrapper configuration.
  * @param {TypedArray} imageFrame current image frame pixels.
  * @param {ExtendedImageInfo} imageInfo previous image info object.
- * @returns Object containing decoded image frame and imageInfo (current) data
+ * @param {*} [options] process options.
+ * @param {boolean} [options.reuseDecoder=false] keep one decoder instance on
+ *   codecConfig and reuse it across calls instead of constructing and deleting
+ *   one per frame. Opt-in per codec: a decoder that carries state between
+ *   decodes, or whose retained buffers grow, must not set it. The returned
+ *   imageFrame is copied out of WASM memory either way (see copyFromWasm), so
+ *   holding frames from several decodes is safe; call releaseDecoder to give the
+ *   retained heap back.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
+ *   processInfo.partial is true when the codec parsed the header but did not
+ *   finish decoding; the frame is correctly sized and the undecoded region is
+ *   zero-filled.
+ * @throws Will throw when the codec could not parse the codestream header, so
+ *   that an unusable frame is never reported as a successful decode.
  *
  */
-function decode(context, codecConfig, imageFrame, imageInfo) {
+function decode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   if (!imageFrame?.length) {
     throw new Error("Image frame not defined for decoding");
   }
-  const decoderInstance = new codecConfig.Decoder();
+
+  // Constructing a wasm decoder is not cheap — it allocates heap, registers
+  // embind bindings and, for openjph, ran its constructor banner through the
+  // console. Doing that per frame dominated series decoding: it is the bulk of
+  // the gap between dispatching HTJ2K through this factory and calling
+  // openjphjs directly. Reused decoders are held on codecConfig, which is the
+  // per-codec singleton the wrapper modules already share.
+  const reuseDecoder = options.reuseDecoder === true;
+  let decoderInstance;
+  if (reuseDecoder) {
+    if (!codecConfig.reusedDecoder) {
+      codecConfig.reusedDecoder = new codecConfig.Decoder();
+    }
+    decoderInstance = codecConfig.reusedDecoder;
+  } else {
+    decoderInstance = new codecConfig.Decoder();
+  }
 
   const { length } = imageFrame;
   // get pointer to the source/encoded bit stream buffer in WASM memory
@@ -278,20 +379,103 @@ function decode(context, codecConfig, imageFrame, imageInfo) {
 
   // get information about the decoded image
   const decodedImageInfo = decoderInstance.getFrameInfo();
-  const decodedImageFrame = getImageFrame(decodedTypedArray).slice();
 
-  // cleanup allocated memory
-  decoderInstance.delete();
+  // Copy out of WASM memory before anything can invalidate the view — the
+  // delete() below, or the next decode on a reused instance. See copyFromWasm.
+  const decodedCopy = copyFromWasm(decodedTypedArray);
+
+  const decodeStatus = getDecodeStatus(decoderInstance);
+
+  // cleanup allocated memory — except when reusing, where the whole point is
+  // that this instance survives to the next call. openjphjs' decoder-reuse
+  // test covers the consequence that matters: retained buffers must not make
+  // successive decodes progressively slower.
+  if (!reuseDecoder) {
+    decoderInstance.delete();
+  }
+
+  if (decodeStatus.failed && !decodeStatus.headerValid) {
+    // Nothing usable came back: the codec could not parse the header, so the
+    // dimensions and the buffer are both meaningless. Decoders that swallow
+    // this (openjph, so that truncated streams can degrade gracefully) would
+    // otherwise have this function report success on an empty or wrongly sized
+    // frame — and with a reused decoder, report it under the previous frame's
+    // pixels. Throwing here is the pre-reuse behaviour for a stream that
+    // genuinely cannot be decoded.
+    throw new Error("Decode failed: " + decodeStatus.message);
+  }
 
   const processInfo = {
     duration: context.timer.getDuration(),
   };
 
+  if (decodeStatus.failed) {
+    // Header parsed but the decode did not finish: a correctly sized frame
+    // whose undecoded region is zero-filled. Not the truncation case — openjph
+    // absorbs a short codestream as zero coefficients and calls that a success
+    // (measured across every truncation length of a 185 KB fixture), so what
+    // lands here is a codestream whose markers parse but whose parameters the
+    // decoder rejects. Reported rather than thrown, because the frame that came
+    // back is real as far as it goes; flagged, because it is not the whole image.
+    processInfo.partial = true;
+    processInfo.partialReason = decodeStatus.message;
+    context.logger.log("Partial decode: " + decodeStatus.message);
+  }
+
   return {
-    imageFrame: decodedImageFrame,
+    imageFrame: decodedCopy,
     imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
     processInfo,
   };
+}
+
+/**
+ * Reads a decoder's post-decode failure state.
+ *
+ * Most codecs signal a decode failure by throwing, which runProcess already
+ * propagates. openjph does not: it swallows the exception so that a partial
+ * codestream can degrade to a partial image, and reports the outcome through
+ * getIsHeaderValid()/getLastErrorMessage() instead. Both are optional — a codec
+ * that does not expose them is treated as "succeeded", which is exactly right
+ * for the throw-on-failure codecs.
+ *
+ * @param {Object} decoderInstance codec decoder instance.
+ * @returns {{failed: boolean, headerValid: boolean, message: string}}
+ */
+function getDecodeStatus(decoderInstance) {
+  const message =
+    typeof decoderInstance.getLastErrorMessage === "function"
+      ? decoderInstance.getLastErrorMessage() || ""
+      : "";
+  const headerValid =
+    typeof decoderInstance.getIsHeaderValid === "function"
+      ? decoderInstance.getIsHeaderValid()
+      : true;
+
+  return { failed: message !== "", headerValid, message };
+}
+
+/**
+ * Deletes the decoder a previous decode({ reuseDecoder: true }) left on
+ * codecConfig, releasing the WASM heap it retains.
+ *
+ * A reused decoder keeps the buffers sized for the largest frame it has seen
+ * for the lifetime of the module, which is the point — but a consumer that
+ * decoded one very large series and is done with it has no other way to get
+ * that memory back. Safe to call at any time and on a codec that never reused:
+ * the next decode simply constructs a new decoder.
+ *
+ * @param {CodecWrapper} codecConfig codec wrapper configuration.
+ * @returns {boolean} true if a decoder was released.
+ */
+function releaseDecoder(codecConfig) {
+  if (!codecConfig?.reusedDecoder) {
+    return false;
+  }
+
+  codecConfig.reusedDecoder.delete();
+  codecConfig.reusedDecoder = undefined;
+  return true;
 }
 
 exports.runProcess = runProcess;
@@ -300,3 +484,4 @@ exports.decode = decode;
 exports.initialize = initialize;
 exports.getPixelData = getPixelData;
 exports.getTargetImageInfo = getTargetImageInfo;
+exports.releaseDecoder = releaseDecoder;

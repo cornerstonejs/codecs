@@ -1,18 +1,23 @@
 {
   "name": "@cornerstonejs/codec-little-endian",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "description": "",
   "main": "dist/index.js",
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/little-endian"
+  },
   "scripts": {
     "build": "webpack --env production --config ./webpack.config.js",
-    "build:ci": "yarn run build",
+    "build:ci": "pnpm run build",
     "test": "vitest run",
-    "test:ci": "yarn run test",
+    "test:ci": "pnpm run test",
     "test:watch": "vitest",
-    "prepublishOnly": "yarn run build",
+    "prepublishOnly": "pnpm run build",
     "bench": "vitest bench --run"
   },
   "devDependencies": {

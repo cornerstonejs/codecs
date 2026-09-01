@@ -30,10 +30,10 @@ v1.0.0: support for browser (dynamic loading included) and node.
 
 ```
 # Restore packages
-yarn
+pnpm install
 
 # Build
-yarn run build
+pnpm run build
 ```
 
 # How to use
@@ -194,7 +194,7 @@ Transfer syntax `1.2.840.10008.1.2.4.112` accepts these encoding options:
 ## Testing
 
 ```bash
-yarn run test   # run vitest dispatch + integration tests
+pnpm run test   # run vitest dispatch + integration tests
 ```
 
 The integration tests require every underlying wasm codec's `dist/` to be built

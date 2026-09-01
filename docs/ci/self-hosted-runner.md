@@ -44,20 +44,21 @@ and the regression gate is trustworthy.
   workflow needs *before* `setup-node` runs will not find one — provision tools
   after that step, not before. (That is why the Corepack note below sits where it
   does.)
-- **yarn is *not* required on the box** — and is in fact absent there, since the
-  other two repos use pnpm. GitHub's hosted images preinstall yarn 1, which is
-  what this workflow used to rely on implicitly. The bench job now provisions it
-  per-job with Corepack instead:
+- **No package manager needs to be pre-installed on the box.** The bench job
+  provisions pnpm per-job with Corepack:
   ```yaml
-  corepack enable yarn
-  corepack prepare yarn@1.22.22 --activate
+  corepack enable pnpm
+  corepack prepare --activate
   ```
-  Corepack is bundled with node 22 and fetches over Node's own https. That is
-  deliberate rather than incidental: `npm i -g yarn` is unreliable here because
-  the npm reachable from the GitHub runner's *bundled* node on this box is
-  corrupted (`Cannot find module '../lib/cli.js'`) — the same wall OHIF's workflow
-  hit, which is why it provisions pnpm through Corepack too. Note node 25
-  unbundles Corepack, so a major node bump means revisiting that step.
+  With no argument, `corepack prepare --activate` installs exactly the version
+  in the root `package.json`'s `packageManager` field, so the bench box can
+  never drift from the build jobs. Corepack is bundled with node 22 and fetches
+  over Node's own https. That is deliberate rather than incidental: `npm i -g`
+  is unreliable here because the npm reachable from the GitHub runner's
+  *bundled* node on this box is corrupted (`Cannot find module '../lib/cli.js'`)
+  — the same wall OHIF's workflow hit, which is why it provisions pnpm through
+  Corepack too. Note node 25 unbundles Corepack, so a major node bump means
+  revisiting that step.
 - A C toolchain is **not** needed here: this job only downloads prebuilt
   `dist-*` artifacts and runs `vitest bench`; the wasm is compiled in the
   `build` job on GitHub-hosted runners.
@@ -172,7 +173,7 @@ This runner hosts the **simulation** gate only, which changes what matters:
   benchmarking requires.
 - **Multiple cores are a throughput win.** valgrind runs ~60× slower than
   native, so the job is CPU-bound; the workflow already fans out with
-  `lerna run bench --parallel`, which uses all available cores. More threads →
+  `pnpm --parallel run bench`, which uses all available cores. More threads →
   the job finishes faster, with identical instruction counts.
 - **Keep it to one heavy job on the box at a time.** Each runner on nashua
   takes one GitHub job at a time (the default), but the three runners are
@@ -249,7 +250,7 @@ one repo before the others leaves the box unprotected. Read
 ### Why the bench job takes it (Playwright is not the reason here)
 
 - The bench job **saturates every core**: valgrind runs ~60× slower than native
-  and `lerna run bench --parallel` fans out across all of them. Playwright
+  and `pnpm --parallel run bench` fans out across all of them. Playwright
   suites in the other two repos measure wall-clock behaviour and flake badly
   under that load; their browsers plus valgrind together also strain box RAM.
 - In the other direction, a **starved bench job gets noisy**: vitest 3's
@@ -274,7 +275,7 @@ the current holder (from `<lock>.info`) and waits up to `NASHUA_LOCK_WAIT`
 In `bench.yml` the wrapper sits **inside** the CodSpeed action's `run:`:
 
 ```yaml
-run: bash tools/ci/with-nashua-lock.sh yarn lerna run bench --parallel --stream …
+run: bash tools/ci/with-nashua-lock.sh pnpm --parallel --filter <pkg> … run bench
 ```
 
 Two reasons it goes there rather than in an earlier step: a flock is held by a
@@ -323,7 +324,7 @@ bench run.
 - **Waiting is invisible in the job's step list.** A job blocked on the mutex
   looks like a long-running "Run CodSpeed benchmarks" step; the log line
   `nashua box busy — held by: <repo>#<run-id>` is the tell.
-- **Local runs don't need the wrapper** — call `yarn lerna run bench` directly.
+- **Local runs don't need the wrapper** — call `pnpm -r run bench` directly.
   It does work off the box if you want it (`NASHUA_LOCK_FILE=/tmp/my.lock bash
   tools/ci/with-nashua-lock.sh …`).
 

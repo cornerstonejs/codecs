@@ -5,6 +5,7 @@
 
 #include <exception>
 #include <memory>
+#include <string>
 #include <limits.h>
 
 #include <ojph_arch.h>
@@ -118,10 +119,29 @@ public:
   /// </summary>
   void readHeader()
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
+    beginOperation_();
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+    }
+    catch (const std::exception &e)
+    {
+      // WARN, not INFO: jslib.cpp raises OpenJPH's message threshold to WARN to
+      // silence the per-construction banner, so an INFO here would be dropped
+      // exactly when something went wrong. Reported rather than rethrown so a
+      // truncated stream degrades to a partial result.
+      //
+      // The console message is a diagnostic, NOT the failure signal: it goes to
+      // stdout, which consumers route wherever they like (dicom-codec sends it
+      // to a logger that is silent unless setVerbose). Callers must test
+      // getIsHeaderValid() / getLastErrorMessage() -- readHeader_ leaves every
+      // header-derived field at its default when it throws, so a caller that
+      // ignores those reads zeros rather than the previous frame's geometry.
+      recordFailure_("readHeader", 0x00010020, e);
+    }
   }
 
   /// <summary>
@@ -148,11 +168,35 @@ public:
   /// </summary>
   void decode()
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, 0);
+    beginOperation_();
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, 0);
+    }
+    catch (const std::exception &e)
+    {
+      // What actually reaches here, measured against CT1.j2c truncated to
+      // 50/120/200/400/1024/4096/10240 bytes: only the 50-byte case, and it
+      // throws out of read_headers, not out of decode_. Truncation *past* the
+      // header does not throw at all -- resilient mode treats the missing
+      // codestream as zero coefficients and returns a valid, progressively
+      // emptier image. So this catch is the marker-parse/corrupt-stream path,
+      // NOT "the truncated-stream path" as previously commented here.
+      //
+      // getIsHeaderValid() is what separates the two outcomes:
+      //   header valid + message  -> correctly sized image, undecoded rows zero
+      //   header invalid          -> nothing usable; frameInfo_ is zeroed, and
+      //                              on a reused decoder the decoded buffer
+      //                              still holds the PREVIOUS frame in full,
+      //                              because decode_ never ran to overwrite it
+      // Reported rather than rethrown so streaming consumers keep the partial
+      // image; a caller that cannot use a partial image must check the status.
+      recordFailure_("decode", 0x00010021, e);
+    }
   }
 
   /// <summary>
@@ -163,11 +207,43 @@ public:
   /// </summary>
   void decodeSubResolution(size_t decompositionLevel)
   {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, decompositionLevel);
+    beginOperation_();
+    try
+    {
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, decompositionLevel);
+    }
+    catch (const std::exception &e)
+    {
+      recordFailure_("decodeSubResolution", 0x00010022, e);
+    }
+  }
+
+  /// <summary>
+  /// Returns true if the last readHeader()/decode()/decodeSubResolution() call
+  /// parsed a complete codestream header.  When false, nothing that describes
+  /// the image -- getFrameInfo(), getNumDecompositions(), getPrecinct(),
+  /// calculateSizeAtDecompositionLevel() -- carries usable values, and any
+  /// decoded buffer should be discarded.
+  /// </summary>
+  bool getIsHeaderValid() const
+  {
+    return isHeaderValid_;
+  }
+
+  /// <summary>
+  /// Empty when the last readHeader()/decode()/decodeSubResolution() call
+  /// completed.  Otherwise the message from the exception it swallowed.
+  /// Combine with getIsHeaderValid() to tell a partial decode (header valid,
+  /// image correctly sized, undecoded rows zero-filled) from a total failure
+  /// (header invalid, no usable image).
+  /// </summary>
+  std::string getLastErrorMessage() const
+  {
+    return lastErrorMessage_;
   }
 
   /// <summary>
@@ -264,8 +340,49 @@ public:
   }
 
 private:
+  /// Clears the per-call status.  Every public entry point starts here so that
+  /// getIsHeaderValid()/getLastErrorMessage() describe the CURRENT call and
+  /// never a stale success from a previous one -- which matters most on a
+  /// decoder that is reused across a series.
+  void beginOperation_()
+  {
+    isHeaderValid_ = false;
+    lastErrorMessage_.clear();
+  }
+
+  void recordFailure_(const char *operation, int code, const std::exception &e)
+  {
+    lastErrorMessage_ = e.what();
+    if (lastErrorMessage_.empty())
+    {
+      // getLastErrorMessage() must be non-empty whenever an operation failed;
+      // callers test it for emptiness. what() is not guaranteed to say anything.
+      lastErrorMessage_ = "unknown error";
+    }
+    OJPH_WARN(code, "%s failed: %s", operation, lastErrorMessage_.c_str());
+  }
+
   void readHeader_(ojph::codestream &codestream, ojph::mem_infile &mem_file)
   {
+    // Reset everything the header populates BEFORE parsing. Without this a
+    // failed parse leaves a mix of this stream's fields and the previous
+    // stream's -- and on a fresh decoder it left numDecompositions_ and the
+    // Point/Size members holding whatever was on the heap, which
+    // calculateSizeAtDecompositionLevel() and decodeSubResolution() then did
+    // arithmetic on. Defaults are honest: a caller that ignores
+    // getIsHeaderValid() sees a 0x0 image rather than a plausible wrong one.
+    frameInfo_ = FrameInfo();
+    downSamples_.clear();
+    numDecompositions_ = 0;
+    isReversible_ = false;
+    progressionOrder_ = 0;
+    imageOffset_ = Point();
+    tileSize_ = Size();
+    tileOffset_ = Point();
+    blockDimensions_ = Size();
+    precincts_.clear();
+    numLayers_ = 0;
+
     // NOTE - enabling resilience does not seem to have any effect at this point...
     codestream.enable_resilience();
     codestream.read_headers(&mem_file);
@@ -304,6 +421,10 @@ private:
     }
     numLayers_ = cod.get_num_layers();
     frameInfo_.isUsingColorTransform = cod.is_using_color_transform();
+
+    // Last statement in the function on purpose: everything above must have
+    // succeeded for the header-derived state to be trustworthy.
+    isHeaderValid_ = true;
   }
 
   void decode_(ojph::codestream &codestream, const FrameInfo &frameInfo, size_t decompositionLevel)
@@ -315,7 +436,17 @@ private:
     int resolutionLevel = numDecompositions_ - decompositionLevel;
     const size_t bytesPerPixel = (frameInfo_.bitsPerSample + 8 - 1) / 8;
     const size_t destinationSize = sizeAtDecompositionLevel.width * sizeAtDecompositionLevel.height * frameInfo.componentCount * bytesPerPixel;
-    pDecoded_->resize(destinationSize);
+
+    // assign(), not resize(). resize() only value-initialises NEW elements, so
+    // whenever the buffer is already at least this large -- every decode after
+    // the first on a reused decoder -- anything the decoder does not write keeps
+    // the PREVIOUS frame's pixels. The reachable case is an abort between here
+    // and the pixel loop: restrict_input_resolution() below throws for a
+    // decomposition level the codestream does not carry, which left the caller
+    // holding the previous slice under this frame's dimensions (measured: 125
+    // of 128 bytes). assign() zero-fills without giving up the capacity that
+    // makes reuse worth having.
+    pDecoded_->assign(destinationSize, 0);
 
     // set the level to read to and reconstruction level to the specified decompositionLevel
     codestream.restrict_input_resolution(decompositionLevel, decompositionLevel);
@@ -428,13 +559,15 @@ private:
   std::vector<uint8_t> decodedInternal_;
   FrameInfo frameInfo_;
   std::vector<Point> downSamples_;
-  size_t numDecompositions_;
-  bool isReversible_;
-  size_t progressionOrder_;
+  size_t numDecompositions_ {0};
+  bool isReversible_ {false};
+  size_t progressionOrder_ {0};
   Point imageOffset_;
   Size tileSize_;
   Point tileOffset_;
   Size blockDimensions_;
   std::vector<Size> precincts_;
-  int32_t numLayers_;
+  int32_t numLayers_ {0};
+  bool isHeaderValid_ {false};
+  std::string lastErrorMessage_;
 };

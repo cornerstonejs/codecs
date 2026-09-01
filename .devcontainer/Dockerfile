@@ -37,9 +37,13 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+# node 22 to match CI: pnpm 11 requires >=22.13, and vitest 3 (via vite 7)
+# requires >=20.19, so the old node 16 here could run neither.
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
 RUN apt-get install -y nodejs
-RUN npm install --global yarn
+# Corepack reads the pinned pnpm version from the repo's package.json
+# "packageManager" field on first use, so there is nothing to pin here.
+RUN corepack enable pnpm
 
 # Switch back to dialog for any ad-hoc use of apt-get
 ENV DEBIAN_FRONTEND=dialog

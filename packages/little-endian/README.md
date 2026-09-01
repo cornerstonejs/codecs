@@ -23,5 +23,5 @@ decode(imageFrame, pixelData)
 ## Testing
 
 ```bash
-yarn run test
+pnpm run test
 ```
