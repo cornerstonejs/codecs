@@ -59,6 +59,25 @@ permissions:
 
 jobs:
   build:
+    # Do not react to this workflow's OWN version commit. Every job here hangs
+    # off this one, so skipping it skips the run.
+    #
+    # This used to be a `[skip ci]` in the release commit message, and that is
+    # why PR #89 -- the one that fixed the release -- silently released nothing.
+    # GitHub scans the WHOLE head-commit message for the keyword, body included,
+    # and a squash merge concatenates every commit message on the branch into
+    # that body. #89's commits explained why the release commit carries
+    # `[skip ci]`, so the merge commit contained the string four times, in
+    # prose, and GitHub suppressed all three workflows for it. No run was
+    # created, so there was nothing to notice: no failure, no skipped run, just
+    # a merge that quietly produced no release for five days.
+    #
+    # startsWith on the subject cannot be tripped that way. Prose about the
+    # release commit is not the release commit, and a commit message can now
+    # discuss `[skip ci]`, or this guard, without disabling CI.
+    if: >-
+      github.event_name != 'push'
+      || !startsWith(github.event.head_commit.message, 'chore(release): publish')
     # Same wasm build as pr-checks.yml, minus the change detection: a release
     # publishes whatever moved, and dicom-codec ships ranges over every sibling,
     # so all dists must be current.
@@ -315,7 +334,11 @@ jobs:
 
           # release-plan.json is a run artifact, not repo content.
           git add packages/*/package.json packages/*/CHANGELOG.md pnpm-lock.yaml
-          git commit -m "chore(release): publish [skip ci]"
+          # The subject is load-bearing: every workflow's root job is gated on
+          # `startsWith(head_commit.message, 'chore(release): publish')` so this
+          # push does not retrigger CI. Change the wording here and you must
+          # change it in release.yml, pr-checks.yml and bench.yml together.
+          git commit -m "chore(release): publish"
 
           jq -r '.[].tag' release-plan.json | while read -r tag; do
             git tag -a "$tag" -m "$tag"
@@ -327,12 +350,12 @@ jobs:
           # rather than persisted, because checkout was told not to keep them in
           # .git/config while `pnpm install` runs.
           #
-          # The commit message carries [skip ci], and it is load-bearing on BOTH
-          # of the routes that can actually push. GitHub suppresses workflow runs
-          # only for pushes made with GITHUB_TOKEN; an App-token push and a
-          # deploy-key push are both ordinary pushes and WOULD retrigger this
-          # workflow on main. [skip ci] is what stops that being a release loop,
-          # so do not remove it -- on either route.
+          # This push DOES retrigger the workflows on main, on both routes that
+          # can reach here: GitHub suppresses runs only for pushes made with
+          # GITHUB_TOKEN, and an App-token push and a deploy-key push are both
+          # ordinary pushes. What stops that being a release loop is the
+          # `chore(release): publish` guard on each workflow's root job, not
+          # anything about this push -- see the build job above.
           #
           # --atomic: all refs land or none do. Without it git updates each ref
           # independently, and the 2026-08-24 run (32733067241) showed what that
