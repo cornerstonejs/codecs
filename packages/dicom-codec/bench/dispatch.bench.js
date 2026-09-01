@@ -15,6 +15,8 @@ const packagesRoot = resolve(__dirname, "../..")
 const REQUIRED = [
   "charls/dist/charlsjs.js",
   "libjpeg-turbo-8bit/dist/libjpegturbojs.js",
+  "libjxl/dist/jpegxlwasm_decode.js",
+  "libjxl/dist/jpegxlwasm_encode.js",
   "openjpeg/dist/openjpegjs.js",
   "openjphjs/dist/openjphjs.js",
 ]
@@ -36,6 +38,16 @@ const ctSigned512 = {
   samplesPerPixel: 1,
   pixelRepresentation: 1,
   signed: true,
+}
+
+// 512x512 interleaved 8-bit RGB (the WSI colour fixtures)
+const rgb512 = {
+  rows: 512,
+  columns: 512,
+  bitsAllocated: 8,
+  samplesPerPixel: 3,
+  pixelRepresentation: 0,
+  signed: false,
 }
 
 // 8-bit JFIF (800x600)
@@ -86,6 +98,17 @@ const fixtures = skip
         ctSigned512,
         "1.2.840.10008.1.2.4.91",
       ],
+      "JPEG XL Lossless (.110)": [
+        read("dicom-codec/test/fixtures/jpeg-xl/ct-512x512-s00.jxl"),
+        ctSigned512,
+        "1.2.840.10008.1.2.4.110",
+      ],
+      // Colour, so it exercises the 3-component path the CT fixtures do not.
+      "JPEG XL Lossless colour (.110)": [
+        read("dicom-codec/test/fixtures/jpeg-xl/wsi-2frame-512x512-f00.jxl"),
+        rgb512,
+        "1.2.840.10008.1.2.4.110",
+      ],
       "HTJ2K Lossless (.201)": [
         read("openjphjs/test/fixtures/j2c/CT1.j2c"),
         ctSigned512,
@@ -118,7 +141,25 @@ describe.skipIf(skip)("dicom-codec encode/transcode dispatch", () => {
     await dicomCodec.encode(new Uint8Array(ct1Raw), ctSigned512, "1.2.840.10008.1.2.4.90")
   })
 
+  bench("encode to JPEG XL Lossless (.110)", async () => {
+    await dicomCodec.encode(new Uint8Array(ct1Raw), ctSigned512, "1.2.840.10008.1.2.4.110")
+  })
+
+  // .112 with signed data goes through the level shift dicom-codec applies
+  // because JPEG XL cannot signal PixelRepresentation, so this measures the
+  // shift as well as the lossy encode.
+  bench("encode to JPEG XL lossy d=1.0 (.112)", async () => {
+    await dicomCodec.encode(new Uint8Array(ct1Raw), ctSigned512, "1.2.840.10008.1.2.4.112", {
+      lossless: false,
+      distance: 1.0,
+    })
+  })
+
   bench("transcode JPEG-LS -> J2K (.80 -> .90)", async () => {
     await dicomCodec.transcode(ct1Jls, ctSigned512, "1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.90")
+  })
+
+  bench("transcode JPEG-LS -> JPEG XL (.80 -> .110)", async () => {
+    await dicomCodec.transcode(ct1Jls, ctSigned512, "1.2.840.10008.1.2.4.80", "1.2.840.10008.1.2.4.110")
   })
 })

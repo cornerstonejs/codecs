@@ -79,7 +79,7 @@ jobs:
           REF: ${{ github.ref }}
         run: |
           set -e
-          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
+          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs little-endian big-endian dicom-codec)
           ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
 
           # Baseline runs: on a manual dispatch or any commit landing on
@@ -320,6 +320,16 @@ jobs:
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
+      - name: CSP-safe source
+        # The companion to the check each wasm build.sh runs on its own dist/:
+        # that one covers emscripten's output, this one covers the source we
+        # write. dicom-codec's `main` is src/index.js, so consumers bundle it
+        # directly and a strict CSP judges it the same way.
+        #
+        # Needs nothing from the build matrix — it is plain node over the
+        # working tree — but lives here rather than in its own job because it
+        # takes milliseconds and a job's worth of runner setup would dwarf it.
+        run: pnpm run csp:source
       - name: Test
         run: pnpm exec vitest run
       - name: Release dry-run

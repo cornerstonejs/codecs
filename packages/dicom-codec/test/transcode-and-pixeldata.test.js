@@ -8,6 +8,8 @@ const packagesRoot = resolve(__dirname, "../..")
 
 const REQUIRED = [
   "charls/dist/charlsjs.js",
+  "libjxl/dist/jpegxlwasm_decode.js",
+  "libjxl/dist/jpegxlwasm_encode.js",
 ]
 const ALL_BUILT = REQUIRED.every((p) => existsSync(resolve(packagesRoot, p)))
 
@@ -40,6 +42,30 @@ describe.skipIf(!ALL_BUILT)("dicom-codec encode", () => {
     const encoded = await dicomCodec.encode(new Uint8Array(ct1Raw), ctImageInfo, "1.2.840.10008.1.2.4.80")
     const decoded = await dicomCodec.decode(encoded.imageFrame, ctImageInfo, "1.2.840.10008.1.2.4.80")
     expect(frameBytes(decoded.imageFrame).equals(ct1Raw)).toBe(true)
+  })
+
+  it("encode() to JPEG XL Lossless (.110) round-trips byte-exact", async () => {
+    const encoded = await dicomCodec.encode(
+      new Uint8Array(ct1Raw),
+      ctImageInfo,
+      "1.2.840.10008.1.2.4.110"
+    )
+    const decoded = await dicomCodec.decode(
+      encoded.imageFrame,
+      ctImageInfo,
+      "1.2.840.10008.1.2.4.110"
+    )
+    expect(frameBytes(decoded.imageFrame).equals(ct1Raw)).toBe(true)
+  })
+
+  it("rejects JPEG XL JPEG Recompression encoding (.111)", async () => {
+    await expect(
+      dicomCodec.encode(
+        new Uint8Array(ct1Raw),
+        ctImageInfo,
+        "1.2.840.10008.1.2.4.111"
+      )
+    ).rejects.toThrow(/JPEG Recompression encoding is not supported/)
   })
 })
 

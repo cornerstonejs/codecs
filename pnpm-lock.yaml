@@ -70,6 +70,9 @@ importers:
       '@cornerstonejs/codec-libjpeg-turbo-8bit':
         specifier: ^1.2.5
         version: link:../libjpeg-turbo-8bit
+      '@cornerstonejs/codec-libjxl':
+        specifier: ^1.0.0
+        version: link:../libjxl
       '@cornerstonejs/codec-little-endian':
         specifier: ^0.0.8
         version: link:../little-endian
@@ -102,6 +105,8 @@ importers:
   packages/libjpeg-turbo-12bit: {}
 
   packages/libjpeg-turbo-8bit: {}
+
+  packages/libjxl: {}
 
   packages/little-endian:
     devDependencies:

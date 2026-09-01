@@ -71,6 +71,24 @@
       "gzip": 69946
     }
   },
+  "libjxl": {
+    "jpegxlwasm_decode.js": {
+      "raw": 49252,
+      "gzip": 12868
+    },
+    "jpegxlwasm_decode.wasm": {
+      "raw": 1090788,
+      "gzip": 377101
+    },
+    "jpegxlwasm_encode.js": {
+      "raw": 50838,
+      "gzip": 13491
+    },
+    "jpegxlwasm_encode.wasm": {
+      "raw": 2550720,
+      "gzip": 927454
+    }
+  },
   "little-endian": {
     "index.js": {
       "raw": 877,

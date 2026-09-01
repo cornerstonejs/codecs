@@ -23,6 +23,7 @@
     "build:ci": "pnpm --parallel --filter \"...[origin/main]\" run build:ci",
     "test:ci": "pnpm --parallel --filter \"...[origin/main]\" run test:ci",
     "build:publish": "pnpm -r --parallel run build:ci",
+    "csp:source": "node tools/csp/check-source-js.js",
     "docker:build": "bash tools/docker/build.sh",
     "release:plan": "node tools/release/version.mjs --dry-run"
   }

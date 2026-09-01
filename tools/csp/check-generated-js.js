@@ -4,6 +4,8 @@
 const fs = require("fs");
 const path = require("path");
 
+const { findViolations } = require("./forbidden-dynamic-code");
+
 const distDirectory = path.resolve(process.argv[2] ?? "");
 
 if (!process.argv[2] || !fs.existsSync(distDirectory)) {
@@ -21,21 +23,13 @@ if (javascriptFiles.length === 0) {
   process.exit(1);
 }
 
-const forbiddenDynamicCode = [
-  ["eval()", /\beval\s*\(/],
-  ["Function constructor", /\b(?:new\s+)?Function\s*\(/],
-  ["Emscripten Function constructor", /\bnewFunc\s*\(\s*Function\s*,/],
-];
-
 const violations = [];
 
 for (const fileName of javascriptFiles) {
   const source = fs.readFileSync(path.join(distDirectory, fileName), "utf8");
 
-  for (const [description, pattern] of forbiddenDynamicCode) {
-    if (pattern.test(source)) {
-      violations.push(`${fileName}: ${description}`);
-    }
+  for (const description of findViolations(source)) {
+    violations.push(`${fileName}: ${description}`);
   }
 }
 
