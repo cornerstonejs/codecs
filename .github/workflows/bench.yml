@@ -79,7 +79,7 @@ jobs:
           IS_SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: |
           set -euo pipefail
-          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
+          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs little-endian big-endian dicom-codec)
           ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
 
           if [ "$EVENT_NAME" != "pull_request" ]; then

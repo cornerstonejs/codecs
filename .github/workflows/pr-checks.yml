@@ -80,9 +80,7 @@ jobs:
         run: |
           set -e
           ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs little-endian big-endian dicom-codec)
-          BENCHABLE=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs little-endian big-endian dicom-codec)
           ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
-          BENCHABLE_JSON=$(printf '%s\n' "${BENCHABLE[@]}" | jq -R . | jq -s -c .)
 
           # Baseline runs: on a manual dispatch or any commit landing on
           # main, build/test/bench every package. The "diff vs main" trick
@@ -92,7 +90,7 @@ jobs:
           if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$REF" = "refs/heads/main" ]; then
             echo "Baseline run ($EVENT_NAME on $REF): forcing all packages"
             echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
-            echo "bench=$BENCHABLE_JSON" >> "$GITHUB_OUTPUT"
+            echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -134,20 +132,16 @@ jobs:
             if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
               echo "Toolchain change detected in $p: forcing all packages (build/test/bench)"
               echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
-              echo "bench=$BENCHABLE_JSON" >> "$GITHUB_OUTPUT"
+              echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
               echo "any=true" >> "$GITHUB_OUTPUT"
               exit 0
             fi
           done
 
           changed=()
-          bench_changed=()
           for pkg in "${ALL[@]}"; do
             if ! git diff --quiet "$BASE"..HEAD -- "packages/$pkg/"; then
               changed+=("$pkg")
-              for known in "${BENCHABLE[@]}"; do
-                [ "$pkg" = "$known" ] && bench_changed+=("$pkg") && break
-              done
             fi
           done
           if [ ${#changed[@]} -eq 0 ]; then
@@ -156,13 +150,8 @@ jobs:
             echo 'bench=[]' >> "$GITHUB_OUTPUT"
             echo "any=false" >> "$GITHUB_OUTPUT"
           else
-            changed_json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -s -c .)
-            if [ ${#bench_changed[@]} -gt 0 ]; then
-              bench_json=$(printf '%s\n' "${bench_changed[@]}" | jq -R . | jq -s -c .)
-            else
-              bench_json='[]'
-            fi
-            echo "Changed: $changed_json — building all packages, benching supported changes only"
+            bench_json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -s -c .)
+            echo "Changed: $bench_json — building all packages, benching changed only"
             echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
             echo "bench=$bench_json" >> "$GITHUB_OUTPUT"
             echo "any=true" >> "$GITHUB_OUTPUT"
@@ -435,7 +424,7 @@ jobs:
     # time. Enable macro runners for the org on app.codspeed.io first
     # (the repo is public — also make sure the runner group allows public
     # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
-    if: needs.detect-changes.outputs.any == 'true' && needs.detect-changes.outputs.bench != '[]' && vars.CODSPEED_MACRO_ENABLED == 'true'
+    if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
     # Advisory instrument: real wall-clock numbers (V8 JIT active, real
     # cache/branch behavior) that complement the simulation gate (bench.yml) —
     # simulation catches small algorithmic slips deterministically,

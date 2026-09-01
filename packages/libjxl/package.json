@@ -25,6 +25,9 @@
     "build:ci": "pnpm run build",
     "docker:build": "bash ../../tools/docker/build.sh libjxl",
     "prepublishOnly": "pnpm run build",
+    "test": "vitest run",
+    "test:ci": "pnpm run test",
+    "bench": "vitest bench --run",
     "clean": "rm -rf build dist"
   },
   "keywords": [
