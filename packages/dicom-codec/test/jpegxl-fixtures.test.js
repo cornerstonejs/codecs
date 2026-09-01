@@ -144,6 +144,28 @@ describe.skipIf(!ALL_BUILT)("JPEG XL fixtures", () => {
       )
       expect(frameBytes(result.imageFrame).equals(reference)).toBe(true)
     })
+
+    // Pins the encoder's output, not just the decoder's. The manifest hashes
+    // would still pass if the encoder changed and the decoder changed with
+    // it; this catches a codestream that is merely equivalent rather than
+    // identical, which is what a libjxl bump or an option-plumbing slip
+    // produces. It is also the check that says the .110 path is untouched by
+    // the .112 level shift.
+    it.each([
+      ["ct-512x512-s00", "signed 16-bit CT slice"],
+      ["wsi-1frame-512x512-f00", "8-bit RGB WSI tile"],
+    ])("%s re-encodes to the committed bitstream byte-for-byte (%s)", async (name) => {
+      const entry = manifest.fixtures.find((f) => f.file === `${name}.jxl`)
+      const reference = readFileSync(resolve(fixturesDir, `${name}.raw`))
+      const committed = readFileSync(resolve(fixturesDir, entry.file))
+
+      const encoded = await dicomCodec.encode(
+        new Uint8Array(reference),
+        imageInfoOf(entry),
+        JPEG_XL_LOSSLESS
+      )
+      expect(frameBytes(encoded.imageFrame).equals(committed)).toBe(true)
+    })
   })
 
   describe("re-encode", () => {
@@ -221,62 +243,141 @@ describe.skipIf(!ALL_BUILT)("JPEG XL fixtures", () => {
       expect(error / before.length).toBeLessThan(3)
     })
 
-    // KNOWN BUG: jpegxl.js hands the encoder `isSigned: false` without first
-    // offsetting signed samples into unsigned range, so the two's-complement
-    // bit patterns of a signed CT slice reach libjxl as unsigned values. The
-    // frame's real range of [-2048, 1704] becomes two clusters, [0, 1704] and
-    // [63488, 65535], with a 62 000-count cliff between them that the lossy
-    // VarDCT path smears across.
-    //
-    // The lossless path is unaffected (modular stores the integers verbatim,
-    // which is why every other test here passes), and so is colour, which is
-    // genuinely unsigned. Measured at distance 1.0, "visually lossless": max
-    // absolute error 2211 HU against a total range of 3752, mean 69.5 HU —
-    // wider than soft-tissue contrast.
-    //
-    // The fix is to add 2^(bitsStored-1) before encoding and subtract it after
-    // decoding, which is what the C++ guard in JpegXLEncoder::validate asks the
-    // caller to do. When that lands this test starts passing, vitest flags it,
-    // and it should become a real error bound.
-    it.fails("encodes signed CT lossily without mangling it (known signed-sample bug)", async () => {
+    // JPEG XL cannot signal PixelRepresentation, so .112 shifts signed
+    // samples into unsigned range before encoding and shifts them back after
+    // decoding (see jpegxl.js). The contract that matters is that doing so
+    // automatically is indistinguishable from a caller doing it by hand —
+    // the codec must add the level shift and nothing else.
+    it("auto-offset of signed samples matches a caller pre-shifting by hand", async () => {
+      const entry = ctFixtures[0]
+      const reference = readFileSync(resolve(fixturesDir, "ct-512x512-s00.raw"))
+      const signedInfo = imageInfoOf(entry)
+      const unsignedInfo = { ...signedInfo, pixelRepresentation: 0, signed: false }
+
+      // The same frame, level-shifted into unsigned range by the caller.
+      const preShifted = new Uint8Array(reference.byteLength)
+      const source = new DataView(reference.buffer, reference.byteOffset, reference.byteLength)
+      const target = new DataView(preShifted.buffer)
+      for (let i = 0; i < reference.byteLength; i += 2) {
+        target.setUint16(i, source.getInt16(i, true) + 32768, true)
+      }
+
+      for (const distance of [0.5, 1.0]) {
+        const auto = await dicomCodec.encode(new Uint8Array(reference), signedInfo, JPEG_XL, {
+          lossless: false,
+          distance,
+        })
+        const byHand = await dicomCodec.encode(preShifted, unsignedInfo, JPEG_XL, {
+          lossless: false,
+          distance,
+        })
+        expect(frameBytes(auto.imageFrame).equals(frameBytes(byHand.imageFrame)), `distance ${distance}`).toBe(true)
+      }
+    })
+
+    // Lossless through .112 exercises the shift in both directions without a
+    // lossy step in between, so it must be exactly invertible.
+    it("round-trips signed CT exactly through .112 with the default options", async () => {
       const entry = ctFixtures[0]
       const imageInfo = imageInfoOf(entry)
       const reference = readFileSync(resolve(fixturesDir, "ct-512x512-s00.raw"))
 
-      const encoded = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL, {
+      const encoded = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL)
+      const decoded = await dicomCodec.decode(encoded.imageFrame, imageInfo, JPEG_XL)
+      expect(frameBytes(decoded.imageFrame).equals(reference)).toBe(true)
+    })
+
+    // Without the level shift, a CT frame reaches libjxl as [0, 1704] plus
+    // [63488, 65535] and lossy coding smears across the cliff between them:
+    // 2211 HU of maximum error at distance 1.0, against a total range of
+    // 3752. The bound below is far inside that, and error must fall as
+    // distance falls — the property a cliff destroys.
+    it("keeps lossy error bounded and monotone in distance for signed CT", async () => {
+      const entry = ctFixtures[0]
+      const imageInfo = imageInfoOf(entry)
+      const reference = readFileSync(resolve(fixturesDir, "ct-512x512-s00.raw"))
+      const before = new Int16Array(reference.buffer, reference.byteOffset, reference.byteLength / 2)
+
+      const errors = []
+      for (const distance of [0.1, 0.5, 1.0]) {
+        const encoded = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL, {
+          lossless: false,
+          distance,
+        })
+        const decoded = await dicomCodec.decode(encoded.imageFrame, imageInfo, JPEG_XL)
+        const bytes = frameBytes(decoded.imageFrame)
+        const after = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2)
+
+        let maxError = 0
+        for (let i = 0; i < before.length; i++) {
+          maxError = Math.max(maxError, Math.abs(before[i] - after[i]))
+        }
+        errors.push({ distance, maxError, bytes: encoded.imageFrame.byteLength })
+      }
+
+      // Butteraugli distance is relative to the full 16-bit range, and CT
+      // occupies about 6% of it, so absolute HU error stays sizeable even at
+      // "visually lossless" — callers wanting tight HU bounds want a small
+      // distance or .110. What must hold is that it is bounded and ordered.
+      expect(errors[0].maxError).toBeLessThan(300)
+      expect(errors[0].maxError).toBeLessThan(errors[1].maxError)
+      expect(errors[1].maxError).toBeLessThan(errors[2].maxError)
+      expect(errors[0].bytes).toBeGreaterThan(errors[2].bytes)
+    })
+
+    // { lossless: false } with no distance used to leave the C++ default of
+    // 0.0f in place, so libjxl ran VarDCT at distance 0: bigger than the
+    // lossless encode (245685 vs 193274 bytes) and still not lossless. It now
+    // defaults to 1.0, cjxl's default.
+    it("defaults { lossless: false } to distance 1.0", async () => {
+      const entry = ctFixtures[0]
+      const imageInfo = imageInfoOf(entry)
+      const reference = readFileSync(resolve(fixturesDir, "ct-512x512-s00.raw"))
+
+      const implicit = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL, {
+        lossless: false,
+      })
+      const explicit = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL, {
         lossless: false,
         distance: 1.0,
       })
-      const decoded = await dicomCodec.decode(encoded.imageFrame, imageInfo, JPEG_XL)
 
-      const before = new Int16Array(reference.buffer, reference.byteOffset, reference.length / 2)
-      const bytes = frameBytes(decoded.imageFrame)
-      const after = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.length / 2)
-
-      let maxError = 0
-      for (let i = 0; i < before.length; i++) {
-        maxError = Math.max(maxError, Math.abs(before[i] - after[i]))
-      }
-      // Distance 1.0 on 16-bit CT should stay within a few tens of HU.
-      expect(maxError).toBeLessThan(100)
+      expect(frameBytes(implicit.imageFrame).equals(frameBytes(explicit.imageFrame))).toBe(true)
+      expect(implicit.imageFrame.byteLength).toBeLessThan(entry.encodedBytes)
     })
+  })
 
-    // Paired with the above: pins that `{ lossless: false }` with no distance
-    // is currently the worst of both worlds. jpegxl.js passes the option
-    // through but never calls setDistance, leaving the C++ default distance_
-    // of 0.0f — so libjxl runs VarDCT at distance 0 instead of the modular
-    // lossless path. The result is BIGGER than the lossless encode and still
-    // not lossless. Either default `distance` to something lossy (1.0 is the
-    // usual "visually lossless"), or reject the combination.
-    it("documents that { lossless: false } with no distance is larger than lossless", async () => {
+  // .110 promises to preserve the bits of the original image, so it hands the
+  // two's complement pattern straight to libjxl and gets it back unchanged.
+  // Only .112 applies the level shift. Both are exact; they differ in what a
+  // third-party decoder reading the bare codestream sees.
+  describe("transfer syntax sample conventions", () => {
+    it("encodes signed CT differently under .110 and .112, both losslessly", async () => {
       const entry = ctFixtures[0]
       const imageInfo = imageInfoOf(entry)
       const reference = readFileSync(resolve(fixturesDir, "ct-512x512-s00.raw"))
 
-      const encoded = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL, {
-        lossless: false,
-      })
-      expect(encoded.imageFrame.byteLength).toBeGreaterThan(entry.encodedBytes)
+      const lossless = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL_LOSSLESS)
+      const lossy = await dicomCodec.encode(new Uint8Array(reference), imageInfo, JPEG_XL)
+      expect(frameBytes(lossless.imageFrame).equals(frameBytes(lossy.imageFrame))).toBe(false)
+
+      for (const [encoded, uid] of [
+        [lossless, JPEG_XL_LOSSLESS],
+        [lossy, JPEG_XL],
+      ]) {
+        const decoded = await dicomCodec.decode(encoded.imageFrame, imageInfo, uid)
+        expect(frameBytes(decoded.imageFrame).equals(reference), uid).toBe(true)
+      }
+    })
+
+    it("leaves unsigned colour frames untouched under both", async () => {
+      const entry = wsiFixtures[0]
+      const imageInfo = imageInfoOf(entry)
+      const source = readFileSync(resolve(fixturesDir, "wsi-1frame-512x512-f00.raw"))
+
+      const lossless = await dicomCodec.encode(new Uint8Array(source), imageInfo, JPEG_XL_LOSSLESS)
+      const lossy = await dicomCodec.encode(new Uint8Array(source), imageInfo, JPEG_XL)
+      expect(frameBytes(lossless.imageFrame).equals(frameBytes(lossy.imageFrame))).toBe(true)
     })
   })
 })

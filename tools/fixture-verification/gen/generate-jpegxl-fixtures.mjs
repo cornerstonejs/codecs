@@ -23,7 +23,7 @@
 // Everything here is lossless (transfer syntax 1.2.840.10008.1.2.4.110), so
 // re-running against the same sources reproduces byte-identical fixtures.
 import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -62,6 +62,16 @@ const asBytes = (typedArray) =>
 
 /** Sixteen consecutive CT slices, ordered by InstanceNumber, as raw pixel buffers. */
 function readCtFrames() {
+  if (!existsSync(CT_DIR)) {
+    throw new Error(
+      `CT source series not found at ${CT_DIR}.\n` +
+        "Pass the viewer-testdata root as argv[1] or set CORNERSTONE_TESTDATA. " +
+        "Note that dcm/scoord3d-and-scoord is not tracked in the viewer-testdata " +
+        "repository, so a fresh clone will not have it; the committed fixtures and " +
+        "their manifest hashes remain the reference either way."
+    );
+  }
+
   const slices = [];
   for (const name of readdirSync(CT_DIR).filter((f) => /\.dcm$/i.test(f))) {
     let ds;

@@ -29,6 +29,11 @@ verbatim. The WSI frames are JPEG baseline (`1.2.840.10008.1.2.4.50`,
 YBR_FULL_422) in the source and are decoded to RGB through this repo's
 libjpeg-turbo-8bit codec before being re-encoded as JPEG XL.
 
+> **Note.** `dcm/scoord3d-and-scoord` is not tracked in the viewer-testdata
+> repository, so a fresh clone of it will not contain the CT series. The
+> committed fixtures and `manifest.json` are the reference; regenerating the
+> CT half needs that data from wherever it originally came from.
+
 The corpus has no two-frame WSI instance; the four-frame one is the smallest
 multi-frame instance available, so its first two frames stand in. JPEG XL
 carries one frame per bitstream, so a multi-frame instance is represented as
@@ -42,6 +47,22 @@ verifies these fixtures without viewer-testdata being present.
 
 The generator refuses to write a fixture whose own decode does not reproduce
 the source pixels, so a corrupt encode cannot mint its own reference.
+
+## Signed samples and the two transfer syntaxes
+
+JPEG XL cannot signal Pixel Representation — its sample types are unsigned
+integer or float — so `jpegxl.js` picks a convention per transfer syntax, and
+the CT fixtures are where that is exercised:
+
+- **`.110` (Lossless)** hands the two's complement bits to libjxl unchanged.
+  The frame round-trips byte for byte and the caller's Pixel Representation
+  reinterprets it. These fixtures are all `.110`.
+- **`.112` (potentially lossy)** shifts signed samples up by half the sample
+  range first, because as unsigned a CT frame is two clusters either side of a
+  ~62 000-count cliff that lossy coding smears across.
+
+So a signed frame encodes to *different bytes* under the two syntaxes, and
+both decode back to the identical pixels. The test suite pins that.
 
 ## The .raw references
 
