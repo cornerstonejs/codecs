@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.3](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjpeg@1.3.2...@cornerstonejs/codec-openjpeg@1.3.3) (2026-09-01)
+
+**Note:** Version bump only for package @cornerstonejs/codec-openjpeg
+
+
+
+
 ## [1.3.2](https://localhost/compare/@cornerstonejs/codec-openjpeg@1.3.1...@cornerstonejs/codec-openjpeg@1.3.2) (2026-08-13)
 
 **Note:** Version bump only for package @cornerstonejs/codec-openjpeg
