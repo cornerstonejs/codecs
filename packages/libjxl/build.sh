@@ -67,5 +67,9 @@ for module in jpegxlwasm_decode jpegxlwasm_encode; do
   cp "${BUILD_DIR}/${module}.js" "${BUILD_DIR}/${module}.wasm" dist/
 done
 
+# Same gate every sibling wasm package runs on its own output: the modules are
+# linked -sDYNAMIC_EXECUTION=0, and this is what proves emscripten honoured it.
+node ../../tools/csp/check-generated-js.js ./dist || exit $?
+
 echo "Done:"
 ls -la dist/
