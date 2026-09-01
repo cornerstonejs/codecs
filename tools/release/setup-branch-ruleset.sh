@@ -44,9 +44,13 @@
 #   PAT it is not tied to any individual's account or expiry.
 #
 # WHAT CHANGES FOR HUMANS
-#   Nothing. The ruleset below reproduces main's current rules exactly:
-#   1 approving review, code-owner review required, stale reviews dismissed on
-#   push, last-push approval required, no force pushes, no branch deletion.
+#   Nothing. The ruleset below reproduces main's current rules: 1 approving
+#   review, code-owner review required, stale reviews dismissed on push, no
+#   force pushes, no branch deletion.
+#
+#   One exception, deliberately NOT carried over from the classic rule:
+#   require_last_push_approval is false. See the comment above the ruleset
+#   body for why.
 #
 # ---------------------------------------------------------------------------
 # STEP 1-DEPLOY-KEY — the repo-admin route (~3 minutes, no org access)
@@ -242,6 +246,26 @@ case "$reply" in
   *) echo "Aborted."; exit 1 ;;
 esac
 
+# require_last_push_approval is FALSE on purpose.
+#
+# It requires the most recent push to be approved by somebody other than
+# whoever pushed it. Combined with dismiss_stale_reviews_on_push (kept on),
+# that means a maintainer who pushes a small correction to a contributor's PR
+# — a rebase, a typo, a review fix they applied themselves rather than asking
+# for a round trip — dismisses the existing approval and is then barred from
+# supplying the replacement. On a repo this size that reliably needs a second
+# maintainer for a one-line change, and the usual outcome is that the tweak is
+# not made rather than that a second reviewer appears.
+#
+# What is given up: someone with write access can push to an approved PR and
+# then approve their own push. What is kept: every PR still needs an approving
+# review and code-owner sign-off, pushes still dismiss stale approvals, and
+# force pushes and deletions are still blocked outright.
+#
+# Note that GitHub has since added require_extra_approval_for_unattributed_changes,
+# which defaults to true and is not set here. It demands an extra approval when
+# a PR carries commits GitHub cannot attribute to an account, so it can produce
+# a similar-looking "needs another approval" block for an unrelated reason.
 echo "Creating ruleset..."
 gh api -X POST "repos/$REPO/rulesets" --input - <<JSON
 {
@@ -263,7 +287,7 @@ gh api -X POST "repos/$REPO/rulesets" --input - <<JSON
         "required_approving_review_count": 1,
         "dismiss_stale_reviews_on_push": true,
         "require_code_owner_review": true,
-        "require_last_push_approval": true,
+        "require_last_push_approval": false,
         "required_review_thread_resolution": false,
         "allowed_merge_methods": ["merge", "squash", "rebase"]
       }
