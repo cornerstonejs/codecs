@@ -73,6 +73,7 @@ jobs:
           - charls
           - libjpeg-turbo-8bit
           - libjpeg-turbo-12bit
+          - libjxl
           - openjpeg
           - openjphjs
           - little-endian

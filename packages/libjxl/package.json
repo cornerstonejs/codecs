@@ -22,8 +22,10 @@
   },
   "scripts": {
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
-    "clean": "shx rm -rf build dist"
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh libjxl",
+    "prepublishOnly": "pnpm run build",
+    "clean": "rm -rf build dist"
   },
   "keywords": [
     "JPEG XL",

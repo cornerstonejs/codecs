@@ -7,8 +7,8 @@
 #
 #   EMSDK=/c/Apps/emsdk ./build.sh
 #
-# The build output (dist/*.js and dist/*.wasm) is committed, so only someone
-# changing the sources in src/ or updating the libjxl submodule needs to run it.
+# dist/ is build output and is not committed, matching every sibling codec: CI
+# builds each package and hands the dist to the publish job as an artifact.
 
 set -euo pipefail
 
@@ -30,9 +30,26 @@ fi
 
 if [ ! -f "${LIBJXL_DIR}/lib/include/jxl/decode.h" ]; then
   echo "libjxl submodule not found. Run:" >&2
-  echo "  git submodule update --init --recursive" >&2
+  echo "  git submodule update --init packages/libjxl/extern/libjxl" >&2
   exit 1
 fi
+
+# libjxl declares ten submodules; the CMake options below link exactly three of
+# them, and the rest (testdata alone is ~110 MB, plus googletest, libpng, zlib,
+# lcms, sjpeg and libjpeg-turbo) are only needed by the tools and tests this
+# build turns off. Initialising just these keeps a fresh checkout cheap, and
+# means `git submodule update --init` without --recursive is enough.
+#   brotli   JPEGXL_FORCE_SYSTEM_BROTLI=OFF
+#   highway  JPEGXL_FORCE_SYSTEM_HWY=OFF
+#   skcms    JPEGXL_ENABLE_SKCMS=ON
+for dep in brotli highway skcms; do
+  if [ ! -e "${LIBJXL_DIR}/third_party/${dep}/CMakeLists.txt" ] &&
+     [ ! -e "${LIBJXL_DIR}/third_party/${dep}/skcms.cc" ]; then
+    echo "Initialising libjxl's ${dep} submodule..."
+    git -C "${LIBJXL_DIR}" submodule update --init --depth 1 \
+      "third_party/${dep}"
+  fi
+done
 
 rm -rf "${BUILD_DIR}" dist
 

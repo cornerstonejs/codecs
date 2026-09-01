@@ -39,7 +39,7 @@ REPO_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 
 # The packages whose build needs emscripten. big-endian, little-endian and
 # dicom-codec are plain JS/webpack — build those natively with `pnpm run build`.
-WASM_PACKAGES=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit openjpeg openjphjs)
+WASM_PACKAGES=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs)
 
 case "${1:-}" in
   -h | --help)
