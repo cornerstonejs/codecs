@@ -80,7 +80,7 @@ importers:
         specifier: ^0.0.9
         version: link:../little-endian
       '@cornerstonejs/codec-openjpeg':
-        specifier: ^1.3.4
+        specifier: ^1.3.5
         version: link:../openjpeg
       '@cornerstonejs/codec-openjph':
         specifier: ^2.4.11

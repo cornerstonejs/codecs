@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.5](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjpeg@1.3.4...@cornerstonejs/codec-openjpeg@1.3.5) (2026-09-02)
+
+
+### Bug Fixes
+
+* **openjpeg:** correct the buffer-stream skip signature and decoded image dimensions (#63) ([1285c02](https://github.com/cornerstonejs/codecs/commit/1285c024adebe036503117b8d17e66eb23b7d18a))
+
+
+
+
 ## [1.3.4](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjpeg@1.3.3...@cornerstonejs/codec-openjpeg@1.3.4) (2026-09-02)
 
 
