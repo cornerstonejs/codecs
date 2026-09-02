@@ -52,7 +52,18 @@ function decode(imageFrame, pixelData) {
   } else if (imageFrame.bitsAllocated === 8 || imageFrame.bitsAllocated === 1) {
     // 1-bit data must already be extracted per frame by the caller:
     // multi-frame 1-bit pixel data is bit-packed across frame boundaries,
-    // so frame extraction cannot happen at this level
+    // so frame extraction cannot happen at this level.
+    //
+    // No word swap is applied, and that is a deliberate limitation rather than
+    // an oversight. 1-bit PixelData is a bit-packed byte stream (first sample
+    // in the least significant bit of the first byte, PS3.5 8.1.1), and whether
+    // Big Endian transposes each byte pair of it depends on the VR the sender
+    // chose: PS3.5 2016b A.3.2 requires OW only when Bits Allocated is greater
+    // than 8, so at 1 bit either OB (no swap, byte order irrelevant) or OW
+    // (each 2-byte word swapped, so pixels 0..7 and 8..15 arrive transposed) is
+    // conformant. bitsAllocated cannot tell those apart. Passing the bytes
+    // through unchanged is correct for OB; a caller that knows its dataset used
+    // OW must swap the words itself before calling this.
     imageFrame.pixelData = pixelData;
   } else if (imageFrame.bitsAllocated === 32) {
     let arrayBuffer = pixelData.buffer;
