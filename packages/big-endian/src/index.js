@@ -33,10 +33,16 @@ function decode(imageFrame, pixelData) {
     let offset = pixelData.byteOffset;
     const length = pixelData.length;
     // if pixel data is not aligned on even boundary, shift it so we can create the 16 bit array
-    // buffers on it
-
+    // buffers on it.
+    //
+    // The end bound is not optional. slice(offset) copies through the end of
+    // the BACKING buffer, and pixelData is typically a single frame's view into
+    // a whole multi-frame P10 buffer — so the one-argument form allocates and
+    // copies the entire rest of the file to realign one frame (measured: 67 MB
+    // for a 1 MB frame in a 64 MB buffer). The returned view's length hides it,
+    // because it is correct either way.
     if (offset % 2) {
-      arrayBuffer = arrayBuffer.slice(offset);
+      arrayBuffer = arrayBuffer.slice(offset, offset + pixelData.byteLength);
       offset = 0;
     }
 
@@ -73,9 +79,10 @@ function decode(imageFrame, pixelData) {
     // pixelData is typically a view into the full DICOM P10 buffer, so its
     // byteOffset is even (DICOM guarantees even lengths) but not necessarily
     // 4-byte aligned; 32-bit typed-array views require 4-byte alignment,
-    // so copy the bytes to a fresh, aligned buffer when needed
+    // so copy the bytes to a fresh, aligned buffer when needed — bounded to
+    // this frame, for the reason given on the 16-bit branch above
     if (offset % 4) {
-      arrayBuffer = arrayBuffer.slice(offset);
+      arrayBuffer = arrayBuffer.slice(offset, offset + pixelData.byteLength);
       offset = 0;
     }
 
