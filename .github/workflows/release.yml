@@ -111,7 +111,7 @@ jobs:
         # down is the one place in this file that still wants a working remote.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         # The emsdk image bundles node 20.18.0, which reached end of life on
-        # 2026-04-30 and fails pnpm 11's engine check (>=22.13) besides. emcc is
+        # 2026-04-30 and fails this repo's engines.node check (>=24) besides. emcc is
         # unaffected — it uses the node binary pinned in its own .emscripten
         # config, not PATH, so this only governs pnpm and the build scripts.
         with:

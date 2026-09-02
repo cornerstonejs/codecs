@@ -37,9 +37,12 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-# node 22 to match CI: pnpm 11 requires >=22.13, and vitest 3 (via vite 7)
-# requires >=20.19, so the old node 16 here could run neither.
-RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+# node 24 to match CI, and to satisfy the root package.json engines.node
+# floor (>=24) — pnpm warns "Unsupported engine" on anything below it. Only
+# the node major is shared with CI: the emsdk pin above is deliberately older
+# than the one tools/docker/Dockerfile and the build job use, so this image is
+# for editing and running the JS tooling, not for reproducing a CI dist.
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 RUN apt-get install -y nodejs
 # Corepack reads the pinned pnpm version from the repo's package.json
 # "packageManager" field on first use, so there is nothing to pin here.
