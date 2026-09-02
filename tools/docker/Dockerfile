@@ -55,9 +55,9 @@ RUN apt-get update \
     # what makes that fail now, with a readable message, instead of during a
     # codec build later.
     && cmake --version \
-    # node 22 on PATH, matching CI's setup-node step. emcc is unaffected: it
+    # node 24 on PATH, matching CI's setup-node step. emcc is unaffected: it
     # invokes the node pinned in its own .emscripten config, not this one.
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && curl -fsSL https://deb.nodesource.com/setup_24.x | bash - \
     && apt-get install -y nodejs \
     && apt-get autoremove -y \
     && apt-get clean -y \

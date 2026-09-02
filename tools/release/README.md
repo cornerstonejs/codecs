@@ -69,7 +69,7 @@ token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node b
    goes out after the six siblings whose ranges it carries. `--ignore-scripts` is deliberate:
    `prepublishOnly` re-runs `bash build.sh`, and this job has no emscripten toolchain — the dist
    being published is the artifact built in step 1 from the same commit. npm's version comes from
-   the exactly-pinned `node-version` (v24.19.0 → npm 11.17.0, past the 11.5.1 OIDC floor), so there
+   the exactly-pinned `node-version` (v24.20.0 → npm 11.19.0, past the 11.5.1 OIDC floor), so there
    is no `npm install --global npm@latest` re-downloading an unpinned publisher every release.
 4. **`github-releases`** — a GitHub Release per tag, from the package list `publish` uploaded. It is
    a separate job so `gh release create`'s `contents: write` never coexists with the OIDC publish

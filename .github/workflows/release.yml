@@ -146,11 +146,12 @@ jobs:
         # .git/config cannot push or publish, and the submodule init a few steps
         # down is the one place in this file that still wants a working remote.
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        # The emsdk image bundles node 20.18.0; pnpm 11 requires >=22.13 and
-        # vite 7 (via vitest 3) requires >=20.19. emcc is unaffected — it uses
-        # the node binary pinned in its own .emscripten config, not PATH.
+        # The emsdk image bundles node 20.18.0, which reached end of life on
+        # 2026-04-30 and fails this repo's engines.node check (>=24) besides. emcc is
+        # unaffected — it uses the node binary pinned in its own .emscripten
+        # config, not PATH, so this only governs pnpm and the build scripts.
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -209,12 +210,12 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # Pinned exactly, not floating '24'. Node bundles npm, and this is
-          # the version that ends up publishing: v24.19.0 ships npm 11.17.0,
+          # the version that ends up publishing: v24.20.0 ships npm 11.19.0,
           # comfortably past the 11.5.1 that OIDC trusted publishing needs. So
           # bumping Node here is also how npm gets bumped — no separate
           # `npm install --global` step, which would re-download an unpinned
           # npm on the morning of every release.
-          node-version: '24.19.0'
+          node-version: '24.20.0'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -471,8 +472,8 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # Same exact pin as the release job: this is where its bundled npm
-          # (11.17.0, past the 11.5.1 OIDC floor) actually gets used.
-          node-version: '24.19.0'
+          # (11.19.0, past the 11.5.1 OIDC floor) actually gets used.
+          node-version: '24.20.0'
       - name: Download built dists
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:

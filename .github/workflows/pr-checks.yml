@@ -211,12 +211,13 @@ jobs:
         # Shallow checkout: builds only need the working tree (full history
         # is only required by detect-changes for the merge-base diff).
       - uses: actions/setup-node@v4
-        # The emsdk image bundles node 20.18.0, which fails both pnpm 11's
-        # engine check (needs >=22.13) and vite 7's (via vitest 3). Put node 22
-        # on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes the
-        # node binary pinned in its own .emscripten config, not the one on PATH.
+        # The emsdk image bundles node 20.18.0 — end of life since 2026-04-30,
+        # and it fails this repo's engines.node check (needs >=24) anyway. Put node
+        # 24 on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes
+        # the node binary pinned in its own .emscripten config, not the one on
+        # PATH.
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         # `corepack prepare --activate` with no argument installs exactly the
         # version in the root package.json "packageManager" field, so CI and
@@ -259,6 +260,14 @@ jobs:
           #     stale cache entry. The root manifest also carries the
           #     packageManager pin, so a pnpm bump invalidates too.
           # Keep the same hashFiles(...) inputs in all four pnpm-modules keys.
+          #
+          # This job's prefix is `build` rather than `node<major>` because it
+          # installs inside the emsdk container; the other three install on
+          # ubuntu-latest under setup-node and carry the node major in the key
+          # so a node bump forces a fresh install instead of restoring a tree
+          # built against the previous V8/ABI. BUMP THAT DISCRIMINATOR WITH THE
+          # node-version PINS — bench.yml's key hashes only the lockfile and
+          # workspace config, so nothing else in a node-only bump invalidates it.
           key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
@@ -297,7 +306,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -331,7 +340,7 @@ jobs:
             packages/*/node_modules
           # Manifests + workspace config in the key — see the build job's cache
           # step for why the lockfile alone is not enough.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -372,6 +381,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        # check.js needs no dependencies (fs/path/zlib only), so this is purely
+        # to stop the gate running on whatever node the runner image happens to
+        # ship — which drifts, and has been below this repo's engines.node floor.
+        with:
+          node-version: '24'
       - name: Download all built dists
         uses: actions/download-artifact@v4
         with:
@@ -395,7 +410,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -425,7 +440,7 @@ jobs:
             packages/*/node_modules
           # Manifests + workspace config in the key — see the build job's cache
           # step for why the lockfile alone is not enough.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
@@ -475,7 +490,7 @@ jobs:
           # between patch releases move the numbers, and walltime is if anything
           # more sensitive than instruction counts. Keep this in step with the
           # codspeed-bench pin so the two instruments stay comparable.
-          node-version: '22.23.1'
+          node-version: '24.20.0'
       - name: Provide pnpm via Corepack
         run: |
           corepack enable pnpm
@@ -508,7 +523,7 @@ jobs:
           # (esbuild/rollup) and break vitest.
           # Manifests + workspace config in the key — see the build job's cache
           # step for why the lockfile alone is not enough.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile

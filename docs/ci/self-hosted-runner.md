@@ -37,7 +37,7 @@ and the regression gate is trustworthy.
 - **flock** (from `util-linux`, present on any stock Linux) — `tools/ci/with-nashua-lock.sh`
   needs it for the shared-box mutex below.
 - Node is provisioned per-job by `actions/setup-node@v4`, pinned to an **exact**
-  version (`22.23.1`) rather than the `'22'` range the other jobs use — see
+  version (`24.20.0`) rather than the `'24'` range the other jobs use — see
   [Hardware hygiene](#hardware-hygiene-for-stable-numbers) for why. It does not
   need to be pre-installed; the runner user only needs write access to the actions
   tool cache. **The box provides no node on `PATH` of its own**, so anything a
@@ -52,8 +52,8 @@ and the regression gate is trustworthy.
   ```
   With no argument, `corepack prepare --activate` installs exactly the version
   in the root `package.json`'s `packageManager` field, so the bench box can
-  never drift from the build jobs. Corepack is bundled with node 22 and fetches
-  over Node's own https. That is deliberate rather than incidental: `npm i -g`
+  never drift from the build jobs. Corepack is still bundled with node 24 and
+  fetches over Node's own https. That is deliberate rather than incidental: `npm i -g`
   is unreliable here because the npm reachable from the GitHub runner's
   *bundled* node on this box is corrupted (`Cannot find module '../lib/cli.js'`)
   — the same wall OHIF's workflow hit, which is why it provisions pnpm through
@@ -184,14 +184,16 @@ This runner hosts the **simulation** gate only, which changes what matters:
 - The only hard requirement for cross-run stability is a **fixed CPU model**
   (don't migrate the box between different physical CPUs), since the modeled
   cache is derived from it.
-- **Pin node exactly, never by range.** Given a range like `'22'`, setup-node uses
+- **Pin node exactly, never by range.** Given a range like `'24'`, setup-node uses
   any satisfying version already in the tool cache *without consulting the
   network*. On a self-hosted box that cache persists, so the bench silently
-  freezes on the first 22.x it ever saw and then jumps whenever the box is
+  freezes on the first 24.x it ever saw and then jumps whenever the box is
   rebuilt or the cache is cleared — and V8 changes between patch releases move
-  instruction counts. Both codspeed jobs pin `22.23.1`, the version the current
+  instruction counts. Both codspeed jobs pin `24.20.0`, the version the current
   baseline was measured on. Changing it is a deliberate re-seed event, exactly
-  like a glibc or valgrind bump.
+  like a glibc or valgrind bump. The move from `22.23.1` to `24.20.0` was one
+  such event: node 24 is a different V8 major, so expect the first `main` run
+  after it to show large deltas across every bench and mean nothing by them.
 - **Don't casually `apt upgrade` the box.** glibc is the sharpest example:
   different glibc builds dispatch different code paths, so a bump shifts
   instruction counts much as a different CPU would — that is the subject of

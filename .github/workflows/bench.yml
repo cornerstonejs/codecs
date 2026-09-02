@@ -254,18 +254,18 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          # EXACT version, not the '22' range every other job uses. For a range,
+          # EXACT version, not the '24' range every other job uses. For a range,
           # setup-node takes any satisfying version already in the runner's tool
           # cache without checking the network — and on a self-hosted box that
-          # cache persists, so the bench would silently freeze on whichever 22.x
+          # cache persists, so the bench would silently freeze on whichever 24.x
           # landed there first and jump whenever the box is rebuilt. A V8 patch
           # bump shifts instruction counts the same way a different CPU does.
-          # 22.23.1 is what the current main baseline was measured on; changing
+          # 24.20.0 is what the current main baseline was measured on; changing
           # it is a deliberate re-seed event (see docs/ci/self-hosted-runner.md).
-          node-version: '22.23.1'
+          node-version: '24.20.0'
       # nashua has no package manager beyond npm: setup-node ships node + npm
       # only, and GitHub's hosted images are not what runs here. Corepack is
-      # bundled with node 22 and fetches over Node's own https, so it works
+      # still bundled with node 24 and fetches over Node's own https, so it works
       # where `npm i -g <pm>` is unreliable on this box — the runner's bundled
       # node has a corrupted npm ("Cannot find module '../lib/cli.js'"), which
       # is why OHIF's workflow also went the Corepack route here. `corepack
@@ -308,8 +308,10 @@ jobs:
           # pnpm-workspace.yaml is in the key because the lockfile does not
           # record nodeLinker/allowBuilds/linkWorkspacePackages — without it a
           # layout change hits the cache and the install step is skipped.
-          # Keep in step with the cache keys in pr-checks.yml.
-          key: pnpm-modules-node22-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          # Keep in step with the cache keys in pr-checks.yml — including the
+          # node major in the prefix, which is the only part of this key a
+          # node-only bump changes (see the build job's cache step there).
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
       - name: Install dependencies
         if: steps.modules-cache.outputs.cache-hit != 'true'
         run: pnpm install --frozen-lockfile
