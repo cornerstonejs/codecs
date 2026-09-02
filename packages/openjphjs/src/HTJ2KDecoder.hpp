@@ -139,11 +139,11 @@ public:
     beginOperation_();
     try
     {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-  }
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+    }
     catch (const std::exception &e)
     {
       // WARN, not INFO: jslib.cpp raises OpenJPH's message threshold to WARN to
@@ -188,12 +188,12 @@ public:
     beginOperation_();
     try
     {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, 0);
-  }
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, 0);
+    }
     catch (const std::exception &e)
     {
       // What actually reaches here, measured against CT1.j2c truncated to
@@ -227,12 +227,12 @@ public:
     beginOperation_();
     try
     {
-    ojph::codestream codestream;
-    ojph::mem_infile mem_file;
-    mem_file.open(pEncoded_->data(), pEncoded_->size());
-    readHeader_(codestream, mem_file);
-    decode_(codestream, frameInfo_, decompositionLevel);
-  }
+      ojph::codestream codestream;
+      ojph::mem_infile mem_file;
+      mem_file.open(pEncoded_->data(), pEncoded_->size());
+      readHeader_(codestream, mem_file);
+      decode_(codestream, frameInfo_, decompositionLevel);
+    }
     catch (const std::exception &e)
     {
       recordFailure_("decodeSubResolution", 0x00010022, e);
