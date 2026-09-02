@@ -16,24 +16,24 @@ This JavaScript/WebAssembly build of [OpenJPEG](https://github.com/uclouvain/ope
 Using npm:
 
 ```bash
-$ npm install @cornerstonejs/openjpegjs
+$ npm install @cornerstonejs/codec-openjpeg
 ```
 
 Using pnpm:
 
 ```bash
-$ pnpm add @cornerstonejs/openjpegjs
+$ pnpm add @cornerstonejs/codec-openjpeg
 ```
 
 Using unpkg CDN:
 
 ```html
-<script src="https://unpkg.com/@???/openjpegjs"></script>
+<script src="https://unpkg.com/@cornerstonejs/codec-openjpeg"></script>
 ```
 
 ## Try It Out!
 
-Try it in your browser [here](https://???.github.com/openjpegjs/test/browser/index.html)
+Try it in your browser [here](https://chafey.github.io/openjpegjs/test/browser/index.html)
 
 
 ## openjpegjs API
