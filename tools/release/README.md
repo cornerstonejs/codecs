@@ -55,7 +55,7 @@ token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node b
    release before anything is committed, tagged or published), then `version.mjs`, then regenerates
    `pnpm-lock.yaml` (pnpm records each importer's *specifier*, so rewriting dicom-codec's ranges
    strands the lockfile and the next `--frozen-lockfile` install fails), commits
-   `chore(release): publish [skip ci]` and one annotated tag per released package, and pushes to
+   `chore(release): publish` and one annotated tag per released package, and pushes to
    `main` with a token minted per-run from the release App. The token is passed to `git push` in the
    remote URL rather than persisted into `.git/config` by `actions/checkout`, so it is not sitting on
    disk while `pnpm install` runs. The job outputs the pushed commit SHA.
@@ -206,9 +206,39 @@ stale reviews dismissed on push, last-push approval, no force pushes, no branch 
 script's header for why the classic rule has to go rather than sit alongside the ruleset.
 
 One behavioural note that applies to both routes: GitHub suppresses workflow runs only for pushes
-made with `GITHUB_TOKEN`. An App-token push and a deploy-key push are both ordinary pushes and
-*would* retrigger the release workflow on `main`. The `[skip ci]` in the release commit message is
-what prevents a loop — do not remove it, whichever route you set up.
+made with `GITHUB_TOKEN`. An App-token push and a deploy-key push are both ordinary pushes, so the
+release's own version commit *does* retrigger the workflows on `main`.
+
+What stops that being a loop is the guard on each workflow's root job:
+
+```yaml
+if: >-
+  github.event_name != 'push'
+  || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+  && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
+```
+
+(The continuation lines sit at the same indent on purpose. A `>-` folded scalar keeps a real newline
+before any *more*-indented line, which would embed one in the expression.)
+
+Both halves are written by the `release` job, a few lines apart — the `git config user.email` and the
+`git commit -m`. **Change either and you must change it in all four files**, or the version commit
+stops being recognised and gets a full CI run plus a bench that seeds a duplicate CodSpeed baseline.
+
+Two things this deliberately is not:
+
+- **Not `[skip ci]`.** GitHub scans the entire head-commit message for that keyword, body included,
+  and a squash merge concatenates every commit message on the branch into the body — so a PR that
+  merely *mentions* `[skip ci]` in prose disables every workflow for its merge commit, creating no
+  run at all to notice. That is exactly what happened to
+  [#89](https://github.com/cornerstonejs/codecs/pull/89), whose commits explained why the release
+  commit carried the keyword. Anchoring on the subject cannot be tripped by prose.
+- **Not `==` on the message.** GitHub strips the trailing newline, so equality would match today, but
+  it stops matching the moment the release commit grows a body — a commit template, a
+  `prepare-commit-msg` hook, a second `-m`. That failure is silent. Equality also would not buy the
+  precision it looks like it buys: a human can type the exact subject as easily as a prefix. The
+  author clause is what makes the match precise, because only the release job can produce that
+  identity.
 
 3. **Verify**, then re-run the failed Release workflow:
 

@@ -50,6 +50,21 @@ permissions:
 
 jobs:
   detect-changes:
+    # Skip the release workflow's own version commit -- it changes only
+    # package.json versions, CHANGELOGs and the lockfile, and was built and
+    # tested as its parent. Every job below needs this one, so skipping it
+    # skips the run.
+    #
+    # Subject-anchored rather than the `[skip ci]` this replaces: GitHub's
+    # keyword scan reads the whole commit message, so a squash merge whose body
+    # merely QUOTED `[skip ci]` disabled every workflow on main (PR #89, which
+    # is how a release fix shipped no release). The author clause keeps a human
+    # commit that happens to open with the same subject from skipping CI. See
+    # release.yml's build job for the full reasoning.
+    if: >-
+      github.event_name != 'push'
+      || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
     # Decide what this run needs to do. Two outputs:
     #   packages — what to build (and therefore what the test job can rely
     #     on). dicom-codec's integration tests decode through EVERY sibling
