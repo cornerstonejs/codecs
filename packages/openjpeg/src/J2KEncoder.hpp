@@ -226,9 +226,31 @@ class J2KEncoder {
     opj_stream_t *l_stream = 00;
     opj_codec_t* l_codec = 00;
     opj_image_t *image = NULL;
-    
+    // Declared here, ahead of the guard, on purpose: l_stream holds a pointer
+    // to this struct, so the guard that destroys the stream must not outlive
+    // it. Locals are destroyed in reverse declaration order, so anything the
+    // guard touches has to be declared before the guard.
+    opj_buffer_info_t buffer_info;
+
+    // Same reasoning as J2KDecoder's HandleGuard: these are raw handles with
+    // no destructors, and std::vector::resize() below can throw std::bad_alloc
+    // with no call site to hang a cleanup() off. A destructor covers the
+    // throwing paths and the success path alike, so the explicit cleanup()
+    // calls this replaces cannot be forgotten on a newly added early exit.
+    struct HandleGuard {
+      opj_stream_t*& stream;
+      opj_codec_t*& codec;
+      opj_image_t*& image;
+
+      ~HandleGuard() {
+        if (stream) opj_stream_destroy(stream);
+        if (codec) opj_destroy_codec(codec);
+        if (image) opj_image_destroy(image);
+      }
+    } guard{l_stream, l_codec, image};
+
     OPJ_COLOR_SPACE color_space = frameInfo_.componentCount > 1 ? OPJ_CLRSPC_SRGB : OPJ_CLRSPC_GRAY;
-    
+
     std::vector<opj_image_cmptparm_t> cmptparm;
     cmptparm.resize(frameInfo_.componentCount);
     /* initialize image components */
@@ -242,6 +264,14 @@ class J2KEncoder {
         cmptparm[i].h = (OPJ_UINT32)frameInfo_.height;
     }
     image = opj_image_create((OPJ_UINT32)frameInfo_.componentCount, cmptparm.data(), color_space);
+    // Every line from here to the end of the function dereferences image, and
+    // opj_image_create returns NULL on a failed allocation or a component
+    // parameter it rejects. Unchecked, that was a null dereference in wasm
+    // (which traps the whole module) rather than a JS exception.
+    if (!image) {
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_image_create");
+    }
 
     /* set image offset and reference grid */
     image->x0 = (OPJ_UINT32)imageOffset_.x;
@@ -282,6 +312,13 @@ class J2KEncoder {
 
     // TODO: add support for JP2 encoding via config parameter
     l_codec = opj_create_compress(OPJ_CODEC_J2K);
+    // opj_setup_encoder would reject a NULL codec and be reported as a setup
+    // failure, which is survivable but misattributes the cause; say what
+    // actually went wrong instead.
+    if (!l_codec) {
+      encoded_.resize(0);
+      throw std::runtime_error("failed to encode image: opj_create_compress");
+    }
 
     /* catch events using our callbacks and give a local context */
     //opj_set_info_handler(l_codec, info_callback, 00);
@@ -290,18 +327,11 @@ class J2KEncoder {
 
     // TODO: Add support for using tiles?
 
-    // Free everything on every exit path. A silent `return` here used to
-    // leak the codec/stream/image AND leave encoded_ at its full pre-sized
-    // allocation, so JS callers treated a failed encode as a successful one
-    // and read back garbage bytes.
-    const auto cleanup = [&]() {
-      if (l_stream) opj_stream_destroy(l_stream);
-      if (l_codec) opj_destroy_codec(l_codec);
-      if (image) opj_image_destroy(image);
-    };
-
+    // encoded_ is emptied on every failure path below. A silent `return` here
+    // used to leave it at its full pre-sized allocation, so JS callers treated
+    // a failed encode as a successful one and read back garbage bytes; the
+    // handles themselves are now the guard's responsibility.
     if (! opj_setup_encoder(l_codec, &parameters, image)) {
-      cleanup();
       encoded_.resize(0);
       throw std::runtime_error("failed to encode image: opj_setup_encoder");
     }
@@ -315,38 +345,33 @@ class J2KEncoder {
     encoded_.resize(decoded_.size() + (decoded_.size() / 2) + 1024);
 
     /* open a byte stream for writing and allocate memory for all tiles */
-    opj_buffer_info_t buffer_info;
     buffer_info.buf = encoded_.data();
     buffer_info.cur = encoded_.data();
     buffer_info.len = encoded_.size();
     l_stream = opj_stream_create_buffer_stream(&buffer_info, OPJ_FALSE);
     if (!l_stream) {
-      cleanup();
       encoded_.resize(0);
       throw std::runtime_error("failed to encode image: could not create buffer stream");
     }
 
     /* encode the image */
     if (!opj_start_compress(l_codec, image, l_stream))  {
-      cleanup();
       encoded_.resize(0);
       throw std::runtime_error("failed to encode image: opj_start_compress (encoded buffer too small?)");
     }
 
     if(!opj_encode(l_codec, l_stream)) {
-      cleanup();
       encoded_.resize(0);
       throw std::runtime_error("failed to encode image: opj_encode (encoded buffer too small?)");
     }
 
     if(!opj_end_compress(l_codec, l_stream)) {
-      cleanup();
       encoded_.resize(0);
       throw std::runtime_error("failed to encode image: opj_end_compress (encoded buffer too small?)");
     }
 
     encoded_.resize(buffer_info.cur - buffer_info.buf);
-    cleanup();
+    // HandleGuard frees the stream, codec and image as this scope unwinds.
   }
 
   private:

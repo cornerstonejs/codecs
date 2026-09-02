@@ -123,6 +123,17 @@ class JPEGDecoder {
     cinfo.err = jpeg_std_error(&jerr);
     jpeg_create_decompress(&cinfo);
 
+    // The explicit jpeg_destroy_decompress calls on the throw paths below
+    // covered every check but not decoded_.resize(), which can throw
+    // std::bad_alloc for a large frame and leaked the whole decompress object
+    // and its memory pools. A destructor covers that, and cannot be forgotten
+    // when another early exit is added, so the explicit calls are gone and
+    // this is now the single point of release.
+    struct DecompressGuard {
+      jpeg_decompress_struct& info;
+      ~DecompressGuard() { jpeg_destroy_decompress(&info); }
+    } guard{cinfo};
+
     jpeg_mem_src(&cinfo, encoded_.data(), encoded_.size());
     // Read file header, set default decompression parameters
     jpeg_read_header(&cinfo, TRUE);
@@ -131,7 +142,6 @@ class JPEGDecoder {
     // color image would make libjpeg silently discard the chroma channels
     // and report componentCount=1, corrupting color data without any error.
     if (cinfo.num_components != 1) {
-      jpeg_destroy_decompress(&cinfo);
       throw std::runtime_error(
         "Unsupported 12-bit JPEG: expected 1 component (grayscale), got " +
         std::to_string(cinfo.num_components));
@@ -164,19 +174,16 @@ class JPEGDecoder {
     const uint64_t pixelFormat64 = static_cast<uint64_t>(pixelFormat);
 
     if (width64 == 0 || height64 == 0) {
-      jpeg_destroy_decompress(&cinfo);
       throw std::runtime_error("Invalid JPEG dimensions (zero width or height)");
     }
 
     uint64_t output_size64 = width64 * height64;
     if (output_size64 / width64 != height64) {
       // width * height overflowed
-      jpeg_destroy_decompress(&cinfo);
       throw std::runtime_error("Overflow computing decoded buffer size");
     }
     output_size64 *= pixelFormat64;
     if (output_size64 == 0 || output_size64 > kMaxOutputSamples) {
-      jpeg_destroy_decompress(&cinfo);
       throw std::runtime_error("Decoded buffer size exceeds allowed maximum or is invalid");
     }
 
@@ -192,9 +199,8 @@ class JPEGDecoder {
       (void)jpeg_read_scanlines(&cinfo, &output_data, 1);
     }
     jpeg_finish_decompress(&cinfo);
-
-    // This is an important step since it will release a good deal of memory.
-    jpeg_destroy_decompress(&cinfo);
+    // DecompressGuard releases the decompress object -- a good deal of memory
+    // -- as this scope unwinds.
   }
 
   /// <summary>

@@ -760,6 +760,46 @@ class J2KDecoder {
       opj_codec_t* l_codec = NULL;
       opj_image_t* image = NULL;
       opj_stream_t *l_stream = NULL;
+      opj_codestream_info_v2_t* cstr_info = NULL;
+      // Declared here, ahead of the guard, on purpose: l_stream holds a pointer
+      // to this struct, so the guard that destroys the stream must not outlive
+      // it. Locals are destroyed in reverse declaration order, so anything the
+      // guard touches has to be declared before the guard.
+      opj_buffer_info_t buffer_info;
+
+      // Tie the four native handles to this scope. They are raw pointers with
+      // no destructors, and freeing them used to be hand-rolled at each early
+      // return -- so every path that leaves by THROWING rather than returning
+      // leaked all of them: the component-count rejection below, the
+      // checkedDecodedSize range check, and the std::bad_alloc that
+      // decoded_.resize() can raise for a large frame. cstr_info was worse
+      // still, leaking on every decode including the successful one, because
+      // nothing freed it on any path at all.
+      //
+      // A destructor rather than a cleanup() lambda called at each exit,
+      // because resize()'s throw has no call site to attach a cleanup to, and
+      // because it cannot be forgotten when a new early return is added. The
+      // members are references to the locals above, so the existing names stay
+      // as they are and the guard always sees the current values.
+      //
+      // The cstr_info null test is load-bearing, not defensive style:
+      // opj_destroy_cstr_info() tests its argument pointer but then
+      // dereferences *cstr_info unguarded, so handing it a pointer to a NULL
+      // cstr_info would crash. opj_get_cstr_info() does return NULL -- for a
+      // NULL codec, and for a codec that is not a decompressor.
+      struct HandleGuard {
+        opj_stream_t*& stream;
+        opj_codec_t*& codec;
+        opj_image_t*& image;
+        opj_codestream_info_v2_t*& cstrInfo;
+
+        ~HandleGuard() {
+          if (cstrInfo) opj_destroy_cstr_info(&cstrInfo);
+          if (stream) opj_stream_destroy(stream);
+          if (codec) opj_destroy_codec(codec);
+          if (image) opj_image_destroy(image);
+        }
+      } guard{l_stream, l_codec, image, cstr_info};
 
       // detect stream type
       // NOTE: DICOM only supports OPJ_CODEC_J2K, but not everyone follows this
@@ -784,7 +824,6 @@ class J2KDecoder {
       parameters.cp_layer = decodeLayer_;
       //opj_set_decoded_resolution_factor(l_codec, 1);
       // set stream
-      opj_buffer_info_t buffer_info;
       buffer_info.buf = encoded_.data();
       buffer_info.cur = encoded_.data();
       buffer_info.len = encoded_.size();
@@ -793,26 +832,18 @@ class J2KDecoder {
       /* Setup the decoder decoding parameters using user parameters */
       if ( !opj_setup_decoder(l_codec, &parameters) ){
           printf("[ERROR] opj_decompress: failed to setup the decoder\n");
-          opj_stream_destroy(l_stream);
-          opj_destroy_codec(l_codec);
           return;
       }
 
       /* Read the main header of the codestream and if necessary the JP2 boxes*/
       if(! opj_read_header(l_stream, l_codec, &image)){
           printf("[ERROR] opj_decompress: failed to read the header\n");
-          opj_stream_destroy(l_stream);
-          opj_destroy_codec(l_codec);
-          opj_image_destroy(image);
           return;
       }
 
       /* decode the image */
       if (!opj_decode(l_codec, l_stream, image)) {
           printf("[ERROR] opj_decompress: failed to decode tile!\n");
-          opj_destroy_codec(l_codec);
-          opj_stream_destroy(l_stream);
-          opj_image_destroy(image);
           return;
       }
 
@@ -836,9 +867,6 @@ class J2KDecoder {
       frameInfo_.height = image->y1;
       frameInfo_.componentCount = image->numcomps;
       if (frameInfo_.componentCount != 1 && frameInfo_.componentCount != 3) {
-        opj_destroy_codec(l_codec);
-        opj_stream_destroy(l_stream);
-        opj_image_destroy(image);
         throw std::runtime_error("unsupported J2K component count");
       }
       frameInfo_.isSigned = image->comps[0].sgnd;
@@ -849,7 +877,15 @@ class J2KDecoder {
       imageOffset_.y = image->y0;
       //image->comps[0].factor always 0??
 
-      opj_codestream_info_v2_t* cstr_info = opj_get_cstr_info(l_codec);  /* Codestream information structure */
+      cstr_info = opj_get_cstr_info(l_codec);  /* Codestream information structure */
+      // Unreachable for a codec that has just decoded successfully, but every
+      // field below is a dereference and tccp_info is optional even upstream
+      // (opj_destroy_cstr_info tests it before freeing). Throwing rather than
+      // reading on leaves no chance of reporting the PREVIOUS frame's
+      // codestream metadata under this frame's pixels.
+      if (!cstr_info || !cstr_info->m_default_tile_info.tccp_info) {
+        throw std::runtime_error("failed to read J2K codestream info");
+      }
       numLayers_ = cstr_info->m_default_tile_info.numlayers;
       progressionOrder_ = cstr_info->m_default_tile_info.prg;
       isReversible_ = cstr_info->m_default_tile_info.tccp_info->qmfbid == 1;
@@ -928,23 +964,26 @@ class J2KDecoder {
         }
       }
 
-      opj_stream_destroy(l_stream);
-      opj_destroy_codec(l_codec);
-      opj_image_destroy(image);
+      // No explicit frees here: HandleGuard above releases all four handles as
+      // this scope unwinds, on this path and on every earlier one.
     }
 
     std::vector<uint8_t> encoded_;
     std::vector<uint8_t> decoded_;
     FrameInfo frameInfo_;
-    size_t numDecompositions_;
-    bool isReversible_;
-    int progressionOrder_;
+    // Zero-initialised for the same reason as FrameInfo's fields: none of these
+    // were initialised, so every getter was an uninitialised read until a
+    // decode had succeeded, and on a reused heap block that read the previous
+    // decoder's values rather than anything recognisably empty.
+    size_t numDecompositions_ = 0;
+    bool isReversible_ = false;
+    int progressionOrder_ = 0;
     Point imageOffset_;
     Size tileSize_;
     Point tileOffset_;
     Size blockDimensions_;
-    int32_t numLayers_;
-    size_t colorSpace_;
+    int32_t numLayers_ = 0;
+    size_t colorSpace_ = 0;
 
-    size_t decodeLayer_;
+    size_t decodeLayer_ = 0;
 };

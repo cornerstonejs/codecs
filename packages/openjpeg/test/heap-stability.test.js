@@ -82,4 +82,28 @@ describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
     for (let i = 0; i < 100; i++) failOnce()
     expect(codec.HEAP8.length).toBe(settled)
   })
+
+  // NOT COVERED, and deliberately so rather than by oversight: the encoder's
+  // and decoder's THROWING failure paths, which are exactly the ones the
+  // handle guards in J2KEncoder::encode and J2KDecoder::decode_i exist for.
+  //
+  // The obvious test -- loop a failing encode and assert no heap growth --
+  // was written and removed. setDecompositions(40) is a clean trigger
+  // (numresolution 41 > OpenJPEG's 33, so opj_setup_encoder rejects it with
+  // the opj_image already allocated, ~1 MiB of leak per iteration), and the
+  // heap does grow without the guard. But repeating that failure crashes the
+  // module on the 5th iteration WITH the guard in place too -- "memory access
+  // out of bounds" -- so the test failed for a reason unrelated to what it
+  // was measuring. Repeated failed encoder setup corrupts something; that is
+  // its own bug, not this file's to paper over.
+  //
+  // The decoder side has no reachable trigger from the fixtures here at all:
+  // the component-count rejection needs a 2- or 4-component J2K (none
+  // committed, and the encoder cannot produce one -- see the multi-component
+  // findings), checkedDecodedSize needs a header claiming >512 MiB, and
+  // decoded_.resize()'s std::bad_alloc needs memory pressure. The cstr_info
+  // leak, which fired on EVERY decode, is invisible here for a different
+  // reason: measured at ~12,600 decodes it never forced heap growth either
+  // way, because the 50 MiB arena absorbs it. HEAP8.length is simply not a
+  // sensitive enough instrument for a leak that small.
 })

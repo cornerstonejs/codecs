@@ -120,9 +120,18 @@ class JPEGDecoder {
     if ((tjInstance = tjInitDecompress()) == NULL) {
         throw("initializing decompressor\n");
     }
-    
+
+    // tjInstance has no destructor, and two things below leave this function
+    // without reaching a tjDestroy call: checkedDecodedSize throws for a
+    // malformed header, and decoded_.resize() can throw std::bad_alloc for a
+    // large frame. Both leaked the decompressor. Tying it to the scope covers
+    // those and the explicit paths alike.
+    struct HandleGuard {
+      tjhandle& handle;
+      ~HandleGuard() { if (handle) tjDestroy(handle); }
+    } guard{tjInstance};
+
     if(readHeader_i(tjInstance)) {
-        tjDestroy(tjInstance);
         throw("error reading header\n");
     }
 
@@ -131,13 +140,10 @@ class JPEGDecoder {
     const size_t destinationSize = checkedDecodedSize(frameInfo_.width, frameInfo_.height, 1, tjPixelSize[pixelFormat]);
     decoded_.resize(destinationSize);
 
-    if (tjDecompress2(tjInstance, encoded_.data(), encoded_.size(), decoded_.data(), 
+    if (tjDecompress2(tjInstance, encoded_.data(), encoded_.size(), decoded_.data(),
         frameInfo_.width, 0, frameInfo_.height, pixelFormat, 0) < 0) {
-        tjDestroy(tjInstance);
         throw("~~decompressing JPEG image\n");
     }
-
-    tjDestroy(tjInstance);
   }
 
   /// <summary>
