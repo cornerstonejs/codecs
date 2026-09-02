@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-openjph",
-  "version": "2.4.8",
+  "version": "2.4.10",
   "description": "JS/WebAssembly build of OpenJPH",
   "main": "dist/openjphjs.js",
   "publishConfig": {
@@ -19,11 +19,12 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:ci": "yarn run test",
+    "test:ci": "pnpm run test",
     "test:watch": "vitest",
     "test:benchmark": "cd test/node; node index.js",
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh openjphjs",
     "build:ui": "webpack --config ./.webpack/webpack.config.js",
     "start": " webpack-dev-server --config ./.webpack/webpack.config.js",
     "prepublishOnly": "bash build.sh",
@@ -37,7 +38,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/cornerstonejs/codecs.git"
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/openjphjs"
   },
   "author": "CornerstoneJS (original Chris Hafey)",
   "license": "MIT",

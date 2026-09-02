@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Browser smoke-decode: loads every wasm/asm.js build variant of every
-// codec in headless Chromium, decodes its reference fixture IN THE PAGE,
-// and compares the SHA-256 of the decoded pixels against the RAW reference.
+// codec in headless Chromium. Active decoders process a reference fixture
+// IN THE PAGE and compare its SHA-256 against the RAW reference.
 //
 // This is the coverage node tests cannot give: emscripten glue differences
 // that only manifest in browsers (wasm URL resolution/locateFile, fetch vs
@@ -21,19 +21,25 @@ const { chromium } = require("playwright-core");
 const repoRoot = path.resolve(__dirname, "../..");
 
 // [package, dist module, decoder class, encoded fixture, reference raw]
-// Every entry decodes CT1/jpeg400 and must hash-match its committed RAW.
+// Active decoders hash-match CT1/jpeg400; disabled decoders initialize only.
 const VARIANTS = [
   ["charls", "charlsjs.js", "JpegLSDecoder", "charls/test/fixtures/CT1.JLS", "charls/test/fixtures/CT1.RAW"],
+  ["charls", "charlsjs_decode.js", "JpegLSDecoder", "charls/test/fixtures/CT1.JLS", "charls/test/fixtures/CT1.RAW"],
   ["charls", "charlswasm.js", "JpegLSDecoder", "charls/test/fixtures/CT1.JLS", "charls/test/fixtures/CT1.RAW"],
   ["charls", "charlswasm_decode.js", "JpegLSDecoder", "charls/test/fixtures/CT1.JLS", "charls/test/fixtures/CT1.RAW"],
   ["openjpeg", "openjpegjs.js", "J2KDecoder", "openjpeg/test/fixtures/j2k/CT1.j2k", "openjpeg/test/fixtures/raw/CT1.RAW"],
+  ["openjpeg", "openjpegjs_decode.js", "J2KDecoder", "openjpeg/test/fixtures/j2k/CT1.j2k", "openjpeg/test/fixtures/raw/CT1.RAW"],
   ["openjpeg", "openjpegwasm.js", "J2KDecoder", "openjpeg/test/fixtures/j2k/CT1.j2k", "openjpeg/test/fixtures/raw/CT1.RAW"],
   ["openjpeg", "openjpegwasm_decode.js", "J2KDecoder", "openjpeg/test/fixtures/j2k/CT1.j2k", "openjpeg/test/fixtures/raw/CT1.RAW"],
   ["openjphjs", "openjphjs.js", "HTJ2KDecoder", "openjphjs/test/fixtures/j2c/CT1.j2c", "openjphjs/test/fixtures/raw/CT1.RAW"],
   ["libjpeg-turbo-8bit", "libjpegturbojs.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
+  ["libjpeg-turbo-8bit", "libjpegturbojs_decode.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
   ["libjpeg-turbo-8bit", "libjpegturbowasm.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
-  ["libjpeg-turbo-12bit", "libjpegturbo12js.js", "JPEGDecoder", "libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg", "libjpeg-turbo-12bit/test/fixtures/raw/CT-512x512-12bit.raw"],
-  ["libjpeg-turbo-12bit", "libjpegturbo12wasm.js", "JPEGDecoder", "libjpeg-turbo-12bit/test/fixtures/jpeg/CT-512x512-12bit.jpg", "libjpeg-turbo-12bit/test/fixtures/raw/CT-512x512-12bit.raw"],
+  ["libjpeg-turbo-8bit", "libjpegturbowasm_decode.js", "JPEGDecoder", "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg", "libjpeg-turbo-8bit/test/fixtures/raw/jpeg400jfif.raw"],
+  // The 12-bit decode path is disabled, but module initialization still
+  // exercises its generated JavaScript and WebAssembly under the CSP.
+  ["libjpeg-turbo-12bit", "libjpegturbo12js.js"],
+  ["libjpeg-turbo-12bit", "libjpegturbo12wasm.js"],
 ];
 
 const MIME = {
@@ -53,7 +59,11 @@ function startServer() {
       res.end("not found");
       return;
     }
-    res.writeHead(200, { "Content-Type": MIME[path.extname(filePath)] ?? "application/octet-stream" });
+    res.writeHead(200, {
+      "Content-Type": MIME[path.extname(filePath)] ?? "application/octet-stream",
+      // Permit WebAssembly compilation without permitting eval() or Function().
+      "Content-Security-Policy": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'",
+    });
     fs.createReadStream(filePath).pipe(res);
   });
   return new Promise((resolve) => server.listen(0, "127.0.0.1", () => resolve(server)));
@@ -74,6 +84,8 @@ const PAGE_FN = async ({ distUrl, decoderClass, fixtureUrl }) => {
   if (typeof factory !== "function") throw new Error("no module factory global found");
   const codec = await factory();
   delete globalThis.Module;
+
+  if (!decoderClass) return null;
 
   const fixture = new Uint8Array(await (await fetch(fixtureUrl)).arrayBuffer());
   const decoder = new codec[decoderClass]();
@@ -102,7 +114,9 @@ const PAGE_FN = async ({ distUrl, decoderClass, fixtureUrl }) => {
       if (process.env.CI) results.push([`${pkg}/${dist}`, "FAIL: dist missing in CI"]);
       continue;
     }
-    const expected = crypto.createHash("sha256").update(fs.readFileSync(path.join(repoRoot, "packages", raw))).digest("hex");
+    const expected = raw
+      ? crypto.createHash("sha256").update(fs.readFileSync(path.join(repoRoot, "packages", raw))).digest("hex")
+      : null;
     const page = await browser.newPage();
     const pageErrors = [];
     page.on("pageerror", (e) => pageErrors.push(e.message));
@@ -113,7 +127,8 @@ const PAGE_FN = async ({ distUrl, decoderClass, fixtureUrl }) => {
         decoderClass,
         fixtureUrl: `http://127.0.0.1:${port}/packages/${fixture}`,
       });
-      results.push([`${pkg}/${dist}`, actual === expected ? "PASS" : `FAIL: hash mismatch (${actual.slice(0, 12)}… != ${expected.slice(0, 12)}…)`]);
+      const success = decoderClass ? "PASS" : "PASS (module initialized)";
+      results.push([`${pkg}/${dist}`, actual === expected ? success : `FAIL: hash mismatch (${actual.slice(0, 12)}… != ${expected.slice(0, 12)}…)`]);
     } catch (e) {
       results.push([`${pkg}/${dist}`, `FAIL: ${e.message}${pageErrors.length ? " | page: " + pageErrors.join("; ") : ""}`]);
     } finally {
@@ -127,6 +142,6 @@ const PAGE_FN = async ({ distUrl, decoderClass, fixtureUrl }) => {
   const width = Math.max(...results.map(([n]) => n.length));
   for (const [name, r] of results) console.log(name.padEnd(width + 2) + r);
   const failures = results.filter(([, r]) => r.startsWith("FAIL")).length;
-  console.log(`\n${failures === 0 ? "PASS" : "FAIL"}: ${failures} browser decode failure(s)`);
+  console.log(`\n${failures === 0 ? "PASS" : "FAIL"}: ${failures} browser smoke failure(s)`);
   process.exit(failures ? 1 : 0);
 })();

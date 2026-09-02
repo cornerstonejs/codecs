@@ -7,6 +7,11 @@ const rleLosslessCodec = require("./rleLossless");
 const bigEndianCodec = require("./bigEndian");
 const libjpegTurbo8BitCodec = require("./libjpegTurbo8bit");
 const libjpegTurbo12BitCodec = require("./libjpegTurbo12bit");
+// Three separate modules rather than one with encode swapped out: JPEG XL
+// cannot signal PixelRepresentation, so .110 and .112 map signed samples
+// differently and each needs a decode that inverts its own encode. See
+// jpegxl.js.
+const jpegxl = require("./jpegxl");
 
 /**
  * Wrapper to codec. It holds current codec, encoder, decoder, name for each.
@@ -42,6 +47,9 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
+  "1.2.840.10008.1.2.4.110": jpegxl.lossless,
+  "1.2.840.10008.1.2.4.111": jpegxl.jpegRecompression,
+  "1.2.840.10008.1.2.4.112": jpegxl.lossy,
   // Private Transfer Syntax - update to final ID when released by WG-06
   "3.2.840.10008.1.2.4.96": htj2kCodec,
   // The three official HTJ2K transfer syntaxes
@@ -53,6 +61,16 @@ const codecsMap = {
 
 function hasCodec(transferSyntaxUID) {
   return !!codecsMap[transferSyntaxUID];
+}
+
+/**
+ * Every distinct codec module, deduplicated — codecsMap points several transfer
+ * syntaxes at the same module.
+ *
+ * @returns {Array<Object>} codec modules.
+ */
+function getCodecs() {
+  return [...new Set(Object.values(codecsMap))];
 }
 
 function getCodec(transferSyntaxUID) {
@@ -118,4 +136,5 @@ function adaptImageInfo(imageInfo) {
 
 exports.adaptImageInfo = adaptImageInfo;
 exports.getCodec = getCodec;
+exports.getCodecs = getCodecs;
 exports.hasCodec = hasCodec;

@@ -11,6 +11,8 @@ const REQUIRED_BUILDS = [
   "libjpeg-turbo-8bit/dist/libjpegturbojs.js",
   "openjpeg/dist/openjpegjs.js",
   "openjphjs/dist/openjphjs.js",
+  "libjxl/dist/jpegxlwasm_decode.js",
+  "libjxl/dist/jpegxlwasm_encode.js",
   "little-endian/dist/index.js",
   "big-endian/dist/index.js",
 ]
@@ -30,6 +32,9 @@ const SUPPORTED_UIDS = [
   "1.2.840.10008.1.2.4.81",
   "1.2.840.10008.1.2.4.90",
   "1.2.840.10008.1.2.4.91",
+  "1.2.840.10008.1.2.4.110",
+  "1.2.840.10008.1.2.4.111",
+  "1.2.840.10008.1.2.4.112",
   "1.2.840.10008.1.2.4.201",
   "1.2.840.10008.1.2.4.202",
   "1.2.840.10008.1.2.4.203",

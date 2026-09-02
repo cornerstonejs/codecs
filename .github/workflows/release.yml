@@ -1,0 +1,548 @@
+name: Release
+
+# Versions, tags and publishes the codec packages to npm.
+#
+# THE FILENAME OF THIS WORKFLOW IS LOAD-BEARING. Each package's npm trusted
+# publisher is registered against `release.yml` in cornerstonejs/codecs, so npm
+# will reject an OIDC publish coming from any other workflow file. Renaming
+# this file means re-running tools/release/setup-trusted-publishing.sh.
+#
+# This replaces the old CircleCI NPM_PUBLISH job, which needed two long-lived
+# personal credentials: an NPM_TOKEN written to ~/.npmrc, and a maintainer's
+# personal SSH key (the only reason `lerna version` could push past main's
+# branch protection). Both are gone:
+#   - npm auth is OIDC trusted publishing — a short-lived token minted per run
+#     and scoped to this workflow. There is no NPM_TOKEN anywhere.
+#   - git auth is the built-in GITHUB_TOKEN. main's ruleset lists the GitHub
+#     Actions app as a bypass actor so the version commit can land; human
+#     review requirements are unchanged (see tools/release/README.md).
+#
+# JOB SPLIT IS A PERMISSION BOUNDARY, not cosmetics. `permissions:` is scoped
+# per job, never per step, so any right a job asks for is held by every step in
+# it — including the third-party code in `actions/*` and in dependency install
+# scripts. The four jobs below each hold the narrowest set that still works:
+#
+#   build            contents: read                  runs the wasm toolchain
+#   release          contents: write                 installs deps, tests, pushes
+#   publish          id-token: write (+ read)        npm publish, no install
+#   github-releases  contents: write                 gh release create, no install
+#
+# The one that matters: `pnpm install` only ever runs in a job with no
+# id-token: write, so nothing a dependency's install script does happens next
+# to a credential that can publish to npm. Conversely the publish job installs
+# nothing, so the only code running beside the OIDC token is npm itself and two
+# dependency-free scripts from this repo.
+#
+# Every step is idempotent: version.mjs releases nothing when there are no new
+# conventional commits since a package's last tag, and the publish step skips
+# any version already on the registry. A re-run after a partial failure
+# finishes the job rather than double-publishing.
+#
+# Actions are pinned by commit SHA, not tag, so a moved tag cannot change what
+# runs here. The `# vX.Y.Z` comment is what Dependabot updates.
+
+on:
+  push:
+    branches:
+      - main
+  # Manual re-run after a partial failure (e.g. npm was down mid-publish).
+  workflow_dispatch:
+
+# Never let two releases interleave — they would race on tags and versions.
+# Do not cancel in progress: a half-published release must be allowed to finish.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    # Same wasm build as pr-checks.yml, minus the change detection: a release
+    # publishes whatever moved, and dicom-codec ships ranges over every sibling,
+    # so all dists must be current.
+    #
+    # Read-only, but it produces the artifacts the publish job uploads to npm,
+    # so tampering here would reach the registry without touching a privileged
+    # job. That is why the actions below are SHA-pinned too.
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - charls
+          - libjpeg-turbo-8bit
+          - libjpeg-turbo-12bit
+          - libjxl
+          - openjpeg
+          - openjphjs
+          - little-endian
+          - big-endian
+          - dicom-codec
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:3.1.74
+    steps:
+      - name: Install pnpm + cmake + C++ build deps
+        # cmake comes straight off cmake.org, so verify it against a pinned
+        # digest rather than piping an unchecked tarball into tar. Taken from
+        # https://cmake.org/files/v3.17/cmake-3.17.4-SHA-256.txt.
+        env:
+          CMAKE_TARBALL: cmake-3.17.4-Linux-x86_64.tar.gz
+          CMAKE_SHA256: 126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3
+        # NO `set -euo pipefail` here: the emsdk image has no bash, so this
+        # container job's steps run as `sh -e {0}` and dash rejects
+        # `-o pipefail`. `-e` is already on, and the digest check is the last
+        # command in its pipeline, so a mismatch still fails the step.
+        run: |
+          apt-get update
+          apt-get -y install build-essential git
+          # /tmp, not the workspace: this step runs before actions/checkout.
+          wget -q -O "/tmp/${CMAKE_TARBALL}" "https://cmake.org/files/v3.17/${CMAKE_TARBALL}"
+          echo "${CMAKE_SHA256}  /tmp/${CMAKE_TARBALL}" | sha256sum -c -
+          tar --strip-components=1 -xzf "/tmp/${CMAKE_TARBALL}" -C /usr/local
+          rm -f "/tmp/${CMAKE_TARBALL}"
+          apt-get autoremove -y
+          apt-get clean -y
+          rm -rf /var/lib/apt/lists/*
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        # No persist-credentials: false here, unlike the release job below.
+        # This job holds contents: read only, so the token checkout writes into
+        # .git/config cannot push or publish, and the submodule init a few steps
+        # down is the one place in this file that still wants a working remote.
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        # The emsdk image bundles node 20.18.0; pnpm 11 requires >=22.13 and
+        # vite 7 (via vitest 3) requires >=20.19. emcc is unaffected — it uses
+        # the node binary pinned in its own .emscripten config, not PATH.
+        with:
+          node-version: '22'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Allow git to operate on the workspace
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Init submodules for this package
+        run: |
+          if [ -d "packages/${{ matrix.package }}/extern" ]; then
+            git submodule update --init --recursive "packages/${{ matrix.package }}/extern"
+          else
+            echo "No extern/ submodule for ${{ matrix.package }}; skipping."
+          fi
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: cd "packages/${{ matrix.package }}" && pnpm run build:ci
+      - name: Ensure dist exists (no-op packages still need a placeholder)
+        run: mkdir -p "packages/${{ matrix.package }}/dist"
+      - name: Upload dist
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dist-${{ matrix.package }}
+          path: packages/${{ matrix.package }}/dist
+          if-no-files-found: ignore
+          retention-days: 7
+
+  release:
+    # Versions, tests and pushes. NO id-token: write — `pnpm install` runs in
+    # this job, and nothing it pulls in has any business holding a credential
+    # that can publish to npm. Publishing happens in the next job.
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version commit + tags
+    outputs:
+      # The commit the later jobs must publish from, in order of preference:
+      #   1. the version commit this run just pushed;
+      #   2. the version commit an EARLIER run pushed, recovered from main —
+      #      see the "Nothing to release" step for why github.sha is wrong here;
+      #   3. the triggering commit, when nothing has ever been versioned for it.
+      sha: ${{ steps.push.outputs.sha || steps.nothing.outputs.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # version.mjs walks each package's history back to its last
+          # `<name>@<version>` tag, so both history and tags must be present.
+          fetch-depth: 0
+          fetch-tags: true
+          # Do not leave a push-capable GITHUB_TOKEN in .git/config for the
+          # whole job — `pnpm install` and the actions above/below all run
+          # while it would be sitting there. The one step that needs it (the
+          # push below) is handed the token explicitly instead.
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # Pinned exactly, not floating '24'. Node bundles npm, and this is
+          # the version that ends up publishing: v24.19.0 ships npm 11.17.0,
+          # comfortably past the 11.5.1 that OIDC trusted publishing needs. So
+          # bumping Node here is also how npm gets bumped — no separate
+          # `npm install --global` step, which would re-download an unpinned
+          # npm on the morning of every release.
+          node-version: '24.19.0'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Download built dists
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        # download-artifact lands each artifact in tmp/<name>/; move them where
+        # the test suites expect them. Same step as pr-checks.yml.
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+          ls packages/*/dist 2>/dev/null | head
+      - name: Test
+        # Gate the release on the same vitest workspace pr-checks.yml runs, but
+        # against the exact dists about to be published. Nothing is committed,
+        # tagged or published if this fails. CI=true (set by GitHub) arms the
+        # in-test guards, so a missing or empty dist fails its suite here rather
+        # than silently skipping and shipping.
+        run: pnpm exec vitest run
+      - name: Compute version bumps
+        id: version
+        # Writes package.json versions, dependent ranges and CHANGELOG entries,
+        # and emits release-plan.json describing what to publish.
+        run: |
+          set -euo pipefail
+          node tools/release/version.mjs
+          count=$(jq 'length' release-plan.json)
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          jq -r '.[] | "  \(.name): \(.previousVersion) -> \(.version) [\(.releaseType)]"' release-plan.json
+      - name: Mint a push token from the release GitHub App
+        id: app-token
+        # The built-in GITHUB_TOKEN CANNOT push to main, and no repository
+        # setting can grant it that: main's protection requires a pull request,
+        # and the "GitHub Actions" app it authenticates as (id 15368) is owned by
+        # `github`, not by this org. Adding it as a ruleset bypass actor is
+        # rejected outright -- "Actor GitHub Actions integration must be part of
+        # the ruleset source or owner organization" (HTTP 422). An org-owned app
+        # is the supported way to let CI push to a protected branch without a
+        # human's personal credential in the pipeline.
+        #
+        # Configured with an org/repo VARIABLE plus a SECRET, both optional, so
+        # this step no-ops on a fork, before the one-time setup has been done, or
+        # when the deploy-key route below is used instead. See
+        # tools/release/setup-branch-ruleset.sh for both setups.
+        #
+        # Deliberately NOT continue-on-error. If RELEASE_APP_ID is set and
+        # minting fails, this job stops rather than quietly pushing with the
+        # deploy key instead. Falling through would swap a token scoped to
+        # Contents: write and expiring in an hour for one with write access to
+        # the whole repo and no expiry -- a downgrade nobody asked for, in a
+        # pipeline that publishes to npm, discoverable only by reading the log of
+        # a release that appeared to succeed. A broken App config should be
+        # fixed; the action validates the private key up front and retries
+        # transient 5xx itself, so what reaches here is a real misconfiguration,
+        # and --atomic means the failed run leaves no debris to clean up.
+        if: steps.version.outputs.count != '0' && vars.RELEASE_APP_ID != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          # Narrow the token to what the push needs. Without this it inherits
+          # every permission the installation holds, so a later widening of the
+          # App silently widens the release token too.
+          permission-contents: write
+      - name: Commit, tag and push
+        id: push
+        if: steps.version.outputs.count != '0'
+        env:
+          # Three credentials, in order of preference. Both of the first two work
+          # because main's ruleset lists them as bypass actors; GITHUB_TOKEN
+          # cannot be listed at all (see the app-token step) and is only here so
+          # that forks and a not-yet-configured repo still reach the push and
+          # report something useful instead of failing earlier and vaguer.
+          #
+          #   1. App token   — org-owned App. Best: scoped to Contents: write,
+          #                    expires in an hour, and belongs to the org.
+          #                    Requires an ORG OWNER to create and install it.
+          #   2. Deploy key  — repo-scoped SSH key with write access. Slightly
+          #                    blunter (write to the whole repo, no expiry) but a
+          #                    REPO ADMIN can set it up alone, and like the App it
+          #                    is not tied to any individual's account.
+          #   3. GITHUB_TOKEN — declined by main's protection. Warns below.
+          GH_TOKEN: ${{ steps.app-token.outputs.token || github.token }}
+          APP_TOKEN_CONFIGURED: ${{ steps.app-token.outputs.token != '' }}
+          RELEASE_DEPLOY_KEY: ${{ secrets.RELEASE_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+
+          # Resolved before any git work so the log says which credential is in
+          # play before it matters.
+          if [ "$APP_TOKEN_CONFIGURED" = "true" ]; then
+            PUSH_VIA=app
+          elif [ -n "${RELEASE_DEPLOY_KEY:-}" ]; then
+            PUSH_VIA=deploy-key
+          else
+            PUSH_VIA=github-token
+            echo "::warning::Neither RELEASE_APP_ID nor RELEASE_DEPLOY_KEY is configured, so this push uses GITHUB_TOKEN, which main's branch protection will decline. See tools/release/setup-branch-ruleset.sh (the deploy-key route needs only repo admin)."
+          fi
+          echo "Pushing via: $PUSH_VIA"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # version.mjs rewrote dicom-codec's ranges over its siblings, and pnpm
+          # records the importer's specifier — not just the resolution — so the
+          # lockfile is now stale and `pnpm install --frozen-lockfile` would fail
+          # on the NEXT run with ERR_PNPM_OUTDATED_LOCKFILE. (yarn 1's lockfile
+          # had no workspace-local entries, so this is new since the migration.)
+          # --lockfile-only touches nothing but pnpm-lock.yaml, and this is the
+          # one install in the repo that must be allowed to update it, hence
+          # --no-frozen-lockfile against pnpm-workspace.yaml's frozenLockfile.
+          #
+          # This is not `pnpm update`: pnpm re-resolves only the importers whose
+          # manifest changed, so the diff is the changed `specifier:` lines and
+          # nothing else. That holds ONLY because linkWorkspacePackages is on —
+          # the sibling ranges resolve to local links, never to the registry.
+          # Turn that setting off and this line would ask npm for versions the
+          # publish job has not created yet and the release would die here.
+          # Unchanged third-party deps keep their locked versions either way.
+          pnpm install --lockfile-only --no-frozen-lockfile --ignore-scripts
+
+          # release-plan.json is a run artifact, not repo content.
+          git add packages/*/package.json packages/*/CHANGELOG.md pnpm-lock.yaml
+          git commit -m "chore(release): publish [skip ci]"
+
+          jq -r '.[].tag' release-plan.json | while read -r tag; do
+            git tag -a "$tag" -m "$tag"
+          done
+
+          # Pushed with whichever credential main's ruleset lists as a bypass
+          # actor. (An earlier comment here said GITHUB_TOKEN could do this; it
+          # cannot -- see the app-token step.) Credentials are passed per-push
+          # rather than persisted, because checkout was told not to keep them in
+          # .git/config while `pnpm install` runs.
+          #
+          # The commit message carries [skip ci], and it is load-bearing on BOTH
+          # of the routes that can actually push. GitHub suppresses workflow runs
+          # only for pushes made with GITHUB_TOKEN; an App-token push and a
+          # deploy-key push are both ordinary pushes and WOULD retrigger this
+          # workflow on main. [skip ci] is what stops that being a release loop,
+          # so do not remove it -- on either route.
+          #
+          # --atomic: all refs land or none do. Without it git updates each ref
+          # independently, and the 2026-08-24 run (32733067241) showed what that
+          # costs -- `! [remote rejected] HEAD -> main (protected branch hook
+          # declined)` while all eight version tags pushed successfully anyway.
+          # That left them pointing at a `chore(release): publish` commit which
+          # is not an ancestor of main, so every later run died at `git tag -a`
+          # with "tag already exists" before it even reached this push, and the
+          # recovery needed a human deleting eight remote tags. A rejected
+          # branch update must not be able to publish tags for a release that
+          # did not happen.
+          if [ "$PUSH_VIA" = "deploy-key" ]; then
+            # Key material into a file the runner discards with the job, never
+            # onto a command line. IdentitiesOnly stops any agent key being tried
+            # first; accept-new is safe on an ephemeral runner with no prior
+            # known_hosts to be spoofed against.
+            key_file=$(mktemp)
+            printf '%s\n' "$RELEASE_DEPLOY_KEY" > "$key_file"
+            chmod 600 "$key_file"
+            export GIT_SSH_COMMAND="ssh -i $key_file -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new"
+            trap 'rm -f "$key_file"' EXIT
+
+            git push --atomic --follow-tags \
+              "git@github.com:${GITHUB_REPOSITORY}.git" HEAD:main
+          else
+            git push --atomic --follow-tags \
+              "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
+          fi
+
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Nothing to release
+        id: nothing
+        if: steps.version.outputs.count == '0'
+        # Two very different situations land here, and they need different shas.
+        #
+        # The ordinary one: no new conventional commits, nothing to publish.
+        #
+        # The one that bites: "Re-run all jobs" on a run that already pushed its
+        # version commit and tags, but whose publish job then failed. A re-run
+        # keeps the ORIGINAL github.sha, so version.mjs walks `<tag>..HEAD` with
+        # HEAD at the pre-version commit — an ancestor of the tag — finds no
+        # commits, and correctly reports nothing to release. But github.sha's
+        # manifests still carry the PREVIOUS versions, so publishing from it
+        # would offer npm the versions already on the registry, skip all of
+        # them, and report "Published 0 packages" while the versions that were
+        # actually tagged on main never ship. version.mjs then finds nothing new
+        # on every later run, so it stays broken until someone unpicks it by
+        # hand.
+        #
+        # So recover that commit: walk forward from the triggering commit to
+        # main's tip and take the first release commit on the direct ancestry
+        # path. That is the one an earlier run of THIS sha pushed — later
+        # releases are not on the path, and a genuine no-op finds nothing and
+        # leaves the fallback to github.sha alone.
+        run: |
+          set -euo pipefail
+          echo "::notice::No conventional commits since the last tags — nothing new to version."
+
+          # origin/main is present because checkout fetched with fetch-depth: 0.
+          if ! git rev-parse -q --verify origin/main >/dev/null; then
+            echo "::warning::origin/main not available; publishing from ${GITHUB_SHA}."
+            exit 0
+          fi
+
+          for commit in $(git rev-list --reverse --ancestry-path "${GITHUB_SHA}..origin/main"); do
+            case "$(git log -1 --format=%s "$commit")" in
+              'chore(release):'*)
+                echo "::notice::Recovered version commit $commit from an earlier run; publishing from it."
+                echo "sha=$commit" >> "$GITHUB_OUTPUT"
+                exit 0
+                ;;
+            esac
+          done
+
+  publish:
+    # The ONLY job that can publish to npm, and it installs no dependencies —
+    # the code running alongside the OIDC token is npm, the pinned actions, and
+    # publish-order.mjs (node builtins only, no imports from node_modules).
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read # checkout only
+      id-token: write # mint the OIDC token npm exchanges for a publish token
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # The version commit the release job just pushed — NOT the triggering
+          # commit, whose manifests still carry the previous versions.
+          ref: ${{ needs.release.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          # Same exact pin as the release job: this is where its bundled npm
+          # (11.17.0, past the 11.5.1 OIDC floor) actually gets used.
+          node-version: '24.19.0'
+      - name: Download built dists
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+          ls packages/*/dist 2>/dev/null | head
+      - name: Compute publish order
+        # Generated as its own command on purpose. `done < <(cmd)` is process
+        # substitution, whose exit status `set -e` does not see: if
+        # publish-order.mjs refused an empty dist, the loop below would read
+        # nothing and the step would still go green, reporting "Published 0
+        # packages" after the version commit and tags had already landed on
+        # main. Running it here makes that failure fail the job.
+        #
+        # publish-order.mjs emits the packages in dependency order, so
+        # dicom-codec goes out after the six siblings whose ranges it carries —
+        # publishing it alphabetically (third) left a window where those ranges
+        # resolved to versions that did not exist yet. It also refuses to emit a
+        # package that claims to ship dist/ but has an empty one.
+        run: |
+          set -euo pipefail
+          node tools/release/publish-order.mjs > publish-order.txt
+          cat publish-order.txt
+      - name: Publish to npm
+        # Deliberately NOT gated on the plan. The source of truth is "every
+        # workspace package whose current version is not yet on the registry",
+        # which covers both the normal path (the versions version.mjs just
+        # wrote) and the retry path: if a previous run committed and tagged but
+        # died partway through publishing, version.mjs correctly finds nothing
+        # new to release on the re-run, and this step still finishes the job.
+        #
+        # No .npmrc and no NODE_AUTH_TOKEN: `npm publish` performs the OIDC
+        # exchange itself using the id-token permission above. Provenance is
+        # generated automatically for trusted publishes, which is why every
+        # package's repository.url must point at this repo.
+        #
+        # --ignore-scripts: prepublishOnly re-runs `bash build.sh`, and this
+        # runner has no emscripten toolchain. The dist being published is the
+        # artifact the build job produced from this same commit.
+        run: |
+          set -euo pipefail
+          published=0
+          skipped=0
+          while read -r name version dir; do
+            if npm view "$name@$version" version >/dev/null 2>&1; then
+              echo "$name@$version is already on npm; skipping."
+              skipped=$((skipped + 1))
+              continue
+            fi
+
+            echo "Publishing $name@$version"
+            (cd "packages/$dir" && npm publish --ignore-scripts)
+            published=$((published + 1))
+          done < publish-order.txt
+          echo "::notice::Published $published package(s); $skipped already on npm."
+      - name: Upload publish order
+        # Handed to the github-releases job so it can enumerate the same
+        # packages without needing the dists (publish-order.mjs inspects them)
+        # or an npm-capable job.
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: publish-order
+          path: publish-order.txt
+          retention-days: 7
+
+  github-releases:
+    # Separate from publish so `gh release create`'s contents: write never
+    # coexists with the OIDC publish token. Installs nothing either.
+    needs: [release, publish]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # create GitHub releases
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          ref: ${{ needs.release.outputs.sha }}
+          # Tags are what this job keys off; history so --generate-notes has
+          # something to diff against.
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+      - name: Download publish order
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: publish-order
+      - name: Create GitHub releases
+        # Driven off the tags rather than the plan, for the same retry reason as
+        # the publish step. Only tags that actually exist are considered, so a
+        # package whose current version predates this run is left alone.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          while read -r name version dir; do
+            tag="$name@$version"
+
+            git rev-parse -q --verify "refs/tags/$tag" >/dev/null || continue
+            if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              continue
+            fi
+
+            echo "Creating release $tag"
+            gh release create "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "$tag" \
+              --generate-notes
+          done < publish-order.txt

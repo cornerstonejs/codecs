@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-charls",
-  "version": "1.2.4",
+  "version": "1.2.6",
   "description": "WASM Build of CharLS",
   "main": "dist/charlsjs.js",
   "publishConfig": {
@@ -27,17 +27,19 @@
   },
   "scripts": {
     "test": "vitest run",
-    "test:ci": "yarn run test",
+    "test:ci": "pnpm run test",
     "test:watch": "vitest",
     "test:benchmark": "cd test/node; node index.js -- --iterations=200",
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
-    "prepublishOnly": "yarn run build",
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh charls",
+    "prepublishOnly": "pnpm run build",
     "bench": "vitest bench --run"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/chafey/charls-js.git"
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/charls"
   },
   "keywords": [
     "JPEG",

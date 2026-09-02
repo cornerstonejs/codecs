@@ -7,24 +7,24 @@
   },
   "charls": {
     "charlsjs.js": {
-      "raw": 537029,
-      "gzip": 108457
+      "raw": 537142,
+      "gzip": 108201
     },
     "charlsjs_decode.js": {
-      "raw": 340455,
-      "gzip": 77502
+      "raw": 340214,
+      "gzip": 77220
     },
     "charlswasm.js": {
-      "raw": 54139,
-      "gzip": 14501
+      "raw": 54252,
+      "gzip": 14248
     },
     "charlswasm.wasm": {
       "raw": 247884,
       "gzip": 66579
     },
     "charlswasm_decode.js": {
-      "raw": 54146,
-      "gzip": 14506
+      "raw": 53905,
+      "gzip": 14232
     },
     "charlswasm_decode.wasm": {
       "raw": 145306,
@@ -33,42 +33,60 @@
   },
   "libjpeg-turbo-12bit": {
     "libjpegturbo12js.js": {
-      "raw": 2554703,
-      "gzip": 267545
+      "raw": 2461618,
+      "gzip": 259496
     },
     "libjpegturbo12wasm.js": {
-      "raw": 113584,
-      "gzip": 29160
+      "raw": 112153,
+      "gzip": 28570
     },
     "libjpegturbo12wasm.wasm": {
-      "raw": 2238843,
-      "gzip": 760829
+      "raw": 1954242,
+      "gzip": 688878
     }
   },
   "libjpeg-turbo-8bit": {
     "libjpegturbojs.js": {
-      "raw": 838040,
-      "gzip": 160427
+      "raw": 837711,
+      "gzip": 160006
     },
     "libjpegturbojs_decode.js": {
-      "raw": 418778,
-      "gzip": 118564
+      "raw": 417854,
+      "gzip": 117868
     },
     "libjpegturbowasm.js": {
-      "raw": 57327,
-      "gzip": 15530
+      "raw": 57440,
+      "gzip": 15274
     },
     "libjpegturbowasm.wasm": {
-      "raw": 448955,
-      "gzip": 96494
+      "raw": 448728,
+      "gzip": 96385
     },
     "libjpegturbowasm_decode.js": {
-      "raw": 56836,
-      "gzip": 15491
+      "raw": 56350,
+      "gzip": 15191
     },
     "libjpegturbowasm_decode.wasm": {
-      "raw": 180512,
-      "gzip": 70074
+      "raw": 180287,
+      "gzip": 69946
+    }
+  },
+  "libjxl": {
+    "jpegxlwasm_decode.js": {
+      "raw": 49252,
+      "gzip": 12868
+    },
+    "jpegxlwasm_decode.wasm": {
+      "raw": 1090788,
+      "gzip": 377101
+    },
+    "jpegxlwasm_encode.js": {
+      "raw": 50838,
+      "gzip": 13491
+    },
+    "jpegxlwasm_encode.wasm": {
+      "raw": 2550720,
+      "gzip": 927454
     }
   },
   "little-endian": {
@@ -79,38 +97,38 @@
   },
   "openjpeg": {
     "openjpegjs.js": {
-      "raw": 754525,
-      "gzip": 199851
+      "raw": 753931,
+      "gzip": 199072
     },
     "openjpegjs_decode.js": {
-      "raw": 541739,
-      "gzip": 139864
+      "raw": 540905,
+      "gzip": 139321
     },
     "openjpegwasm.js": {
-      "raw": 56588,
-      "gzip": 15346
+      "raw": 57685,
+      "gzip": 15161
     },
     "openjpegwasm.wasm": {
-      "raw": 368511,
-      "gzip": 127471
+      "raw": 367561,
+      "gzip": 127108
     },
     "openjpegwasm_decode.js": {
-      "raw": 55920,
-      "gzip": 15236
+      "raw": 55759,
+      "gzip": 14970
     },
     "openjpegwasm_decode.wasm": {
-      "raw": 255857,
-      "gzip": 84237
+      "raw": 255484,
+      "gzip": 84026
     }
   },
   "openjphjs": {
     "openjphjs.js": {
-      "raw": 113863,
-      "gzip": 28916
+      "raw": 58074,
+      "gzip": 14859
     },
     "openjphjs.wasm": {
-      "raw": 2296745,
-      "gzip": 673433
+      "raw": 299791,
+      "gzip": 96272
     }
   }
 }

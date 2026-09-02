@@ -3,6 +3,31 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.12...@cornerstonejs/dicom-codec@1.1.0) (2026-09-01)
+
+
+### Features
+
+* JPEG XL encoder/decoder (#88) ([5bfa7ff](https://github.com/cornerstonejs/codecs/commit/5bfa7ff9f9a81ed1bf6e9bb76ff9cdb5d9dd1a45))
+
+
+
+
+## [1.0.12](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.11...@cornerstonejs/dicom-codec@1.0.12) (2026-09-01)
+
+**Note:** Version bump only for package @cornerstonejs/dicom-codec
+
+
+
+
+## [1.0.11](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.10...@cornerstonejs/dicom-codec@1.0.11) (2026-08-13)
+
+**Note:** Version bump only for package @cornerstonejs/dicom-codec
+
+
+
+
+
 ## [1.0.10](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.0.9...@cornerstonejs/dicom-codec@1.0.10) (2026-07-09)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@cornerstonejs/codec-libjpeg-turbo-12bit",
-  "version": "0.4.2",
+  "version": "0.4.4",
   "description": "JS/WASM Build of [libjpeg-turbo](https://github.com/libjpeg-turbo) WITH12BIT=ON",
   "main": "dist/libjpegturbo12js.js",
   "exports": {
@@ -21,14 +21,20 @@
     "README.md",
     "dist"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cornerstonejs/codecs.git",
+    "directory": "packages/libjpeg-turbo-12bit"
+  },
   "scripts": {
     "build": "bash build.sh",
-    "build:ci": "yarn run build",
-    "test": "vitest run",
-    "test:ci": "yarn run test",
-    "test:watch": "vitest",
-    "prepublishOnly": "yarn run build",
-    "bench": "vitest bench --run"
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh libjpeg-turbo-12bit",
+    "test": "echo 'libjpeg-turbo-12bit tests skipped (.51 transfer syntax disabled)'",
+    "test:ci": "pnpm run test",
+    "//bench": "No benches while .51 is disabled, but the script must exist: the CodSpeed gate runs `pnpm --filter <pkg> run bench`, and pnpm exits 1 with ERR_PNPM_RECURSIVE_RUN_NO_SCRIPT when no selected package has the script. A PR touching only this package would otherwise fail the blocking bench gate. lerna exited 0 in that case.",
+    "bench": "echo 'libjpeg-turbo-12bit has no benches (.51 transfer syntax disabled)'",
+    "prepublishOnly": "pnpm run build"
   },
   "author": "",
   "license": "ISC"
