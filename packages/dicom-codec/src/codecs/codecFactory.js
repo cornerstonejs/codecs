@@ -298,9 +298,6 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   // allocator may reissue at any time.
   const encodedCopy = copyFromWasm(encodedTypedArray);
 
-  // cleanup allocated memory
-  encoderInstance.delete();
-
   const processInfo = {
     duration: context.timer.getDuration(),
   };
@@ -392,14 +389,6 @@ function decode(context, codecConfig, imageFrame, imageInfo, options = {}) {
 
   const decodeStatus = getDecodeStatus(decoderInstance);
 
-  // cleanup allocated memory — except when reusing, where the whole point is
-  // that this instance survives to the next call. openjphjs' decoder-reuse
-  // test covers the consequence that matters: retained buffers must not make
-  // successive decodes progressively slower.
-  if (!reuseDecoder) {
-    decoderInstance.delete();
-  }
-
   if (decodeStatus.failed && !decodeStatus.headerValid) {
     // Nothing usable came back: the codec could not parse the header, so the
     // dimensions and the buffer are both meaningless. Decoders that swallow
@@ -434,8 +423,17 @@ function decode(context, codecConfig, imageFrame, imageInfo, options = {}) {
     processInfo,
   };
   } finally {
-    // cleanup allocated memory
-    decoderInstance.delete();
+    // Cleanup runs on the throw paths too, so a failed decode cannot leak a
+    // single-use instance — that is what this finally is for.
+    //
+    // Except when reusing: the whole point is that the instance survives to
+    // the next call, and release() is what frees it. Deleting here would hand
+    // the next decode a dead handle. openjphjs' decoder-reuse test covers the
+    // consequence that matters: retained buffers must not make successive
+    // decodes progressively slower.
+    if (!reuseDecoder) {
+      decoderInstance.delete();
+    }
   }
 }
 

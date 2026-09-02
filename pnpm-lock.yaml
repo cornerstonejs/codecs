@@ -67,6 +67,9 @@ importers:
       '@cornerstonejs/codec-charls':
         specifier: ^1.2.6
         version: link:../charls
+      '@cornerstonejs/codec-libjpeg-turbo-12bit':
+        specifier: ^0.4.4
+        version: link:../libjpeg-turbo-12bit
       '@cornerstonejs/codec-libjpeg-turbo-8bit':
         specifier: ^1.2.5
         version: link:../libjpeg-turbo-8bit
