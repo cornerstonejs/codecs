@@ -1,3 +1,12 @@
-build/
-node_modules/
-# dist/ is intentionally NOT ignored — CI commits build artifacts here
+build/*
+build-native/*
+dist/*
+!build/.gitpreserve
+!build-native/.gitpreserve
+!dist/.gitpreserve
+
+# TEST
+test/fixtures/MG1.JLS
+test/fixtures/artificial*
+OpenJPH
+node_modules/*
