@@ -1,5 +1,7 @@
 # codecs
 
+[![CodSpeed](https://img.shields.io/endpoint?url=https://codspeed.io/badge.json)](https://codspeed.io/cornerstonejs/codecs?utm_source=badge)
+
 ## Packages
 
 This repository is maintained as a monorepo. This means that this repository, instead of containing a single project, contains many projects. If you explore our project structure, you'll see the following:
@@ -11,7 +13,7 @@ This repository is maintained as a monorepo. This means that this repository, in
 │   └── openjpegjs          #
 │
 ├── ...                     # misc. shared configuration
-├── lerna.json              # MonoRepo (Lerna) settings
+├── pnpm-workspace.yaml     # MonoRepo (pnpm workspace) settings
 ├── package.json            # Shared devDependencies and commands
 └── README.md               # This file
 ```
@@ -68,30 +70,65 @@ Transfer Syntax is the language used in DICOM to describe the DICOM file format 
 
 
 
+### Building the wasm codecs
+
+The five wasm codecs (`charls`, `libjpeg-turbo-8bit`, `libjpeg-turbo-12bit`, `openjpeg`, `openjphjs`) need emscripten and cmake 3.17. You do not need to *work* inside a container to get them — `docker:build` mounts the repo into the same toolchain image CI uses and runs the package's `build.sh` there, writing `build/` and `dist/` back onto the host:
+
+```bash
+pnpm docker:build                     # all five
+pnpm docker:build charls openjpeg     # just these
+pnpm --filter @cornerstonejs/codec-openjph docker:build
+```
+
+Initialise a codec's submodule first (`git submodule update --init --recursive packages/<pkg>/extern`); the script checks and tells you if it is missing. On Windows the repo's drive must be shared with Docker Desktop.
+
+The remaining packages (`big-endian`, `little-endian`, `dicom-codec`) are plain JS — build those natively with `pnpm run build`. `.devcontainer/` still works if you prefer it, but note it pins an older emsdk than CI; [tools/docker/Dockerfile](tools/docker/Dockerfile) is the one that matches.
+
 ### CI
 
-We are leveraging `lerna` to version and publish packages. Lerna adds tooling on top of `yarn workspaces` to enable monorepo functionality. Our lerna configuration/usage is confined to:
+The workspace is a [pnpm workspace][pnpm-workspaces]; `pnpm -r run <cmd>` and `pnpm --filter <pkg> run <cmd>` drive every task. Install with `pnpm install` (Corepack picks the pinned pnpm version — and verifies its hash — from `package.json`'s `packageManager` field).
 
-- `package.json`
-- `lerna.json`
-- `.circleci/config.yml`
+`pnpm-workspace.yaml` sets `frozenLockfile: true`, so `pnpm install` reproduces the committed lockfile and fails if a manifest has drifted from it, locally exactly as in CI. Changing dependencies is an explicit act: `pnpm add`, `pnpm update`, or `pnpm install --no-frozen-lockfile`, and the resulting `pnpm-lock.yaml` belongs in the commit.
 
-Pull requests attempt to build and test packages that have been modified (when compared against the `main` branch). "Semantic commit" messages, and the files included in the commit, help `lerna` determine how package versions should be updated and what to include in changelogs. Example commit messages include:
+[.github/workflows/pr-checks.yml](.github/workflows/pr-checks.yml) decides what a pull request runs by diffing against `main`. A docs-only change skips everything; any package change builds the **full** set of packages (dicom-codec's integration tests decode through every sibling's `dist`, so a partial build would just skip suites) and then runs the whole vitest workspace as a single command. Only the benchmarks are narrowed to the packages that actually changed. Merges to `main` version, tag and publish through [.github/workflows/release.yml](.github/workflows/release.yml) — see [tools/release/README.md](tools/release/README.md) for how that works and what the one-time setup was.
+
+"Semantic commit" messages, and the files included in the commit, determine how package versions are updated and what goes into the changelogs. Example commit messages include:
 
 - `fix(charls-decode): should not break when no config option is provided`
 - `feat(encode): add encode API method`
-- `feat(encode): friendlier API method BREAKING_CHANGE`
+- `feat(encode)!: friendlier API method`
 
-You can read more about the specific lerna features we're using here:
+Preview what the next release would publish at any time:
 
-- `lerna run <cmd>`: Used in `package.json`
-- `lerna version`: Used in `.circleci/config.yml`
-- `lerna publish`: Used in `.circleci/config.yml`
-- ["Lerna filter options"][lerna-filter-options]: Used in `package.json` (--since main)
+```bash
+pnpm release:plan
+```
 
-You can read more about semantic commit messages here:
+### Benchmarking
 
-- Semantic commits
+Per-PR performance regression detection runs on CodSpeed via
+[`.github/workflows/pr-checks.yml`](.github/workflows/pr-checks.yml)
+(`codspeed-bench` job). Bench sources live under
+`packages/*/bench/*.bench.js` and are driven by `vitest bench`.
+
+We run CodSpeed in `mode: simulation` (Cachegrind, not wall-clock), so
+the numbers on the dashboard are **modeled instruction time on a
+reference CPU** — deterministic and ideal for catching regressions, but
+not honest wall-clock that a user's browser would see. JS-heavy loops
+inflate 30–100× vs production V8 (no JIT under Cachegrind); wasm decode
+kernels inflate ~5–15×.
+
+Each wasm codec package has three kinds of benches:
+
+- `instantiate+destroy X` — pure constructor/destructor lifecycle cost
+- `decode X — cold` — first decode call on a fresh decoder instance
+- `decode X — warm` — Nth decode call on a decoder pre-warmed with 5
+  untimed iterations at module load (mirrors cornerstone3D's
+  `local.decoder` caching pattern)
+
+See [`BENCHMARKING.md`](BENCHMARKING.md) for the full measurement model,
+why simulation was chosen over walltime, how to read each bench type,
+what the CodSpeed warnings mean, and how to add new benches.
 
 ### Codec Package Anatomy
 
@@ -102,4 +139,4 @@ You can read more about semantic commit messages here:
 -->
 
 
-[lerna-filter-options]: https://github.com/lerna/lerna/tree/main/core/filter-options
+[pnpm-workspaces]: https://pnpm.io/workspaces

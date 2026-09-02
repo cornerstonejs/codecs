@@ -37,9 +37,16 @@ RUN apt-get update \
     && apt-get clean -y \
     && rm -rf /var/lib/apt/lists/*
 
-RUN curl -fsSL https://deb.nodesource.com/setup_16.x | bash -
+# node 24 to match CI, and to satisfy the root package.json engines.node
+# floor (>=24) — pnpm warns "Unsupported engine" on anything below it. Only
+# the node major is shared with CI: the emsdk pin above is deliberately older
+# than the one tools/docker/Dockerfile and the build job use, so this image is
+# for editing and running the JS tooling, not for reproducing a CI dist.
+RUN curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
 RUN apt-get install -y nodejs
-RUN npm install --global yarn
+# Corepack reads the pinned pnpm version from the repo's package.json
+# "packageManager" field on first use, so there is nothing to pin here.
+RUN corepack enable pnpm
 
 # Switch back to dialog for any ad-hoc use of apt-get
 ENV DEBIAN_FRONTEND=dialog

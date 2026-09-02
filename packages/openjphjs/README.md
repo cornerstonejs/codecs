@@ -1,6 +1,6 @@
 # openjphjs - HTJ2K support
 
-JS/WebAssembly build of [OpenJPH](https://github.com/aous72/OpenJPH)
+JavaScript/WebAssembly build of [OpenJPH](https://github.com/aous72/OpenJPH).
 
 ## Try It Out!
 
@@ -32,3 +32,12 @@ To update to latest version of OpenJPH
 ```
 > git submodule update --remote --merge
 ```
+
+## Testing
+
+```bash
+pnpm run build   # compile wasm into dist/
+pnpm run test    # run vitest against dist/
+```
+
+Tests skip cleanly when `dist/` is absent.

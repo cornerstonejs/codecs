@@ -1,0 +1,18 @@
+# actionlint configuration.
+#
+# actionlint checks `runs-on:` against the labels GitHub provides, so it reports
+# every label it does not ship with as unknown. Those false positives show up in
+# PR review tooling that runs actionlint (e.g. CodeRabbit), so the labels this
+# repo uses are declared here. Keep in sync with `runs-on:` in
+# .github/workflows/.
+
+# Labels on our own self-hosted bench runner. See docs/ci/self-hosted-runner.md.
+#
+# Deliberately NOT listed: codspeed-macro (the walltime job in pr-checks.yml).
+# actionlint reports it as an unknown label too, but it is a CodSpeed-managed
+# machine supplied through their GitHub app — not self-hosted — so it does not
+# belong in this list, and that one diagnostic is left to stand.
+self-hosted-runner:
+  labels:
+    - codspeed-bench
+    - nashua

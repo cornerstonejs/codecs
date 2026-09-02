@@ -1,0 +1,441 @@
+name: Bench
+
+# CodSpeed simulation bench (the blocking perf regression gate), split out of
+# pr-checks.yml so the workflow that talks to the self-hosted bench runner is
+# small and changes rarely. It reuses the dist artifacts built by the
+# "PR checks" run for the same commit (the `wait` step below), so nothing is
+# compiled twice.
+#
+# Two jobs:
+#   gate  — hosted VM, metadata only (never checks out or executes PR code).
+#           Decides whether the bench should run and what to bench, then waits
+#           for the PR checks build artifacts.
+#   codspeed-bench — the bench itself on the self-hosted box (see the comments
+#           on the job).
+#
+# PRs that modify CI-defining files (workflows, tools/ci/, root manifests) are
+# only benched pre-merge when they come from a branch in THIS repo; from a fork
+# the bench is deferred until the change is reviewed and merged, and the merge
+# push benches it on main. Package-only PRs are always benched, fork or not.
+
+on:
+  pull_request:
+  push:
+    # main only — each merge seeds a fresh CodSpeed baseline. Same reasoning
+    # as pr-checks.yml (see the comment there).
+    branches:
+      - main
+  # Lets CodSpeed trigger a backtest run from the dashboard. The artifact
+  # wait below resolves the dist artifacts from the latest PR checks run for
+  # the same commit (every main commit has one, from its push run).
+  workflow_dispatch:
+
+# Cancel in-flight benches when a new push lands on the same PR / branch.
+# Killing a bench mid-run is safe for the shared-box mutex: flock releases
+# with the process (see tools/ci/with-nashua-lock.sh).
+concurrency:
+  group: bench-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    # Skip the release workflow's own version commit. Benching it would measure
+    # its parent's wasm a second time and seed a duplicate baseline, and there
+    # are no dist artifacts to wait for anyway: pr-checks skips that commit too.
+    #
+    # Subject-anchored rather than the `[skip ci]` this replaces -- GitHub's
+    # keyword scan reads the whole commit message, body included. The author
+    # clause keeps a human commit that happens to open with the same subject
+    # from skipping the bench. See release.yml's build job for what that cost.
+    if: >-
+      github.event_name != 'push'
+      || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
+    runs-on: ubuntu-latest
+    # Generous because this job WAITS for the PR checks wasm builds to finish
+    # (poll deadline 90 min below) before handing over to the bench.
+    timeout-minutes: 100
+    permissions:
+      contents: read
+      actions: read        # poll the PR checks run / jobs
+      pull-requests: read  # list the PR's changed files
+    outputs:
+      proceed: ${{ steps.decide.outputs.proceed }}
+      bench: ${{ steps.decide.outputs.bench }}
+      ready: ${{ steps.wait.outputs.ready }}
+      run_id: ${{ steps.wait.outputs.run_id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - id: decide
+        name: Decide bench scope
+        # Metadata only, deliberately no checkout. Computes the bench scope
+        # from the PR's changed-file list (API) the same way detect-changes
+        # in pr-checks.yml does from the git diff — keep the two path lists
+        # in sync. Baseline runs (push to main / dispatch) bench everything.
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          # Whether the PR branch lives in this repo. If it does, someone with
+          # write access pushed it — a fact, unlike anything derivable from the
+          # author's identity. Do NOT substitute
+          # `github.event.pull_request.author_association`: it does not track
+          # repo access in either direction — its MEMBER value only means
+          # "member of the owning org" (no write implied), and a repo admin here
+          # reports CONTRIBUTOR. There is no reliable alternative from inside a
+          # fork PR's run either: the authoritative collaborator-permission API
+          # needs a token with push access, and fork PRs get a read-only one.
+          IS_SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs little-endian big-endian dicom-codec)
+          ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
+
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo "Baseline run ($EVENT_NAME): benching all packages"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          files=$(gh api --paginate "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER/files?per_page=100" --jq '.[].filename')
+          count=$(wc -l <<<"$files")
+
+          # CI-defining paths: the workflows themselves, the scripts they exec
+          # on the bench runner, and the root manifests that steer install/
+          # bench orchestration there.
+          ci_touched=false
+          # Toolchain paths force a full bench sweep — same list as
+          # TOOLCHAIN_PATHS in pr-checks.yml's detect-changes job. The
+          # duplication is deliberate: this workflow is what the self-hosted
+          # nashua runner has to trust, so it stays short and rarely changes
+          # rather than being folded back into pr-checks.yml. It does mean both
+          # lists must be edited together — a path here but not there skips the
+          # full pipeline, and there but not here skips the bench sweep.
+          toolchain_touched=false
+          changed=()
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in
+              .github/*|tools/ci/*|tools/csp/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json)
+                ci_touched=true ;;
+            esac
+            case "$f" in
+              .github/workflows/*|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|vitest.workspace.mjs|babel.config.json|tools/ci/*|tools/csp/*|tools/dist-size/*|tools/browser-smoke/*|tools/fixture-verification/*|tools/release/*)
+                toolchain_touched=true ;;
+              packages/*)
+                pkg=${f#packages/}; pkg=${pkg%%/*}
+                for known in "${ALL[@]}"; do
+                  [ "$pkg" = "$known" ] && changed+=("$pkg") && break
+                done ;;
+            esac
+          done <<<"$files"
+          # The list endpoint caps at 3000 files; past that we cannot see
+          # every path, so treat the PR as CI-touching (full-sweep / defer).
+          if [ "$count" -ge 3000 ]; then ci_touched=true; toolchain_touched=true; fi
+
+          if [ "$ci_touched" = true ] && [ "$IS_SAME_REPO" != "true" ]; then
+            echo "::notice::Bench deferred: this PR changes CI-defining files and comes from a fork. It will be benched on main once the change is reviewed and merged."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "bench=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$toolchain_touched" = true ]; then
+            echo "Toolchain change: benching all packages"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+          elif [ ${#changed[@]} -gt 0 ]; then
+            bench_json=$(printf '%s\n' "${changed[@]}" | sort -u | jq -R . | jq -s -c .)
+            echo "Benching changed packages: $bench_json"
+            echo "proceed=true" >> "$GITHUB_OUTPUT"
+            echo "bench=$bench_json" >> "$GITHUB_OUTPUT"
+          else
+            echo "No package changes to bench."
+            echo "proceed=false" >> "$GITHUB_OUTPUT"
+            echo "bench=[]" >> "$GITHUB_OUTPUT"
+          fi
+      - id: wait
+        name: Wait for PR checks build artifacts
+        if: steps.decide.outputs.proceed == 'true'
+        # The dists are built by the "PR checks" run for this same commit
+        # (bench.yml cannot `needs:` across workflow files). Poll that run
+        # until every build job has finished, then hand its run id to the
+        # bench job for the cross-run artifact download.
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          deadline=$((SECONDS + 5400))   # 90 min: wasm builds are the slow part
+          run_id=""
+          ready=false
+          while :; do
+            if [ -z "$run_id" ]; then
+              run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/pr-checks.yml/runs?head_sha=$HEAD_SHA&per_page=1" --jq '.workflow_runs[0].id // empty')
+              [ -n "$run_id" ] && echo "PR checks run: $run_id"
+            fi
+            if [ -n "$run_id" ]; then
+              jobs=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/jobs?per_page=100" --jq '[.jobs[] | select(.name | startswith("build (")) | {status, conclusion}]' | jq -s -c 'add // []')
+              total=$(jq 'length' <<<"$jobs")
+              completed=$(jq '[.[] | select(.status == "completed")] | length' <<<"$jobs")
+              failed=$(jq '[.[] | select(.status == "completed" and .conclusion != "success")] | length' <<<"$jobs")
+              if [ "$total" -gt 0 ] && [ "$completed" -eq "$total" ]; then
+                if [ "$failed" -gt 0 ]; then
+                  echo "::notice::Bench skipped: $failed build job(s) in the PR checks run did not succeed."
+                else
+                  ready=true
+                fi
+                break
+              fi
+              # A completed run with no build jobs means detect-changes found
+              # nothing to build (e.g. docs-only) — nothing to bench either.
+              status=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status')
+              if [ "$status" = "completed" ] && [ "$total" -eq 0 ]; then
+                echo "::notice::Bench skipped: the PR checks run built nothing."
+                break
+              fi
+              echo "Waiting on build jobs: $completed/$total completed"
+            else
+              echo "Waiting for the PR checks run to appear for $HEAD_SHA"
+            fi
+            if [ $SECONDS -ge $deadline ]; then
+              echo "::error::Timed out waiting for PR checks build artifacts"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+
+  codspeed-bench:
+    needs: gate
+    if: needs.gate.outputs.proceed == 'true' && needs.gate.outputs.ready == 'true'
+    # Runs on a self-hosted runner dedicated to this repo, on fixed hardware
+    # (label `codspeed-bench`). GitHub's shared runners randomly assign different
+    # physical CPUs (Intel Xeon 8370C vs AMD EPYC 7763); simulation-mode
+    # instruction counts are derived from the runner CPU's cache model, so a
+    # baseline (main) and a PR landing on different CPUs produce spurious
+    # "Different runtime environments detected" deltas. One fixed box keeps
+    # every run on identical hardware, so Simulation is stable run-to-run.
+    # That box ("nashua") is SHARED with the cornerstone3D and OHIF Playwright
+    # runners — three runner processes on one machine, one per repo, each free
+    # to start a job whenever its repo has work. GitHub's `concurrency:` cannot
+    # coordinate across repos, so a filesystem flock mutex
+    # (tools/ci/with-nashua-lock.sh) keeps only one heavy job running at a time;
+    # it wraps the bench command in the "Run CodSpeed benchmarks" step below.
+    # See docs/ci/self-hosted-runner.md for what the box must provide: CodSpeed's
+    # own patched valgrind (NOT the distro valgrind package), libc6-dbg, flock and
+    # a fixed CPU model — node and pnpm are provisioned per-job below. That doc
+    # also covers how the shared mutex works and the cutover steps.
+    # IMPORTANT: moving the bench between workflow files (or runners) is a
+    # baseline re-seed event: one main run must complete here before PR
+    # comparisons are meaningful again.
+    runs-on: [self-hosted, codspeed-bench, nashua]
+    permissions:
+      contents: read
+      actions: read         # cross-run artifact download from the PR checks run
+      pull-requests: write  # CodSpeed action posts a sticky PR comment
+      id-token: write       # OIDC token used by CodSpeedHQ/action for auth
+    # Bounded because the bench command can queue behind a cornerstone3D or
+    # OHIF Playwright run on the shared box: up to NASHUA_LOCK_WAIT (90 min) of
+    # waiting plus the valgrind fan-out itself. Well under GitHub's 360 min
+    # default, so a wedged lock surfaces in hours rather than most of a day.
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # This runner's workspace persists between jobs, so the default
+          # behaviour of writing the job token into .git/config would leave it on
+          # disk after the job ends. Nothing here needs an authenticated git
+          # remote (CodSpeed reads the commit from the local repo).
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          # EXACT version, not the '24' range every other job uses. For a range,
+          # setup-node takes any satisfying version already in the runner's tool
+          # cache without checking the network — and on a self-hosted box that
+          # cache persists, so the bench would silently freeze on whichever 24.x
+          # landed there first and jump whenever the box is rebuilt. A V8 patch
+          # bump shifts instruction counts the same way a different CPU does.
+          # 24.20.0 is what the current main baseline was measured on; changing
+          # it is a deliberate re-seed event (see docs/ci/self-hosted-runner.md).
+          node-version: '24.20.0'
+      # nashua has no package manager beyond npm: setup-node ships node + npm
+      # only, and GitHub's hosted images are not what runs here. Corepack is
+      # still bundled with node 24 and fetches over Node's own https, so it works
+      # where `npm i -g <pm>` is unreliable on this box — the runner's bundled
+      # node has a corrupted npm ("Cannot find module '../lib/cli.js'"), which
+      # is why OHIF's workflow also went the Corepack route here. `corepack
+      # prepare --activate` with no argument installs exactly the version in
+      # the root package.json "packageManager" field, so the bench box can
+      # never drift from the build jobs. Activated AFTER setup-node so the shim
+      # lands in that node's bin dir.
+      # NOTE: node 25 unbundles corepack — revisit this step before any such bump.
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+          # Cross-run download: the artifacts live on the PR checks run the
+          # gate waited for, not on this run.
+          run-id: ${{ needs.gate.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # pnpm-workspace.yaml is in the key because the lockfile does not
+          # record nodeLinker/allowBuilds/linkWorkspacePackages — without it a
+          # layout change hits the cache and the install step is skipped.
+          # Keep in step with the cache keys in pr-checks.yml — including the
+          # node major in the prefix, which is the only part of this key a
+          # node-only bump changes (see the build job's cache step there).
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Log CPU info
+        # GitHub standard runners are randomly assigned different physical
+        # CPUs (e.g. Intel Xeon 8370C vs AMD EPYC 7763) with different cache
+        # sizes and ISA extensions; glibc dispatches different code paths on
+        # each, so even simulation-mode instruction counts shift between
+        # them. CodSpeed flags such comparisons as "different runtime
+        # environments". Logging the CPU makes those warnings diagnosable
+        # at a glance (recommendation from
+        # https://codspeed.io/blog/unrelated-benchmark-regression).
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        # Translate the changed-package directory names into pnpm --filter
+        # flags so PRs only bench what they touched. Baseline runs (main /
+        # workflow_dispatch) get the full list from the gate, which makes
+        # this a no-op filter there.
+        id: scope
+        env:
+          BENCH: ${{ needs.gate.outputs.bench }}
+        run: |
+          set -euo pipefail
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            # Untrusted: fork PRs control this value (it comes from the PR's own
+            # packages/<pkg>/package.json). Validate against npm's name grammar
+            # before it reaches GITHUB_OUTPUT or any command line. Must be a
+            # whole-string check: keep it in node rather than a line-based tool.
+            name=$(node -e '
+              const pkg = process.argv[1];
+              const { name } = require(`./packages/${pkg}/package.json`);
+              if (typeof name !== "string" ||
+                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
+                console.error(`::error::Rejected package name for ${pkg}`);
+                process.exit(1);
+              }
+              process.stdout.write(name);
+            ' "$pkg")
+            flags="$flags --filter $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+      - name: Run CodSpeed benchmarks
+        # CodSpeedHQ/action@v4 sets up CPU simulation (Cachegrind-based
+        # instruction counting on a modeled CPU + cache hierarchy), runs
+        # the inner command under valgrind, uploads to codspeed.io, and
+        # posts/updates a sticky PR comment with the per-bench deltas.
+        # Authenticates via GitHub OIDC (id-token: write above) so no
+        # CODSPEED_TOKEN secret is needed.
+        #
+        # mode: simulation — the blocking regression gate:
+        #   - deterministic: <1% run-to-run drift (verified across 3
+        #     runs of identical source)
+        #   - no metered CI minutes (self-hosted runners are not billed;
+        #     they cost shared time on the nashua box instead, which is
+        #     what the flock mutex below rations)
+        #   - regression-detection signal is strong even though the
+        #     headline numbers are MODELED instruction-time, not real
+        #     wall-clock (JS-loop benches inflate 30-100x vs production
+        #     V8 due to no JIT under Cachegrind; wasm decode kernels
+        #     inflate ~5-15x; pure native ~1x)
+        # The codspeed-walltime job in pr-checks.yml complements this with
+        # real wall-clock measurements on CodSpeed macro runners.
+        # See BENCHMARKING.md at the repo root for the full measurement
+        # model, how to read the cold/warm bench split, and what the
+        # CodSpeed dashboard warnings mean.
+        # Pinned to the commit SHA of v4.18.2 (not the floating @v4, nor the
+        # tag — tags can be moved) so the instrumentation environment stays
+        # byte-identical between the main baseline and PR runs. Bump by
+        # resolving the new tag: gh api repos/CodSpeedHQ/action/git/ref/tags/<tag>
+        # (dereference the annotated tag to its commit).
+        # The inner command is wrapped in tools/ci/with-nashua-lock.sh, the
+        # cross-repo flock mutex for this shared box (see that script's header).
+        # Taking the lock INSIDE the action's `run` — rather than in an earlier
+        # step — is deliberate on both counts: flock lives and dies with a
+        # process, so it cannot be held across separate workflow steps, and this
+        # way only the CPU-saturating bench fan-out is serialized, leaving the
+        # action's own setup and result upload free to overlap with a Playwright
+        # run on one of the other two repos.
+        # Note: vitest 3's hard-coded 60s worker-RPC timer counts real
+        # seconds while valgrind slows the process ~60x, so large suites
+        # structurally trip "Timeout calling onTaskUpdate" AFTER their
+        # benches complete. The vitest configs set
+        # dangerouslyIgnoreUnhandledErrors when CODSPEED_RUNNER_MODE is
+        # "simulation" to keep that exit-code noise from failing the job
+        # (config-level rather than a `--`-forwarded CLI flag, which package
+        # managers have historically mangled).
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
+        env:
+          # Keep this in env, NOT `${{ }}` in the run: below — an env value is
+          # expanded by the shell after the command line is parsed, so it stays
+          # data. Unquoted below on purpose: the flags must word-split into
+          # repeated `--filter <name>` pairs.
+          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
+        with:
+          mode: simulation
+          # --workspace-concurrency=1, matching codspeed-walltime in
+          # pr-checks.yml. NOT merely dropping --parallel: pnpm's default
+          # workspace concurrency is 4, so removing the flag alone would still
+          # run four packages' bench processes against each other.
+          #
+          # This job used to run all eight in parallel, on the premise -- stated
+          # in codspeed-walltime's own comment -- that instruction counting is
+          # immune to contention. That premise does not survive #76. The charls
+          # bench `decode CT-512x512-near-lossless.JLS (.81 near-lossless) —
+          # warm` was reported as a 19.8ms -> 37.9ms regression on a commit
+          # whose entire diff was one vitest file, with charls' source and its
+          # built wasm byte-identical to main's and its real wall-clock bench
+          # duration unchanged (26.7s vs 27.5s). The same -47.76% appeared again
+          # on the next commit, so it was reproducible rather than flake. Per
+          # package completion times from that run put charls at 27s in, sharing
+          # the box with six or seven siblings, while dicom-codec then ran alone
+          # for ~5m54s -- i.e. the packages are measured under wildly different
+          # neighbours, and #76 changed what those neighbours do (its openjph
+          # benches got 3-7.4x faster).
+          #
+          # Whatever the mechanism inside Cachegrind, a gate that measures eight
+          # packages simultaneously cannot attribute a per-package delta, and it
+          # spent #76 blaming an untouched package. Serial costs ~3 minutes:
+          # dicom-codec alone is ~6m of the 6m22s bench step, and the job
+          # timeout is 100 minutes.
+          #
+          # Landing this resets the comparison basis for every bench measured
+          # under contention, so the first main run after merge is the new
+          # baseline -- expect one round of large apparent deltas there.
+          run: bash tools/ci/with-nashua-lock.sh pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench

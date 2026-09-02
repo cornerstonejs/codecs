@@ -1,0 +1,575 @@
+name: PR checks
+
+# Pipeline: builds run as a per-package parallel matrix (wasm compiles are
+# the slow part), then a single test job runs the whole vitest workspace
+# against the built dists. The CodSpeed simulation bench lives in bench.yml,
+# which waits for THIS workflow's dist artifacts and benches the packages
+# the PR touched; the advisory walltime bench stays here (codspeed-walltime
+# below).
+#
+# Toolchain bumps (emsdk image tag below, root package.json/pnpm-lock.yaml,
+# this workflow itself) force the FULL pipeline including a full bench sweep.
+# Expect such a PR to also need:
+#   1. tools/dist-size/baseline.json regenerated from that PR's own CI
+#      artifacts: gh run download <run-id> --pattern 'dist-*' -d tmp/ then
+#      node tools/dist-size/check.js --update --artifacts tmp/ (commit diff)
+#   2. possibly regenerated lossy decode goldens (openjpeg .91, charls .81,
+#      openjphjs corpus SHAs) IF the lossless tests still pass — see
+#      tools/fixture-verification/README.md before touching any golden.
+#
+# CodSpeed's first-class GHA integration replaces the manual codspeed-bench
+# job from CircleCI: `CodSpeedHQ/action` installs valgrind, sets up
+# instrumentation, and uploads results in one step.
+
+on:
+  pull_request:
+  push:
+    # Run pushes on main only: each merge seeds a fresh CodSpeed baseline
+    # (without a main run, PR comments stay stuck on "Congrats! CodSpeed
+    # is installed" with no before/after deltas). PR branches are already
+    # covered by the pull_request event — running push on them too meant
+    # every commit was built/tested/benched TWICE and uploaded two
+    # CodSpeed measurements per commit, each on a randomly allocated
+    # runner CPU (GitHub mixes Intel 8370C and AMD EPYC 7763 hardware),
+    # which is a prime source of "Different runtime environments detected"
+    # warnings on comparisons.
+    branches:
+      - main
+  # workflow_dispatch lets CodSpeed trigger a backtest run from the
+  # dashboard (to seed initial perf data after the repo is connected).
+  workflow_dispatch:
+
+# Cancel in-flight runs when a new push lands on the same PR / branch.
+concurrency:
+  group: pr-checks-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+# Job-level permissions where a job needs more (codspeed-walltime).
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    # Skip the release workflow's own version commit -- it changes only
+    # package.json versions, CHANGELOGs and the lockfile, and was built and
+    # tested as its parent. Every job below needs this one, so skipping it
+    # skips the run.
+    #
+    # Subject-anchored rather than the `[skip ci]` this replaces: GitHub's
+    # keyword scan reads the whole commit message, so a squash merge whose body
+    # merely QUOTED `[skip ci]` disabled every workflow on main (PR #89, which
+    # is how a release fix shipped no release). The author clause keeps a human
+    # commit that happens to open with the same subject from skipping CI. See
+    # release.yml's build job for the full reasoning.
+    if: >-
+      github.event_name != 'push'
+      || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
+    # Decide what this run needs to do. Two outputs:
+    #   packages — what to build (and therefore what the test job can rely
+    #     on). dicom-codec's integration tests decode through EVERY sibling
+    #     codec's dist, and the in-test CI guards fail loudly when a dist is
+    #     missing (no more silently-skipped suites), so any package change
+    #     builds the full set. Docs-only changes still skip everything.
+    #   bench — only the packages that actually changed. CodSpeed benches
+    #     run under valgrind (the slowest thing in CI), and a PR only needs
+    #     deltas for what it touched; main re-benches everything to keep
+    #     full baselines. Consumed by codspeed-walltime below; the
+    #     simulation bench in bench.yml computes the same scope from the
+    #     PR's changed-file list — keep TOOLCHAIN_PATHS below in sync with
+    #     the path lists in bench.yml's gate job.
+    runs-on: ubuntu-latest
+    outputs:
+      packages: ${{ steps.list.outputs.packages }}
+      bench: ${{ steps.list.outputs.bench }}
+      any: ${{ steps.list.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: list
+        name: List changed packages
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          set -e
+          ALL=(charls libjpeg-turbo-8bit libjpeg-turbo-12bit libjxl openjpeg openjphjs little-endian big-endian dicom-codec)
+          ALL_JSON=$(printf '%s\n' "${ALL[@]}" | jq -R . | jq -s -c .)
+
+          # Baseline runs: on a manual dispatch or any commit landing on
+          # main, build/test/bench every package. The "diff vs main" trick
+          # only makes sense on PR/feature branches — when HEAD === main,
+          # `git diff origin/main..HEAD` is empty and would skip CodSpeed
+          # entirely, leaving the dashboard with no baseline data.
+          if [ "$EVENT_NAME" = "workflow_dispatch" ] || [ "$REF" = "refs/heads/main" ]; then
+            echo "Baseline run ($EVENT_NAME on $REF): forcing all packages"
+            echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          git fetch --no-tags --depth=50 origin main || true
+          BASE=$(git merge-base origin/main HEAD || echo "origin/main")
+
+          # Toolchain files affect how EVERY package is built, tested or
+          # measured. A change here (e.g. an emsdk bump in this workflow, or
+          # a vitest upgrade in the root lockfile) must run the full
+          # pipeline with a full bench sweep — previously such PRs matched
+          # no package path and skipped CI entirely. tools/ entries count
+          # too: browser-smoke drives the browser-smoke job, the test suites
+          # import reference derivations from tools/fixture-verification/gen/,
+          # and tools/ci/ holds the flock wrapper the bench command actually
+          # execs — a change to any of them must not land with CI skipped.
+          # Note this forces a FULL bench sweep, which on the shared nashua box
+          # holds the mutex for the duration; that is the same trade already
+          # made for .github/workflows/ changes, and both are rare.
+          TOOLCHAIN_PATHS=(
+            ".github/workflows/"
+            "package.json"
+            "pnpm-lock.yaml"
+            "pnpm-workspace.yaml"
+            "vitest.workspace.mjs"
+            "babel.config.json"
+            "tools/ci/"
+            "tools/csp/"
+            "tools/dist-size/"
+            "tools/browser-smoke/"
+            "tools/fixture-verification/"
+            # tools/release/ decides what gets versioned and published. Without
+            # it here, a PR touching only the release scripts matched no path,
+            # got any=false and skipped every job — so their first execution
+            # would be a live release, partway through mutating manifests.
+            "tools/release/"
+          )
+          for p in "${TOOLCHAIN_PATHS[@]}"; do
+            if ! git diff --quiet "$BASE"..HEAD -- "$p"; then
+              echo "Toolchain change detected in $p: forcing all packages (build/test/bench)"
+              echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "bench=$ALL_JSON" >> "$GITHUB_OUTPUT"
+              echo "any=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          changed=()
+          for pkg in "${ALL[@]}"; do
+            if ! git diff --quiet "$BASE"..HEAD -- "packages/$pkg/"; then
+              changed+=("$pkg")
+            fi
+          done
+          if [ ${#changed[@]} -eq 0 ]; then
+            echo "No packages changed since $BASE."
+            echo 'packages=[]' >> "$GITHUB_OUTPUT"
+            echo 'bench=[]' >> "$GITHUB_OUTPUT"
+            echo "any=false" >> "$GITHUB_OUTPUT"
+          else
+            bench_json=$(printf '%s\n' "${changed[@]}" | jq -R . | jq -s -c .)
+            echo "Changed: $bench_json — building all packages, benching changed only"
+            echo "packages=$ALL_JSON" >> "$GITHUB_OUTPUT"
+            echo "bench=$bench_json" >> "$GITHUB_OUTPUT"
+            echo "any=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.any == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJson(needs.detect-changes.outputs.packages) }}
+    runs-on: ubuntu-latest
+    container:
+      image: emscripten/emsdk:3.1.74
+    steps:
+      - name: Install cmake + C++ build deps
+        # Digest-checked rather than piped straight into tar; same pin as
+        # release.yml's build job. From
+        # https://cmake.org/files/v3.17/cmake-3.17.4-SHA-256.txt.
+        env:
+          CMAKE_TARBALL: cmake-3.17.4-Linux-x86_64.tar.gz
+          CMAKE_SHA256: 126cc8356907913787d4ff35237ae1854c09b927a35dbe5270dd571ae224bdd3
+        # NO `set -euo pipefail` here. The emsdk image has no bash, so GitHub
+        # runs every step in this container job as `sh -e {0}` and dash rejects
+        # `-o pipefail` outright ("Illegal option -o pipefail", exit 2). It is
+        # not needed either: `-e` is already on, and the digest check below is
+        # the LAST command in its pipeline, so its failure is what the shell
+        # sees. Same applies to release.yml's build job.
+        run: |
+          apt-get update
+          apt-get -y install build-essential git
+          # /tmp, not the workspace: this step runs before actions/checkout.
+          wget -q -O "/tmp/${CMAKE_TARBALL}" "https://cmake.org/files/v3.17/${CMAKE_TARBALL}"
+          echo "${CMAKE_SHA256}  /tmp/${CMAKE_TARBALL}" | sha256sum -c -
+          tar --strip-components=1 -xzf "/tmp/${CMAKE_TARBALL}" -C /usr/local
+          rm -f "/tmp/${CMAKE_TARBALL}"
+          apt-get autoremove -y
+          apt-get clean -y
+          rm -rf /var/lib/apt/lists/*
+      - uses: actions/checkout@v4
+        # Shallow checkout: builds only need the working tree (full history
+        # is only required by detect-changes for the merge-base diff).
+      - uses: actions/setup-node@v4
+        # The emsdk image bundles node 20.18.0 — end of life since 2026-04-30,
+        # and it fails this repo's engines.node check (needs >=24) anyway. Put node
+        # 24 on PATH for pnpm/webpack; emscripten is unaffected — emcc invokes
+        # the node binary pinned in its own .emscripten config, not the one on
+        # PATH.
+        with:
+          node-version: '24'
+      - name: Provide pnpm via Corepack
+        # `corepack prepare --activate` with no argument installs exactly the
+        # version in the root package.json "packageManager" field, so CI and
+        # local dev never drift.
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Allow git to operate on the workspace
+        # The container runs as root but the workspace is owned by the
+        # checkout action's user, which makes git complain about
+        # `dubious ownership`. Mark it safe.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Init submodules for this package
+        run: |
+          if [ -d "packages/${{ matrix.package }}/extern" ]; then
+            git submodule update --init --recursive "packages/${{ matrix.package }}/extern"
+          else
+            echo "No extern/ submodule for ${{ matrix.package }}; skipping."
+          fi
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # The key covers EVERY input to `pnpm install`, not just the lockfile,
+          # because a hit skips the install step below — and with it the
+          # --frozen-lockfile check. Specifically:
+          #   - pnpm-workspace.yaml: the lockfile's settings block records only
+          #     autoInstallPeers and excludeLinksFromLockfile, so changing
+          #     nodeLinker, allowBuilds, frozenLockfile or linkWorkspacePackages
+          #     leaves the lockfile byte-identical while changing the layout
+          #     installed. Keying on the lockfile alone, the cache would hit and
+          #     CI would keep testing the previous node_modules tree.
+          #   - package.json + packages/*/package.json: a manifest edit that has
+          #     not been reflected in the lockfile must reach the install step so
+          #     --frozen-lockfile can reject it, rather than being masked by a
+          #     stale cache entry. The root manifest also carries the
+          #     packageManager pin, so a pnpm bump invalidates too.
+          # Keep the same hashFiles(...) inputs in all four pnpm-modules keys.
+          #
+          # This job's prefix is `build` rather than `node<major>` because it
+          # installs inside the emsdk container; the other three install on
+          # ubuntu-latest under setup-node and carry the node major in the key
+          # so a node bump forces a fresh install instead of restoring a tree
+          # built against the previous V8/ABI. BUMP THAT DISCRIMINATOR WITH THE
+          # node-version PINS — bench.yml's key hashes only the lockfile and
+          # workspace config, so nothing else in a node-only bump invalidates it.
+          key: pnpm-modules-build-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: cd "packages/${{ matrix.package }}" && pnpm run build:ci
+      - name: Ensure dist exists (no-op packages still need a placeholder)
+        run: mkdir -p "packages/${{ matrix.package }}/dist"
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ matrix.package }}
+          path: packages/${{ matrix.package }}/dist
+          if-no-files-found: ignore
+          retention-days: 7
+
+  test:
+    # One job for the whole vitest workspace: per-package test jobs spent far
+    # more on runner setup (checkout, node, artifact download, install) than on
+    # the few seconds of vitest itself, and dicom-codec's suite needs every
+    # sibling dist anyway. CI=true (set by GitHub) arms the in-test guards: a
+    # missing dist FAILS its suite instead of silently skipping.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history + tags so the release dry-run at the end of this job
+          # can walk back to each package's last `<name>@<version>` tag.
+          fetch-depth: 0
+          fetch-tags: true
+          # Do not leave GITHUB_TOKEN in .git/config. This job installs
+          # dependencies and runs the release scripts against PR code; none of
+          # that needs an authenticated remote, only local history and tags.
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        # actions/download-artifact lands each artifact in tmp/<name>/.
+        # Move each into its proper packages/<pkg>/dist location so vitest
+        # finds them, mirroring how CircleCI workspace persist worked.
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+          ls packages/*/dist 2>/dev/null | head
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: CSP-safe source
+        # The companion to the check each wasm build.sh runs on its own dist/:
+        # that one covers emscripten's output, this one covers the source we
+        # write. dicom-codec's `main` is src/index.js, so consumers bundle it
+        # directly and a strict CSP judges it the same way.
+        #
+        # Needs nothing from the build matrix — it is plain node over the
+        # working tree — but lives here rather than in its own job because it
+        # takes milliseconds and a job's worth of runner setup would dwarf it.
+        run: pnpm run csp:source
+      - name: Test
+        run: pnpm exec vitest run
+      - name: Release dry-run
+        # Exercises the release scripts on every PR. They are otherwise only
+        # ever executed by a live release — after the 8-job build matrix, and
+        # partway through mutating manifests, which is a poor place to discover
+        # a syntax error or a bad tag walk. Mutates nothing (--dry-run), and
+        # publish-order.mjs additionally re-checks the topological order and
+        # that every package shipping dist/ actually has one.
+        run: |
+          set -euo pipefail
+          node tools/release/version.mjs --dry-run
+          echo "Publish order:"
+          node tools/release/publish-order.mjs
+
+  dist-size:
+    # Binary-size regression gate: compares every shipped dist artifact
+    # (js/wasm/mem, raw and gzip) against the ground truth committed in
+    # tools/dist-size/baseline.json and fails if anything grows beyond
+    # max(1%, 1 KiB). Intentional size changes update the baseline in the
+    # same PR (node tools/dist-size/check.js --update) so growth is always
+    # a visible, reviewed diff.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        # check.js needs no dependencies (fs/path/zlib only), so this is purely
+        # to stop the gate running on whatever node the runner image happens to
+        # ship — which drifts, and has been below this repo's engines.node floor.
+        with:
+          node-version: '24'
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Check dist sizes against baseline
+        run: node tools/dist-size/check.js --artifacts tmp
+
+  browser-smoke:
+    # Decodes every build variant in headless Chromium and hash-compares
+    # against the RAW references — catches emscripten glue regressions that
+    # only manifest in browsers (wasm URL resolution, MIME/streaming
+    # compile, fetch loading), which is where emsdk bumps break first.
+    # Advisory while it beds in; promote to blocking once proven stable.
+    needs: [detect-changes, build]
+    if: needs.detect-changes.outputs.any == 'true'
+    continue-on-error: true
+    timeout-minutes: 15
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright chromium
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-chromium-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install chromium
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright-core install chromium
+      - name: Browser smoke decode
+        run: node tools/browser-smoke/run.js
+
+  codspeed-walltime:
+    needs: [detect-changes, build]
+    # Gated behind a repository variable: a `runs-on: codspeed-macro` job
+    # queues forever (up to 24h) when macro runners aren't provisioned for
+    # the org, and GitHub's job timeout only covers execution, not queue
+    # time. Enable macro runners for the org on app.codspeed.io first
+    # (the repo is public — also make sure the runner group allows public
+    # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
+    if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
+    # Advisory instrument: real wall-clock numbers (V8 JIT active, real
+    # cache/branch behavior) that complement the simulation gate (bench.yml) —
+    # simulation catches small algorithmic slips deterministically,
+    # walltime keeps the numbers honest on real hardware and covers the
+    # pure-JS packages where the no-JIT simulation model is furthest from
+    # production. Failures here must not block the PR while this beds in.
+    continue-on-error: true
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write  # CodSpeed action posts a sticky PR comment
+      id-token: write       # OIDC token used by CodSpeedHQ/action for auth
+    # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
+    # low-noise walltime measurement. Requires the CodSpeed GitHub app on
+    # an organization account. NOTE: ARM64 — anything cached must be
+    # arch-qualified (see the cache key below).
+    runs-on: codspeed-macro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned for the same reason as the simulation job above: V8 changes
+          # between patch releases move the numbers, and walltime is if anything
+          # more sensitive than instruction counts. Keep this in step with the
+          # codspeed-bench pin so the two instruments stay comparable.
+          node-version: '24.20.0'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # runner.arch matters: this job runs on ARM64 while every other
+          # job is x64; sharing a key would restore x64 native binaries
+          # (esbuild/rollup) and break vitest.
+          # Manifests + workspace config in the key — see the build job's cache
+          # step for why the lockfile alone is not enough.
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Log CPU info
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        id: scope
+        env:
+          BENCH: ${{ needs.detect-changes.outputs.bench }}
+        run: |
+          set -euo pipefail
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            # Untrusted: fork PRs control this value (it comes from the PR's own
+            # packages/<pkg>/package.json). Validate against npm's name grammar
+            # before it reaches GITHUB_OUTPUT or any command line. Must be a
+            # whole-string check: keep it in node rather than a line-based tool.
+            # Keep in step with the same check in bench.yml.
+            name=$(node -e '
+              const pkg = process.argv[1];
+              const { name } = require(`./packages/${pkg}/package.json`);
+              if (typeof name !== "string" ||
+                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
+                console.error(`::error::Rejected package name for ${pkg}`);
+                process.exit(1);
+              }
+              process.stdout.write(name);
+            ' "$pkg")
+            flags="$flags --filter $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+      - name: Run CodSpeed benchmarks (walltime)
+        # Walltime measures actual elapsed time, so parallel benchmark
+        # processes would contend for cores and add noise — run packages
+        # sequentially (--workspace-concurrency=1). The simulation job in
+        # bench.yml now does the same: it was left parallel on the premise that
+        # instruction counting is immune to contention, and #76 showed it is
+        # not. See the comment on that job's run step.
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
+        env:
+          # Keep this in env, NOT `${{ }}` in the run: below — an env value is
+          # expanded by the shell after the command line is parsed, so it stays
+          # data. Unquoted below on purpose: the flags must word-split into
+          # repeated `--filter <name>` pairs.
+          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
+        with:
+          mode: walltime
+          run: pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench

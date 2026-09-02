@@ -1,5 +1,5 @@
 # charls-js
-JS/WebAssembly build of [CharLS](https://github.com/team-charls/charls)
+JavaScript/WebAssembly build of [CharLS](https://github.com/team-charls/charls).
 
 ## Try It Out!
 
@@ -82,3 +82,12 @@ Read about the design considerations that went into this library [here](DESIGN.m
 
 Read about the encode/decode performance of this library with NodeJS 14,
 Google Chrome and FireFox vs Native [here](PERFORMANCE.md)
+
+## Testing
+
+```bash
+pnpm run build   # compile wasm into dist/
+pnpm run test    # run vitest against dist/
+```
+
+Tests skip cleanly when `dist/` is absent.

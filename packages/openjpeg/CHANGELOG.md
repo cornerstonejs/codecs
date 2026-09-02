@@ -3,6 +3,43 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.3.4](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjpeg@1.3.3...@cornerstonejs/codec-openjpeg@1.3.4) (2026-09-02)
+
+
+### Bug Fixes
+
+* consolidated codec correctness fixes (supersedes #71) (#73) ([21d4749](https://github.com/cornerstonejs/codecs/commit/21d47493be02e70067aaf6b3f23444e73d4cf37e))
+
+
+
+
+## [1.3.3](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-openjpeg@1.3.2...@cornerstonejs/codec-openjpeg@1.3.3) (2026-09-01)
+
+**Note:** Version bump only for package @cornerstonejs/codec-openjpeg
+
+
+
+
+## [1.3.2](https://localhost/compare/@cornerstonejs/codec-openjpeg@1.3.1...@cornerstonejs/codec-openjpeg@1.3.2) (2026-08-13)
+
+**Note:** Version bump only for package @cornerstonejs/codec-openjpeg
+
+
+
+
+
+## [1.3.1](https://localhost/compare/@cornerstonejs/codec-openjpeg@1.3.0...@cornerstonejs/codec-openjpeg@1.3.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* npm publish ([#56](https://localhost/issues/56)) ([1b03a10](https://localhost/commits/1b03a10d9f4ffa06fcd533208aa0ae5d31ce4428))
+* trigger ci ([#54](https://localhost/issues/54)) ([5afcb5d](https://localhost/commits/5afcb5d895a365a49fc986be0ec1b60ee69cf809))
+
+
+
+
+
 # [1.3.0](https://localhost/compare/@cornerstonejs/codec-openjpeg@1.2.4...@cornerstonejs/codec-openjpeg@1.3.0) (2025-10-22)
 
 
