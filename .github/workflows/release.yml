@@ -90,10 +90,25 @@ jobs:
     # second `-m` would do. That failure is invisible and lands in the worst
     # place: the release commit gets benched, seeding a duplicate CodSpeed
     # baseline. Prefix + identity fails safe where equality fails silent.
+    #
+    # The repository clause keeps this workflow out of forks. It triggers on
+    # push to `main`, and a contributor whose PR branch IS their fork's `main`
+    # gets the whole thing run inside their own repository on every push to that
+    # branch. That happened on #63: the release job bumped all nine packages and
+    # pushed a `chore(release): publish` commit onto the open pull request,
+    # authenticated with the fork's own GITHUB_TOKEN. Publishing to npm failed
+    # there for want of credentials, so nothing reached the registry, but the
+    # version commit still landed on the PR. A fork gets nothing useful from
+    # this workflow in any case.
+    #
+    # Guarding this job alone would gate the chain, since release needs build
+    # and publish needs release, but the release job repeats the condition: it
+    # is the one that writes to the repository.
     if: >-
-      github.event_name != 'push'
+      github.repository == 'cornerstonejs/codecs'
+      && (github.event_name != 'push'
       || !(startsWith(github.event.head_commit.message, 'chore(release): publish')
-      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com')
+      && github.event.head_commit.author.email == '41898282+github-actions[bot]@users.noreply.github.com'))
     # Same wasm build as pr-checks.yml, minus the change detection: a release
     # publishes whatever moved, and dicom-codec ships ranges over every sibling,
     # so all dists must be current.
@@ -184,6 +199,10 @@ jobs:
     # Versions, tests and pushes. NO id-token: write — `pnpm install` runs in
     # this job, and nothing it pulls in has any business holding a credential
     # that can publish to npm. Publishing happens in the next job.
+    #
+    # Redundant with the guard on build, which this job depends on, but this is
+    # the job that commits and pushes — see the note there.
+    if: github.repository == 'cornerstonejs/codecs'
     needs: build
     runs-on: ubuntu-latest
     permissions:
