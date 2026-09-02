@@ -41,7 +41,29 @@ describe("little-endian decode", () => {
     expect(imageFrame.pixelData).toBe(pixelData)
   })
 
-  it("decodes 32-bit pixel data into Float32Array", () => {
+  it("decodes 32-bit unsigned pixel data into Uint32Array", () => {
+    const source = new Uint32Array([1, 2, 0xffffffff])
+    const pixelData = new Uint8Array(source.buffer)
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 0 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Uint32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([1, 2, 0xffffffff])
+  })
+
+  it("decodes 32-bit signed pixel data into Int32Array", () => {
+    const source = new Int32Array([-1, 2, -100000])
+    const pixelData = new Uint8Array(source.buffer)
+    const imageFrame = { bitsAllocated: 32, pixelRepresentation: 1 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Int32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([-1, 2, -100000])
+  })
+
+  it("decodes 32-bit pixel data into Float32Array when pixelRepresentation is absent", () => {
     const source = new Float32Array([1.5, -2.25, 3.75])
     const pixelData = new Uint8Array(source.buffer)
     const imageFrame = { bitsAllocated: 32 }
@@ -62,6 +84,19 @@ describe("little-endian decode", () => {
     expect(imageFrame.pixelData).toBeInstanceOf(Uint16Array)
     expect(imageFrame.pixelData.length).toBe(2)
     expect(Array.from(imageFrame.pixelData)).toEqual([1, 2])
+  })
+
+  it("realigns 32-bit pixel data when byteOffset is 2 (even but not 4-aligned)", () => {
+    const source = new Float32Array([1.5, -2.25])
+    const padded = new Uint8Array(2 + source.length * 4)
+    padded.set(new Uint8Array(source.buffer), 2)
+    const pixelData = new Uint8Array(padded.buffer, 2, source.length * 4)
+    const imageFrame = { bitsAllocated: 32 }
+
+    decode(imageFrame, pixelData)
+
+    expect(imageFrame.pixelData).toBeInstanceOf(Float32Array)
+    expect(Array.from(imageFrame.pixelData)).toEqual([1.5, -2.25])
   })
 
   it("returns the same imageFrame object", () => {

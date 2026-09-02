@@ -61,6 +61,26 @@ describe.skipIf(!ALL_BUILT)("dicom-codec color and bit-depth dispatch", () => {
     expect(frameBytes(result.imageFrame).equals(us1)).toBe(true)
   })
 
+  it("decodes color RLE plane-sequential when planarConfiguration is 1", async () => {
+    const rleBytes = readFileSync(
+      resolve(packagesRoot, "dicom-codec/test/fixtures/rle/US1-color.rle")
+    )
+    const result = await dicomCodec.decode(
+      new Uint8Array(rleBytes),
+      { rows: 480, columns: 640, bitsAllocated: 8, samplesPerPixel: 3, planarConfiguration: 1 },
+      "1.2.840.10008.1.2.5"
+    )
+    const out = frameBytes(result.imageFrame)
+    expect(out.length).toBe(us1.length)
+    // expected layout: RRR...GGG...BBB (de-interleaved planes of US1)
+    const frameSize = 640 * 480
+    const planar = Buffer.alloc(us1.length)
+    for (let s = 0; s < 3; s++) {
+      for (let i = 0; i < frameSize; i++) planar[s * frameSize + i] = us1[i * 3 + s]
+    }
+    expect(out.equals(planar)).toBe(true)
+  })
+
   it("decodes an 8-bit JPEG-LS (.80) through the dispatcher losslessly", async () => {
     const jls = readFileSync(resolve(packagesRoot, "charls/test/fixtures/CT2-gray8.jls"))
     const ct2 = readFileSync(resolve(packagesRoot, "charls/test/fixtures/CT2.RAW"))

@@ -29,6 +29,7 @@ async function loadModule(path) {
 describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
   let codec
   const encoded = readFileSync(resolve(fixturesDir, "j2k/CT1.j2k"))
+  const raw = readFileSync(resolve(fixturesDir, "raw/CT1.RAW"))
 
   beforeAll(async () => {
     if (isBuilt) codec = await loadModule("../dist/openjpegwasm.js")
@@ -44,6 +45,19 @@ describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
     for (let i = 0; i < 10; i++) decodeOnce()
     const settled = codec.HEAP8.length
     for (let i = 0; i < 100; i++) decodeOnce()
+    expect(codec.HEAP8.length).toBe(settled)
+  })
+
+  it.skipIf(!isBuilt)("repeated encode/delete cycles do not grow the heap", () => {
+    const encodeOnce = () => {
+      const encoder = new codec.J2KEncoder()
+      encoder.getDecodedBuffer({ width: 512, height: 512, bitsPerSample: 16, componentCount: 1, isSigned: true }).set(raw)
+      encoder.encode()
+      encoder.delete()
+    }
+    for (let i = 0; i < 10; i++) encodeOnce()
+    const settled = codec.HEAP8.length
+    for (let i = 0; i < 60; i++) encodeOnce()
     expect(codec.HEAP8.length).toBe(settled)
   })
 
@@ -68,4 +82,28 @@ describe("openjpeg wasm heap stability", { timeout: 120000 }, () => {
     for (let i = 0; i < 100; i++) failOnce()
     expect(codec.HEAP8.length).toBe(settled)
   })
+
+  // NOT COVERED, and deliberately so rather than by oversight: the encoder's
+  // and decoder's THROWING failure paths, which are exactly the ones the
+  // handle guards in J2KEncoder::encode and J2KDecoder::decode_i exist for.
+  //
+  // The obvious test -- loop a failing encode and assert no heap growth --
+  // was written and removed. setDecompositions(40) is a clean trigger
+  // (numresolution 41 > OpenJPEG's 33, so opj_setup_encoder rejects it with
+  // the opj_image already allocated, ~1 MiB of leak per iteration), and the
+  // heap does grow without the guard. But repeating that failure crashes the
+  // module on the 5th iteration WITH the guard in place too -- "memory access
+  // out of bounds" -- so the test failed for a reason unrelated to what it
+  // was measuring. Repeated failed encoder setup corrupts something; that is
+  // its own bug, not this file's to paper over.
+  //
+  // The decoder side has no reachable trigger from the fixtures here at all:
+  // the component-count rejection needs a 2- or 4-component J2K (none
+  // committed, and the encoder cannot produce one -- see the multi-component
+  // findings), checkedDecodedSize needs a header claiming >512 MiB, and
+  // decoded_.resize()'s std::bad_alloc needs memory pressure. The cstr_info
+  // leak, which fired on EVERY decode, is invisible here for a different
+  // reason: measured at ~12,600 decodes it never forced heap growth either
+  // way, because the 50 MiB arena absorbs it. HEAP8.length is simply not a
+  // sensitive enough instrument for a leak that small.
 })

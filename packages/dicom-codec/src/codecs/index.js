@@ -108,12 +108,18 @@ function getCodec(transferSyntaxUID) {
  * @returns {ExtendedImageInfo} Adapted imageInfo to all codecs.
  */
 function adaptImageInfo(imageInfo) {
-  const { rows, columns, bitsAllocated, signed, samplesPerPixel, pixelRepresentation } = imageInfo;
+  const { rows, columns, bitsAllocated, signed, samplesPerPixel, pixelRepresentation, planarConfiguration } = imageInfo;
 
   return {
     pixelRepresentation,
     bitsAllocated,
     samplesPerPixel,
+    // Must survive adaptation: rleLossless dispatches between interleaved
+    // (decode8) and plane-sequential (decode8Planar) output on this flag.
+    // It was previously dropped here, which made decode8Planar unreachable
+    // through the public decode() API — PlanarConfiguration=1 datasets
+    // silently produced interleaved output.
+    planarConfiguration,
     rows, // Number with the image rows/height
     columns, // Number with the image columns/width
     width: columns,

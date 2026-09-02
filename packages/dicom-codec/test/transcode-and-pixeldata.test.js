@@ -21,7 +21,7 @@ it.runIf(process.env.CI)("sibling codec dists are present in CI (transcode suite
   expect(ALL_BUILT, "codec dists missing — artifacts not replayed").toBe(true)
 })
 
-describe.skipIf(!ALL_BUILT)("dicom-codec encode", () => {
+describe.skipIf(!ALL_BUILT)("dicom-codec transcode and encode", () => {
   let dicomCodec
   const ct1Raw = readFileSync(resolve(packagesRoot, "openjpeg/test/fixtures/raw/CT1.RAW"))
   const ctImageInfo = {

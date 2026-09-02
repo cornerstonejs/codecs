@@ -33,6 +33,7 @@
   "dependencies": {
     "@cornerstonejs/codec-big-endian": "^0.1.2",
     "@cornerstonejs/codec-charls": "^1.2.6",
+    "@cornerstonejs/codec-libjpeg-turbo-12bit": "^0.4.4",
     "@cornerstonejs/codec-libjpeg-turbo-8bit": "^1.2.5",
     "@cornerstonejs/codec-libjxl": "^1.1.0",
     "@cornerstonejs/codec-little-endian": "^0.0.8",

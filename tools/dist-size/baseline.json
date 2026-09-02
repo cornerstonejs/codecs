@@ -1,8 +1,8 @@
 {
   "big-endian": {
     "index.js": {
-      "raw": 1162,
-      "gzip": 609
+      "raw": 1264,
+      "gzip": 622
     }
   },
   "charls": {
@@ -33,42 +33,42 @@
   },
   "libjpeg-turbo-12bit": {
     "libjpegturbo12js.js": {
-      "raw": 2461618,
-      "gzip": 259496
+      "raw": 2553272,
+      "gzip": 266948
     },
     "libjpegturbo12wasm.js": {
       "raw": 112153,
       "gzip": 28570
     },
     "libjpegturbo12wasm.wasm": {
-      "raw": 1954242,
-      "gzip": 688878
+      "raw": 2238031,
+      "gzip": 760773
     }
   },
   "libjpeg-turbo-8bit": {
     "libjpegturbojs.js": {
-      "raw": 837711,
-      "gzip": 160006
+      "raw": 838153,
+      "gzip": 160171
     },
     "libjpegturbojs_decode.js": {
-      "raw": 417854,
-      "gzip": 117868
+      "raw": 418292,
+      "gzip": 118256
     },
     "libjpegturbowasm.js": {
       "raw": 57440,
       "gzip": 15274
     },
     "libjpegturbowasm.wasm": {
-      "raw": 448728,
-      "gzip": 96385
+      "raw": 448955,
+      "gzip": 96494
     },
     "libjpegturbowasm_decode.js": {
       "raw": 56350,
       "gzip": 15191
     },
     "libjpegturbowasm_decode.wasm": {
-      "raw": 180287,
-      "gzip": 69946
+      "raw": 180512,
+      "gzip": 70074
     }
   },
   "libjxl": {
@@ -91,34 +91,34 @@
   },
   "little-endian": {
     "index.js": {
-      "raw": 877,
-      "gzip": 477
+      "raw": 1002,
+      "gzip": 490
     }
   },
   "openjpeg": {
     "openjpegjs.js": {
-      "raw": 753931,
-      "gzip": 199072
+      "raw": 755496,
+      "gzip": 199652
     },
     "openjpegjs_decode.js": {
-      "raw": 540905,
-      "gzip": 139321
+      "raw": 541662,
+      "gzip": 139653
     },
     "openjpegwasm.js": {
       "raw": 57685,
       "gzip": 15161
     },
     "openjpegwasm.wasm": {
-      "raw": 367561,
-      "gzip": 127108
+      "raw": 368497,
+      "gzip": 127454
     },
     "openjpegwasm_decode.js": {
       "raw": 55759,
       "gzip": 14970
     },
     "openjpegwasm_decode.wasm": {
-      "raw": 255484,
-      "gzip": 84026
+      "raw": 255890,
+      "gzip": 84256
     }
   },
   "openjphjs": {
@@ -127,8 +127,8 @@
       "gzip": 14859
     },
     "openjphjs.wasm": {
-      "raw": 299791,
-      "gzip": 96272
+      "raw": 299794,
+      "gzip": 96271
     }
   }
 }
