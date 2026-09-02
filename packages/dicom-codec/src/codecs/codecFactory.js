@@ -258,6 +258,86 @@ function copyFromWasm(typedArray) {
 }
 
 /**
+ * Expands bit-packed 1-bit PixelData to one byte per sample.
+ *
+ * DICOM packs BitsAllocated=1 PixelData eight samples to a byte, first sample
+ * in the least significant bit (PS3.5 8.1.1). The wasm encoders do not take
+ * that layout: every one of them sizes its input buffer at
+ * `(bitsPerSample + 7) / 8` bytes per sample, which is one byte per sample for
+ * any depth up to 8, and reads one sample per byte.
+ *
+ * @param {TypedArray} packed bit-packed samples, LSB of byte 0 first.
+ * @param {number} sampleCount number of samples to expand.
+ * @returns {Uint8Array} sampleCount bytes, each 0 or 1.
+ */
+function unpackBits(packed, sampleCount) {
+  const packedBytes = Math.ceil(sampleCount / 8);
+  if (packed.length < packedBytes) {
+    throw new Error(
+      "Bit-packed frame is too short: " +
+        packed.length +
+        " bytes for " +
+        sampleCount +
+        " samples (need " +
+        packedBytes +
+        ")"
+    );
+  }
+
+  const unpacked = new Uint8Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
+    unpacked[i] = (packed[i >> 3] >> (i & 7)) & 1;
+  }
+
+  return unpacked;
+}
+
+/**
+ * Returns the frame in the layout the encoder's input buffer expects.
+ *
+ * Only 1-bit frames need anything done: for every other depth the caller's
+ * frame already has one element per sample. A bit-packed 1-bit frame copied in
+ * verbatim would fill an eighth of the buffer with bytes that each hold eight
+ * unrelated pixels and leave the remaining seven eighths zero — an encode that
+ * succeeds and produces a garbage image, which is what this prevents.
+ *
+ * A 1-bit frame that is ALREADY one byte per sample is passed through: that is
+ * what the decoders emit for BitsAllocated=1 (they write one clamped byte per
+ * sample at every depth up to 8), so transcoding a 1-bit image must not try to
+ * unpack an unpacked frame. The two cases cannot be confused — packed is
+ * ceil(n/8) elements and unpacked is n, equal only for a single-sample image.
+ *
+ * @param {TypedArray} imageFrame current image frame pixels.
+ * @param {ExtendedImageInfo} imageInfo current image info object.
+ * @param {number} bufferLength length of the encoder's input buffer, which for
+ *   1-bit data is exactly the sample count.
+ * @returns {TypedArray} frame to copy into the encoder's input buffer.
+ */
+function toEncoderLayout(imageFrame, imageInfo, bufferLength) {
+  if (imageInfo.bitsPerSample !== 1) {
+    return imageFrame;
+  }
+
+  // Packed 1-bit data is a byte stream whatever view it arrives in — a caller
+  // holding PixelData as a Uint16Array has the same bytes in the same order —
+  // so read it as bytes rather than as elements of whatever width.
+  const bytes =
+    imageFrame.BYTES_PER_ELEMENT > 1
+      ? new Uint8Array(
+          imageFrame.buffer,
+          imageFrame.byteOffset,
+          imageFrame.byteLength
+        )
+      : imageFrame;
+
+  if (bytes.length >= bufferLength) {
+    return imageFrame;
+  }
+
+  return unpackBits(bytes, bufferLength);
+}
+
+/**
  * Encode imageFrame using Encoder from the given local param.
  *
  * Its the common encode process for js/wasm codec's based.
@@ -273,40 +353,42 @@ function encode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   const { iterations = 1 } = options;
   const encoderInstance = new codecConfig.Encoder();
   try {
-  const decodedTypedArray = encoderInstance.getDecodedBuffer(imageInfo);
-  decodedTypedArray.set(imageFrame);
+    const decodedTypedArray = encoderInstance.getDecodedBuffer(imageInfo);
+    decodedTypedArray.set(
+      toEncoderLayout(imageFrame, imageInfo, decodedTypedArray.length)
+    );
 
-  const { beforeEncode = () => {} } = options;
+    const { beforeEncode = () => {} } = options;
 
-  beforeEncode(encoderInstance, codecConfig);
+    beforeEncode(encoderInstance, codecConfig);
 
-  context.timer.init("To encode length: " + imageFrame.length);
-  for (let i = 0; i < iterations; i++) {
-    encoderInstance.encode();
-  }
+    context.timer.init("To encode length: " + imageFrame.length);
+    for (let i = 0; i < iterations; i++) {
+      encoderInstance.encode();
+    }
 
-  context.timer.end();
+    context.timer.end();
 
-  const encodedTypedArray = encoderInstance.getEncodedBuffer();
-  context.logger.log("Encoded length:" + encodedTypedArray.length);
-  context.logger.log(
-    "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
-  );
+    const encodedTypedArray = encoderInstance.getEncodedBuffer();
+    context.logger.log("Encoded length:" + encodedTypedArray.length);
+    context.logger.log(
+      "Encoded is a Typed array of: " + encodedTypedArray.constructor.name
+    );
 
-  // Copy BEFORE delete(): see copyFromWasm. delete() frees the vector this view
-  // points into, so returning the view alone hands the caller memory the wasm
-  // allocator may reissue at any time.
-  const encodedCopy = copyFromWasm(encodedTypedArray);
+    // Copy BEFORE delete(): see copyFromWasm. delete() frees the vector this
+    // view points into, so returning the view alone hands the caller memory the
+    // wasm allocator may reissue at any time.
+    const encodedCopy = copyFromWasm(encodedTypedArray);
 
-  const processInfo = {
-    duration: context.timer.getDuration(),
-  };
+    const processInfo = {
+      duration: context.timer.getDuration(),
+    };
 
-  return {
-    imageFrame: encodedCopy,
-    imageInfo: getTargetImageInfo(imageInfo, imageInfo),
-    processInfo,
-  };
+    return {
+      imageFrame: encodedCopy,
+      imageInfo: getTargetImageInfo(imageInfo, imageInfo),
+      processInfo,
+    };
   } finally {
     // cleanup allocated memory
     encoderInstance.delete();
@@ -361,67 +443,69 @@ function decode(context, codecConfig, imageFrame, imageInfo, options = {}) {
   }
 
   try {
-  const { length } = imageFrame;
-  // get pointer to the source/encoded bit stream buffer in WASM memory
-  // that can hold the encoded bitstream
-  const encodedTypedArray = decoderInstance.getEncodedBuffer(length);
+    const { length } = imageFrame;
+    // get pointer to the source/encoded bit stream buffer in WASM memory
+    // that can hold the encoded bitstream
+    const encodedTypedArray = decoderInstance.getEncodedBuffer(length);
 
-  // copy the encoded bitstream into WASM memory buffer
-  encodedTypedArray.set(imageFrame);
-  context.timer.init("To decode length: " + length);
-  // decode it
-  decoderInstance.decode();
-  context.timer.end();
+    // copy the encoded bitstream into WASM memory buffer
+    encodedTypedArray.set(imageFrame);
+    context.timer.init("To decode length: " + length);
+    // decode it
+    decoderInstance.decode();
+    context.timer.end();
 
-  const decodedTypedArray = decoderInstance.getDecodedBuffer();
+    const decodedTypedArray = decoderInstance.getDecodedBuffer();
 
-  context.logger.log("Decoded length:" + decodedTypedArray.length);
-  context.logger.log(
-    "Decoded is a Typed array of: " + decodedTypedArray.constructor.name
-  );
+    context.logger.log("Decoded length:" + decodedTypedArray.length);
+    context.logger.log(
+      "Decoded is a Typed array of: " + decodedTypedArray.constructor.name
+    );
 
-  // get information about the decoded image
-  const decodedImageInfo = decoderInstance.getFrameInfo();
+    // get information about the decoded image
+    const decodedImageInfo = decoderInstance.getFrameInfo();
 
-  // Copy out of WASM memory before anything can invalidate the view — the
-  // delete() below, or the next decode on a reused instance. See copyFromWasm.
-  const decodedCopy = copyFromWasm(decodedTypedArray);
+    // Copy out of WASM memory before anything can invalidate the view — the
+    // delete() below, or the next decode on a reused instance. See
+    // copyFromWasm.
+    const decodedCopy = copyFromWasm(decodedTypedArray);
 
-  const decodeStatus = getDecodeStatus(decoderInstance);
+    const decodeStatus = getDecodeStatus(decoderInstance);
 
-  if (decodeStatus.failed && !decodeStatus.headerValid) {
-    // Nothing usable came back: the codec could not parse the header, so the
-    // dimensions and the buffer are both meaningless. Decoders that swallow
-    // this (openjph, so that truncated streams can degrade gracefully) would
-    // otherwise have this function report success on an empty or wrongly sized
-    // frame — and with a reused decoder, report it under the previous frame's
-    // pixels. Throwing here is the pre-reuse behaviour for a stream that
-    // genuinely cannot be decoded.
-    throw new Error("Decode failed: " + decodeStatus.message);
-  }
+    if (decodeStatus.failed && !decodeStatus.headerValid) {
+      // Nothing usable came back: the codec could not parse the header, so the
+      // dimensions and the buffer are both meaningless. Decoders that swallow
+      // this (openjph, so that truncated streams can degrade gracefully) would
+      // otherwise have this function report success on an empty or wrongly
+      // sized frame — and with a reused decoder, report it under the previous
+      // frame's pixels. Throwing here is the pre-reuse behaviour for a stream
+      // that genuinely cannot be decoded.
+      throw new Error("Decode failed: " + decodeStatus.message);
+    }
 
-  const processInfo = {
-    duration: context.timer.getDuration(),
-  };
+    const processInfo = {
+      duration: context.timer.getDuration(),
+    };
 
-  if (decodeStatus.failed) {
-    // Header parsed but the decode did not finish: a correctly sized frame
-    // whose undecoded region is zero-filled. Not the truncation case — openjph
-    // absorbs a short codestream as zero coefficients and calls that a success
-    // (measured across every truncation length of a 185 KB fixture), so what
-    // lands here is a codestream whose markers parse but whose parameters the
-    // decoder rejects. Reported rather than thrown, because the frame that came
-    // back is real as far as it goes; flagged, because it is not the whole image.
-    processInfo.partial = true;
-    processInfo.partialReason = decodeStatus.message;
-    context.logger.log("Partial decode: " + decodeStatus.message);
-  }
+    if (decodeStatus.failed) {
+      // Header parsed but the decode did not finish: a correctly sized frame
+      // whose undecoded region is zero-filled. Not the truncation case —
+      // openjph absorbs a short codestream as zero coefficients and calls that
+      // a success (measured across every truncation length of a 185 KB
+      // fixture), so what lands here is a codestream whose markers parse but
+      // whose parameters the decoder rejects. Reported rather than thrown,
+      // because the frame that came back is real as far as it goes; flagged,
+      // because it is not the whole image.
+      processInfo.partial = true;
+      processInfo.partialReason = decodeStatus.message;
+      context.logger.log("Partial decode: " + decodeStatus.message);
+    }
 
-  return {
-    imageFrame: decodedCopy,
-    imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
-    processInfo,
-  };
+    return {
+      imageFrame: decodedCopy,
+      imageInfo: getTargetImageInfo(imageInfo, decodedImageInfo),
+      processInfo,
+    };
   } finally {
     // Cleanup runs on the throw paths too, so a failed decode cannot leak a
     // single-use instance — that is what this finally is for.
@@ -493,3 +577,5 @@ exports.initialize = initialize;
 exports.getPixelData = getPixelData;
 exports.getTargetImageInfo = getTargetImageInfo;
 exports.releaseDecoder = releaseDecoder;
+exports.unpackBits = unpackBits;
+exports.toEncoderLayout = toEncoderLayout;
