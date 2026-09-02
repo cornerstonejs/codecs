@@ -847,6 +847,11 @@ class J2KDecoder {
           return;
       }
 
+      /* Finalize decompression before the guards destroy the codec/stream */
+      if (!opj_end_decompress(l_codec, l_stream)) {
+          printf("[WARNING] opj_decompress: opj_end_decompress failed\n");
+      }
+
       if (image->color_space != OPJ_CLRSPC_SYCC
             && image->numcomps == 3 && image->comps[0].dx == image->comps[0].dy
             && image->comps[1].dx != 1) {
@@ -863,8 +868,12 @@ class J2KDecoder {
         color_esycc_to_rgb(image);
       }
 
-      frameInfo_.width = image->x1;
-      frameInfo_.height = image->y1;
+      // x1/y1 are absolute reference-grid coordinates, not pixel counts. For
+      // an image with a nonzero offset they overstate the decoded size, and
+      // the copy loop below indexes comps[].data with it, reading past the
+      // component buffer openjpeg allocated.
+      frameInfo_.width = image->x1 - image->x0;
+      frameInfo_.height = image->y1 - image->y0;
       frameInfo_.componentCount = image->numcomps;
       if (frameInfo_.componentCount != 1 && frameInfo_.componentCount != 3) {
         throw std::runtime_error("unsupported J2K component count");
@@ -905,7 +914,6 @@ class J2KDecoder {
       decoded_.resize(destinationSize);
 
       // Convert from int32 to native size
-      int comp_num;
       for (int y = 0; y < sizeAtDecompositionLevel.height; y++)
       {
         size_t lineStartPixel = y * sizeAtDecompositionLevel.width;

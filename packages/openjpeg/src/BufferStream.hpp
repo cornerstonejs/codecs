@@ -46,21 +46,39 @@ opj_write_to_buffer (void* p_buffer, OPJ_SIZE_T p_nb_bytes,
     return n;
 }
 
-static OPJ_SIZE_T
-opj_skip_from_buffer (OPJ_SIZE_T len, opj_buffer_info_t* psrc)
+/*
+ * Must match opj_stream_skip_fn exactly: OPJ_OFF_T (*)(OPJ_OFF_T, void*).
+ * OPJ_OFF_T is int64_t, so declaring this with OPJ_SIZE_T -- 32-bit under
+ * wasm32 -- made the cast below an (i64,i32)->i64 indirect call landing on an
+ * (i32,i32)->i32 table entry, which traps as "function signature mismatch".
+ *
+ * It only fires when a skip is actually delegated to this callback:
+ * opj_stream_read_skip serves anything within m_bytes_in_buffer straight from
+ * the 1MB chunk it has already read, so small JP2 box skips are invisible and
+ * only a skip past the buffered remainder -- a large tile-part, a large box --
+ * reaches us. Hence a multi-tile image failing where the same image re-tiled
+ * to a single tile decodes fine. Native builds tolerated the mismatched call,
+ * so this only ever showed up in wasm.
+ */
+static OPJ_OFF_T
+opj_skip_from_buffer (OPJ_OFF_T len, opj_buffer_info_t* psrc)
 {
     OPJ_SIZE_T n = psrc->buf + psrc->len - psrc->cur;
 
+    if (len < 0)
+        return (OPJ_OFF_T)-1;
+
     if (n) {
-        if (n > len)
-            n = len;
+        if (n > (OPJ_SIZE_T)len)
+            n = (OPJ_SIZE_T)len;
 
         psrc->cur += n;
-    }
-    else
-        n = (OPJ_SIZE_T)-1;
 
-    return n;
+        return (OPJ_OFF_T)n;
+    }
+
+    /* buffer exhausted: cio.c compares the result against (OPJ_OFF_T)-1 */
+    return (OPJ_OFF_T)-1;
 }
 
 static OPJ_BOOL
