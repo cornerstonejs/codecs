@@ -25,12 +25,10 @@ set_target_properties(
       -s MODULARIZE=1 \
       -s EXPORT_NAME=OpenJPEGJS \
       -s WASM=0 \
-      -s DISABLE_EXCEPTION_CATCHING=0 \
-      -s ASSERTIONS=1 \
+      -s DISABLE_EXCEPTION_CATCHING=1 \
+      -s ASSERTIONS=0 \
       -s NO_EXIT_RUNTIME=1 \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s ALLOW_TABLE_GROWTH=1 \
-      -s EMULATE_FUNCTION_POINTER_CASTS=1 \
       -s INITIAL_MEMORY=50mb \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
@@ -63,12 +61,10 @@ set_target_properties(
          --bind \
          -s MODULARIZE=1 \
          -s EXPORT_NAME=OpenJPEGWASM \
-         -s DISABLE_EXCEPTION_CATCHING=0 \
-         -s ASSERTIONS=1 \
+         -s DISABLE_EXCEPTION_CATCHING=1 \
+         -s ASSERTIONS=0 \
          -s NO_EXIT_RUNTIME=1 \
          -s ALLOW_MEMORY_GROWTH=1 \
-         -s ALLOW_TABLE_GROWTH=1 \
-         -s EMULATE_FUNCTION_POINTER_CASTS=1 \
 	       -s INITIAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
@@ -103,12 +99,10 @@ set_target_properties(
       -s MODULARIZE=1 \
       -s EXPORT_NAME=OpenJPEGJS \
       -s WASM=0 \
-      -s DISABLE_EXCEPTION_CATCHING=0 \
-      -s ASSERTIONS=1 \
+      -s DISABLE_EXCEPTION_CATCHING=1 \
+      -s ASSERTIONS=0 \
       -s NO_EXIT_RUNTIME=1 \
       -s ALLOW_MEMORY_GROWTH=1 \
-      -s ALLOW_TABLE_GROWTH=1 \
-      -s EMULATE_FUNCTION_POINTER_CASTS=1 \
       -s INITIAL_MEMORY=50mb  \
       -s FILESYSTEM=0 \
       -s EXPORTED_FUNCTIONS=[] \
@@ -133,6 +127,7 @@ set_target_properties(
    include_directories("../extern/openjpeg/src/lib/openjp2" "../build/extern/openjpeg/src/lib/openjp2"
                     "../extern/openjpeg/src/bin/common" "../build/extern/openjpeg/src/bin/common")
    
+   
    set_target_properties(
     openjpegwasm_decode
        PROPERTIES
@@ -140,14 +135,13 @@ set_target_properties(
          --bind \
          -s MODULARIZE=1 \
          -s EXPORT_NAME=OpenJPEGWASM \
-         -s DISABLE_EXCEPTION_CATCHING=0 \
-         -s ASSERTIONS=1 \
+         -s DISABLE_EXCEPTION_CATCHING=1 \
+         -s ASSERTIONS=0 \
          -s NO_EXIT_RUNTIME=1 \
          -s ALLOW_MEMORY_GROWTH=1 \
-         -s ALLOW_TABLE_GROWTH=1 \
-         -s EMULATE_FUNCTION_POINTER_CASTS=1 \
 	       -s INITIAL_MEMORY=50mb \
          -s FILESYSTEM=0 \
          -s EXPORTED_FUNCTIONS=[] \
          -s EXPORTED_RUNTIME_METHODS=[ccall] \
       ")
+
