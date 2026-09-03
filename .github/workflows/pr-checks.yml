@@ -78,6 +78,11 @@ jobs:
     #     simulation bench in bench.yml computes the same scope from the
     #     PR's changed-file list — keep TOOLCHAIN_PATHS below in sync with
     #     the path lists in bench.yml's gate job.
+    #
+    # Bounded like every other job here: without an explicit timeout a job that
+    # wedges runs to GitHub's 6-hour default. 13s typical, so 10 is ~45x
+    # headroom — this job's only slow part is the fetch-depth: 0 checkout.
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     outputs:
       packages: ${{ steps.list.outputs.packages }}
@@ -179,6 +184,16 @@ jobs:
       fail-fast: false
       matrix:
         package: ${{ fromJson(needs.detect-changes.outputs.packages) }}
+    # The matrix leg that motivated this: `build (big-endian)` wedged on PR #70
+    # and sat in_progress for 80+ minutes while its nine siblings finished in
+    # 58-239s, because nothing bounded it. fail-fast is off (deliberately — one
+    # package's failure should not hide another's), so a wedged leg keeps the
+    # whole run, and every job downstream of it, pending until GitHub's 6-hour
+    # default fires.
+    #
+    # 20 is ~5x the slowest observed leg (libjxl, 239s) and leaves room for a
+    # cold emsdk image pull.
+    timeout-minutes: 20
     runs-on: ubuntu-latest
     container:
       image: emscripten/emsdk:3.1.74
@@ -292,6 +307,9 @@ jobs:
     # missing dist FAILS its suite instead of silently skipping.
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
+    # 53s typical. Generous enough for the openjpeg corpus suite on a slow
+    # runner without letting a hung vitest worker burn six hours.
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -378,6 +396,8 @@ jobs:
     # a visible, reviewed diff.
     needs: [detect-changes, build]
     if: needs.detect-changes.outputs.any == 'true'
+    # 47s typical: download the dist artifacts, measure, compare.
+    timeout-minutes: 10
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
