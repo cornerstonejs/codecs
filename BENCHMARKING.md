@@ -144,6 +144,38 @@ decode is the time spent" for wasm code — that's a fundamental
 limitation of wasm-via-V8-via-Cachegrind. For wasm hotspot analysis,
 profile the native build with `perf` / Instruments / VTune instead.
 
+### "N benchmarks were skipped, so the baseline results were used instead"
+The CodSpeed project holds more benchmark entries than the repo now
+defines — as of 2026-09-04, 133 registered against 67 that actually run.
+The surplus are orphans left by benches that were renamed or deleted
+(the cold/warm split, the openjph upstream rework), plus
+`libjpeg-turbo-12bit`, whose `bench` script is deliberately a no-op
+(`.51` transfer syntax is disabled) so its 9th bench file never executes.
+
+**What to do**: nothing, for correctness. A skipped benchmark reuses its
+baseline on *both* sides of the comparison, so its delta is zero and it
+can never trigger a regression — the only cost is a misleading total.
+Archiving them is **dashboard-only** (Settings → the benchmark → Archive);
+there is no repo config, config file or code annotation that clears them,
+so this cannot be fixed in a commit.
+
+### A regression on a diff that changes no runtime code
+Almost always a stale baseline rather than a real change. The usual cause
+was a main baseline that never got measured: until 2026-09-04 the release
+workflow's version commit shared `bench.yml`'s push concurrency group with
+the merge commit it followed, so it cancelled that bench and then skipped
+its own — see the comment on `concurrency:` in
+[.github/workflows/bench.yml](.github/workflows/bench.yml). Merges of #70
+and #73 produced no baseline at all.
+
+**What to do**: confirm the diff cannot affect the measured path, then let
+the next successful **push to main** re-seed the baseline for all live
+benchmarks — that happens on its own and needs no dashboard access.
+Acknowledging a regression directly *is* dashboard-only and admin-only, but
+it is not required to merge: main's ruleset lists no required status checks
+(only 1 approving review and code-owner review), so a red CodSpeed check
+never blocks a pull request.
+
 ### Tier-related regression in `instantiate+destroy X`
 The instantiation bench measures whatever V8 tier the embind helpers
 (`makeClassHandle`, `RegisteredPointer_fromWireType`, etc.) happen to

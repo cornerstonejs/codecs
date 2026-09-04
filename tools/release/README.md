@@ -27,8 +27,20 @@ Preview what the next release would do, at any time, from a clean checkout with 
 
 ```bash
 pnpm release:plan          # node tools/release/version.mjs --dry-run
+pnpm release:preflight     # what would publish, and whether npm will accept it
+pnpm release:order         # just the dependency order
 node tools/release/version.mjs --dry-run --json   # machine-readable
 ```
+
+Every release entry point is a root `package.json` script, so none of them depend on a shell:
+
+| Script | Does |
+| --- | --- |
+| `release:plan` | version bumps that the next release would make, mutating nothing |
+| `release:order` | publishable packages in dependency order |
+| `release:preflight` | the order, plus each package's registry state; publishes nothing |
+| `release:publish` | the above, then publishes what is missing (used by the workflow) |
+| `release:trust` | one-time trusted-publisher registration (run by a human) |
 
 `--dry-run` writes nothing. Without it the script rewrites manifests and changelogs and emits
 `release-plan.json` (gitignored); the workflow is what commits, tags and pushes.
@@ -47,7 +59,8 @@ third-party code that runs in it — the `actions/*` it calls and any dependency
 | `github-releases` | `contents: write` | **no** |
 
 `pnpm install` therefore never runs in a job that can publish to npm, and the job holding the OIDC
-token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node builtins only).
+token runs nothing but `npm`, the pinned actions and the scripts in this directory (node builtins
+only — `npm run` needs no `node_modules`, since npm ships with node).
 
 1. **`build`** — every package's `dist`, in the emscripten container (matrix job). Read-only, but its
    artifacts are what reaches npm, so its actions are SHA-pinned like the rest.
@@ -64,9 +77,12 @@ token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node b
    run [32733067241](https://github.com/cornerstonejs/codecs/actions/runs/32733067241) left eight
    version tags on a commit that never reached `main` and wedged every later release at
    `git tag -a` with "tag already exists".
-3. **`publish`** — checks out that SHA, replays the dists, and publishes each package with
-   `npm publish --ignore-scripts` in the dependency order `publish-order.mjs` computes — dicom-codec
-   goes out after the six siblings whose ranges it carries. `--ignore-scripts` is deliberate:
+3. **`publish`** — checks out that SHA, replays the dists, and runs `npm run release:publish`, which
+   publishes each package with `npm publish --ignore-scripts` in the dependency order
+   `publish-order.mjs` computes — dicom-codec goes out after the six siblings whose ranges it
+   carries. Before publishing anything it resolves every package's registry state, so a release that
+   cannot fully succeed publishes nothing (see [Adding a new package](#adding-a-new-package)).
+   `--ignore-scripts` is deliberate:
    `prepublishOnly` re-runs `bash build.sh`, and this job has no emscripten toolchain — the dist
    being published is the artifact built in step 1 from the same commit. npm's version comes from
    the exactly-pinned `node-version` (v24.20.0 → npm 11.19.0, past the 11.5.1 OIDC floor), so there
@@ -80,8 +96,9 @@ token runs nothing but `npm`, the pinned actions and `publish-order.mjs` (node b
 which is the only thing standing between a dropped build artifact and an empty package on npm for
 `libjpeg-turbo-12bit` (it has no vitest config, so the test gate never touches it).
 
-Both scripts run on every PR as a dry-run step in `pr-checks.yml`, so they are not first executed
-mid-release.
+`release:plan` and `release:preflight` run on every PR in `pr-checks.yml`, so these scripts are not
+first executed mid-release. Preflight is also where a newly added package gets flagged — as a
+warning on the PR, and as a hard failure in the release.
 
 Every step is idempotent. If a run dies partway through publishing, re-run the workflow from the
 Actions tab (`workflow_dispatch`) and it finishes the job rather than double-publishing: `version.mjs`
@@ -97,13 +114,21 @@ Both scripts are run by a human, once, and need credentials no CI job has.
 ### 1. npm trusted publishing
 
 ```bash
-npm install --global npm@latest   # needs >= 11.15.0 for `npm trust`
-npm login                         # account with publish rights on @cornerstonejs, 2FA enabled
-bash tools/release/setup-trusted-publishing.sh
+npm login                  # account with publish rights on @cornerstonejs, 2FA enabled
+pnpm release:trust
 ```
 
-This registers `cornerstonejs/codecs` + `release.yml` as the trusted publisher for all eight
-packages. The first call prompts for a 2FA one-time password.
+This registers `cornerstonejs/codecs` + `release.yml` as the trusted publisher for every package in
+the workspace. The first call prompts for a 2FA one-time password. Re-running is safe: a package
+that already has a config is reported and skipped.
+
+`npm trust` needs npm >= 11.15.0. The way to get it is **Node 24.20.0**, which bundles npm 11.19.0 —
+the same version `release.yml` pins. Do not reach for `npm install --global npm@latest`: on an older
+Node it refuses outright, because npm 12 requires `^22.22.2 || ^24.15.0 || >=26.0.0`.
+
+`npm trust` also needs a **web-login session**, not a token. A granular or classic token in
+`~/.npmrc` publishes fine but fails here with `401 ... Bearer token authorization is required`, so
+`npm login` is not optional even on a machine that can already publish.
 
 **The workflow's filename is part of the trust relationship.** Renaming `release.yml` breaks every
 publish until the script is re-run against the new name.
@@ -115,6 +140,45 @@ Trusted publishing also forces provenance generation, which requires each packag
 After the first green release, harden on npmjs.com: set each package's *Publishing access* to
 "Require two-factor authentication and disallow tokens", and delete the old `NPM_TOKEN` from the
 CircleCI project (CircleCI no longer runs anything for this repo — the project should be disabled).
+
+## Adding a new package
+
+**A new package cannot be released by CI until a human has published it once.** npm's OIDC trusted
+publishing is configured *per package, on the registry*, so there is nothing to configure until the
+package exists — and `npm trust` cannot create it ([npm/cli#8544](https://github.com/npm/cli/issues/8544)).
+CI has no other npm credential by design, so its first `npm publish` fails with `ENEEDAUTH`.
+
+This is not hypothetical. `@cornerstonejs/codec-libjxl` was merged in
+[#88](https://github.com/cornerstonejs/codecs/pull/88) and every release for the next three days
+failed on it, each one leaving `main` tagged for versions that were not on npm. Because the old
+publish step was a bash loop under `set -e`, it died where it stood — and libjxl sits fifth in
+dependency order, so `little-endian`, `openjpeg`, `openjph` and `dicom-codec` were never even
+attempted. Four packages that would have published fine sat stranded behind one that could not.
+
+So, after merging a new codec:
+
+```bash
+cd packages/<new-package>
+npm publish --ignore-scripts     # --ignore-scripts: prepublishOnly wants the emscripten toolchain
+cd -
+pnpm release:trust               # registers release.yml for it; skips the rest
+```
+
+Then re-run the Release workflow. That one bootstrap version ships **without a provenance
+attestation** — there was no trusted publisher to key it to — and every version after it has one.
+Check with `npm view <name>@<version> dist.attestations`.
+
+Two guards now make this loud instead of silent:
+
+- `release:preflight` runs on every PR and warns that the package is not on npm yet. It warns rather
+  than fails, because on the PR that adds the codec that is simply true.
+- `release:publish` resolves every package's registry state *before* publishing anything, and aborts
+  the release with these instructions if one needs bootstrapping. Nothing is published, so no
+  release half-lands.
+
+Fail-fast is deliberate here, rather than skipping the bad package and continuing: publishing
+`dicom-codec` while a sibling whose range it carries has just failed is precisely the window
+`publish-order.mjs` exists to close.
 
 ### 2. A push credential for `main` + the branch ruleset
 
