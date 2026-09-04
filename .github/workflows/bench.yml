@@ -30,12 +30,35 @@ on:
   # the same commit (every main commit has one, from its push run).
   workflow_dispatch:
 
-# Cancel in-flight benches when a new push lands on the same PR / branch.
-# Killing a bench mid-run is safe for the shared-box mutex: flock releases
-# with the process (see tools/ci/with-nashua-lock.sh).
+# Cancel in-flight benches when a new push lands on the same PR. Killing a
+# bench mid-run is safe for the shared-box mutex: flock releases with the
+# process (see tools/ci/with-nashua-lock.sh).
+#
+# NEVER on a push to main, because on a push `head_ref` is empty and every main
+# push therefore shares the group `bench-refs/heads/main`. With
+# cancel-in-progress: true, the release workflow's own version commit — pushed
+# about five minutes after the merge that triggered it, into a bench that takes
+# eleven — entered that group, CANCELLED the merge commit's bench, and was then
+# skipped itself by the gate below. The merge produced no baseline at all:
+#
+#   21:45  16f50e3  Expand `hrtime` utility... (#70)   cancelled
+#   21:50  91d91bc  chore(release): publish            skipped
+#   16:56  21d4749  fix: consolidated codec fixes (#73) cancelled
+#   17:01  7abaaa9  chore(release): publish            skipped
+#
+# The gate's guard exists to stop the version commit seeding a DUPLICATE
+# baseline; paired with unconditional cancellation it destroyed the real one and
+# supplied nothing in its place. Every PR opened afterwards compared against
+# whatever CodSpeed still held for each benchmark, which is how a diff touching
+# no runtime code drew a two-fold "regression".
+#
+# This was masked while releases were broken: a release that dies before the
+# push never cancels anything, so `bac71dd` kept its baseline by accident. Fixing
+# the release makes the version commit land reliably, which would have made this
+# fire on most merges from now on.
 concurrency:
   group: bench-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
