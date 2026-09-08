@@ -11,6 +11,8 @@ const REQUIRED_BUILDS = [
   "libjpeg-turbo-8bit/dist/libjpegturbojs.js",
   "openjpeg/dist/openjpegjs.js",
   "openjphjs/dist/openjphjs.js",
+  "libjxl/dist/jpegxlwasm_decode.js",
+  "libjxl/dist/jpegxlwasm_encode.js",
   "little-endian/dist/index.js",
   "big-endian/dist/index.js",
 ]
@@ -30,12 +32,56 @@ const SUPPORTED_UIDS = [
   "1.2.840.10008.1.2.4.81",
   "1.2.840.10008.1.2.4.90",
   "1.2.840.10008.1.2.4.91",
+  "1.2.840.10008.1.2.4.110",
+  "1.2.840.10008.1.2.4.111",
+  "1.2.840.10008.1.2.4.112",
   "1.2.840.10008.1.2.4.201",
   "1.2.840.10008.1.2.4.202",
   "1.2.840.10008.1.2.4.203",
   "3.2.840.10008.1.2.4.96",
   "1.2.840.10008.1.2.5",
 ]
+
+describe("codecFactory instance cleanup", () => {
+  it("frees the decoder instance even when decode() throws", () => {
+    const codecFactory = require("../src/codecs/codecFactory")
+
+    let deleted = false
+
+    class FakeDecoder {
+      getEncodedBuffer() {
+        return { set: () => {} }
+      }
+
+      decode() {
+        throw new Error("boom")
+      }
+
+      delete() {
+        deleted = true
+      }
+    }
+
+    const codecConfig = { Decoder: FakeDecoder }
+    const context = {
+      timer: {
+        init: () => {},
+        end: () => {},
+        getDuration: () => 0,
+      },
+      logger: {
+        log: () => {},
+      },
+    }
+    const imageFrame = new Uint8Array([1, 2, 3])
+    const imageInfo = {}
+
+    expect(() =>
+      codecFactory.decode(context, codecConfig, imageFrame, imageInfo)
+    ).toThrow("boom")
+    expect(deleted).toBe(true)
+  })
+})
 
 // In CI a missing sibling dist means the build/artifact pipeline broke; fail
 // loudly instead of letting describe.skipIf() silently skip the whole suite.

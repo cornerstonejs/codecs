@@ -22,5 +22,6 @@ echo "~~~ BUILD:"
 (cd build && dir)
 echo "~~~ DIST:"
 (cd dist && dir)
+node ../../tools/csp/check-generated-js.js ./dist
 # echo "~~~ TEST:"
 # (cd test/node; npm run test)

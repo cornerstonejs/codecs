@@ -1,6 +1,6 @@
 # @cornerstonejs/codec-little-endian
 
-Pure-JS decoder for DICOM Little-Endian transfer syntaxes
+Pure JavaScript decoder for DICOM Little Endian transfer syntaxes
 (`1.2.840.10008.1.2`, `1.2.840.10008.1.2.1`, `1.2.840.10008.1.2.1.99`).
 
 Takes a `pixelData` byte view and reinterprets it as `Uint8Array`, `Uint16Array`,
@@ -23,5 +23,5 @@ decode(imageFrame, pixelData)
 ## Testing
 
 ```bash
-yarn run test
+pnpm run test
 ```

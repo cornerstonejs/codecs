@@ -107,3 +107,7 @@ dist
 # IDE packages
 .idea
 *.code-workspace
+
+# Per-run output of tools/release/version.mjs — describes what the release
+# workflow is about to publish, never repo content.
+release-plan.json

@@ -7,6 +7,11 @@ const rleLosslessCodec = require("./rleLossless");
 const bigEndianCodec = require("./bigEndian");
 const libjpegTurbo8BitCodec = require("./libjpegTurbo8bit");
 const libjpegTurbo12BitCodec = require("./libjpegTurbo12bit");
+// Three separate modules rather than one with encode swapped out: JPEG XL
+// cannot signal PixelRepresentation, so .110 and .112 map signed samples
+// differently and each needs a decode that inverts its own encode. See
+// jpegxl.js.
+const jpegxl = require("./jpegxl");
 
 /**
  * Wrapper to codec. It holds current codec, encoder, decoder, name for each.
@@ -42,6 +47,9 @@ const codecsMap = {
   "1.2.840.10008.1.2.4.81": jpeglsCodec,
   "1.2.840.10008.1.2.4.90": jpeg2000Codec,
   "1.2.840.10008.1.2.4.91": jpeg2000Codec,
+  "1.2.840.10008.1.2.4.110": jpegxl.lossless,
+  "1.2.840.10008.1.2.4.111": jpegxl.jpegRecompression,
+  "1.2.840.10008.1.2.4.112": jpegxl.lossy,
   // Private Transfer Syntax - update to final ID when released by WG-06
   "3.2.840.10008.1.2.4.96": htj2kCodec,
   // The three official HTJ2K transfer syntaxes
@@ -53,6 +61,16 @@ const codecsMap = {
 
 function hasCodec(transferSyntaxUID) {
   return !!codecsMap[transferSyntaxUID];
+}
+
+/**
+ * Every distinct codec module, deduplicated — codecsMap points several transfer
+ * syntaxes at the same module.
+ *
+ * @returns {Array<Object>} codec modules.
+ */
+function getCodecs() {
+  return [...new Set(Object.values(codecsMap))];
 }
 
 function getCodec(transferSyntaxUID) {
@@ -90,12 +108,18 @@ function getCodec(transferSyntaxUID) {
  * @returns {ExtendedImageInfo} Adapted imageInfo to all codecs.
  */
 function adaptImageInfo(imageInfo) {
-  const { rows, columns, bitsAllocated, signed, samplesPerPixel, pixelRepresentation } = imageInfo;
+  const { rows, columns, bitsAllocated, signed, samplesPerPixel, pixelRepresentation, planarConfiguration } = imageInfo;
 
   return {
     pixelRepresentation,
     bitsAllocated,
     samplesPerPixel,
+    // Must survive adaptation: rleLossless dispatches between interleaved
+    // (decode8) and plane-sequential (decode8Planar) output on this flag.
+    // It was previously dropped here, which made decode8Planar unreachable
+    // through the public decode() API — PlanarConfiguration=1 datasets
+    // silently produced interleaved output.
+    planarConfiguration,
     rows, // Number with the image rows/height
     columns, // Number with the image columns/width
     width: columns,
@@ -112,4 +136,5 @@ function adaptImageInfo(imageInfo) {
 
 exports.adaptImageInfo = adaptImageInfo;
 exports.getCodec = getCodec;
+exports.getCodecs = getCodecs;
 exports.hasCodec = hasCodec;

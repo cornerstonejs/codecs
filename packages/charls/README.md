@@ -1,5 +1,5 @@
 # charls-js
-JS/WebAssembly build of [CharLS](https://github.com/team-charls/charls)
+JavaScript/WebAssembly build of [CharLS](https://github.com/team-charls/charls).
 
 ## Try It Out!
 
@@ -86,8 +86,8 @@ Google Chrome and FireFox vs Native [here](PERFORMANCE.md)
 ## Testing
 
 ```bash
-yarn run build   # compile wasm into dist/
-yarn run test    # run vitest against dist/
+pnpm run build   # compile wasm into dist/
+pnpm run test    # run vitest against dist/
 ```
 
 Tests skip cleanly when `dist/` is absent.
