@@ -1,17 +1,24 @@
 name: Bench
 
-# CodSpeed simulation bench (the blocking perf regression gate), split out of
+# Both CodSpeed instruments, in the order they must run. Split out of
 # pr-checks.yml so the workflow that talks to the self-hosted bench runner is
 # small and changes rarely. It reuses the dist artifacts built by the
 # "PR checks" run for the same commit (the `wait` step below), so nothing is
 # compiled twice.
 #
-# Two jobs:
+# Three jobs:
 #   gate  — hosted VM, metadata only (never checks out or executes PR code).
 #           Decides whether the bench should run and what to bench, then waits
 #           for the PR checks build artifacts.
-#   codspeed-bench — the bench itself on the self-hosted box (see the comments
-#           on the job).
+#   codspeed-bench — the simulation gate, the blocking perf regression check,
+#           on the self-hosted box (see the comments on the job).
+#   codspeed-walltime — the advisory real-time instrument, on a CodSpeed macro
+#           runner. It lives HERE, after codspeed-bench, rather than in
+#           pr-checks.yml beside it, because the CodSpeed app reports whichever
+#           instrument uploads FIRST. See the comment on that job.
+#
+# Only codspeed-bench runs on the shared nashua box. The macro-runner job is in
+# this file for the `needs:` ordering, and touches nothing that box provides.
 #
 # PRs that modify CI-defining files (workflows, tools/ci/, root manifests) are
 # only benched pre-merge when they come from a branch in THIS repo; from a fork
@@ -476,3 +483,178 @@ jobs:
           # under contention, so the first main run after merge is the new
           # baseline -- expect one round of large apparent deltas there.
           run: bash tools/ci/with-nashua-lock.sh pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench
+
+  codspeed-walltime:
+    # Moved here from pr-checks.yml, where it ran BESIDE codspeed-bench rather
+    # than after it. That ordering decided which instrument GitHub reported,
+    # because the CodSpeed app computes its "CodSpeed Performance Analysis"
+    # check from the FIRST upload a commit produces and never re-evaluates it.
+    # Walltime finished 2-7 minutes earlier every time, so the ADVISORY
+    # instrument always won the race and the simulation gate never spoke:
+    #
+    #   commit    walltime    check       codspeed-bench   verdict
+    #   ab49563   18:36:45    18:37:16    18:39:29         failure -32.65%
+    #   bac71dd   17:57:33    17:57:46    18:00:03         failure -19.77%
+    #   4ce83c9   17:52:55    17:53:20    17:56:29         failure
+    #   073884c   19:44:51    19:45:17    19:47:24         failure
+    #   5bfa7ff   21:27:58    21:28:22    21:34:56         success
+    #
+    # `continue-on-error: true` below does NOT prevent this: it sets this JOB's
+    # conclusion, while the CodSpeed app posts an independent check run that no
+    # job setting can mark advisory. Ordering is the only lever in the repo.
+    #
+    # It also mixed the two instruments within one series. On c9ffa62 the
+    # release commit cancelled this job (see pr-checks.yml's concurrency
+    # comment), simulation won the race by default, and the check compared
+    # bac71dd's walltime number against c9ffa62's simulation number:
+    # `JPEG XL Lossless (.110)` 158.5 ms -> 991.8 ms, a 6.3x ratio that sits
+    # inside the documented 5-15x simulation-inflation band for wasm decode.
+    #
+    # `needs: codspeed-bench` is what fixes both: simulation always uploads
+    # first, so it always decides the check, and this job is what it was
+    # documented to be. The cost is that a failed or cancelled bench takes
+    # walltime with it -- accepted, because an out-of-order walltime run is
+    # worse than a missing one.
+    needs: [gate, codspeed-bench]
+    # Deliberately NOT `always()`. Waiting for the bench is the entire point,
+    # and `always()` would let this job run when codspeed-bench was cancelled
+    # or skipped -- exactly the case that produced the 991.8 ms comparison.
+    #
+    # Gated behind a repository variable, as it was in pr-checks.yml: a
+    # `runs-on: codspeed-macro` job queues forever (up to 24h) when macro
+    # runners aren't provisioned for the org, and GitHub's job timeout only
+    # covers execution, not queue time. Enable macro runners for the org on
+    # app.codspeed.io first (the repo is public -- also make sure the runner
+    # group allows public repositories), then:
+    #   gh variable set CODSPEED_MACRO_ENABLED --body true
+    # Turning this variable off leaves simulation as the ONLY instrument, which
+    # is a baseline re-seed event in both directions: the stored numbers change
+    # instrument, so expect one round of large apparent deltas either way.
+    if: needs.gate.outputs.ready == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
+    # Advisory instrument: real wall-clock numbers (V8 JIT active, real
+    # cache/branch behavior) that complement the simulation gate above --
+    # simulation catches small algorithmic slips deterministically,
+    # walltime keeps the numbers honest on real hardware and covers the
+    # pure-JS packages where the no-JIT simulation model is furthest from
+    # production. Failures here must not block the PR while this beds in.
+    continue-on-error: true
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read         # cross-run artifact download from the PR checks run
+      pull-requests: write  # CodSpeed action posts a sticky PR comment
+      id-token: write       # OIDC token used by CodSpeedHQ/action for auth
+    # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
+    # low-noise walltime measurement. Requires the CodSpeed GitHub app on
+    # an organization account. NOTE: ARM64 -- anything cached must be
+    # arch-qualified (see the cache key below).
+    #
+    # These runners are METERED, unlike the self-hosted bench box. Ordering via
+    # `needs:` rather than a poll inside this job is what keeps that cheap:
+    # GitHub allocates the runner when the job STARTS, so the wait for the
+    # bench costs nothing. A wait step here would hold a billed macro runner
+    # idle for the whole 7-12 minute bench.
+    runs-on: codspeed-macro
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Pinned for the same reason as the simulation job above: V8 changes
+          # between patch releases move the numbers, and walltime is if anything
+          # more sensitive than instruction counts. Keep this in step with the
+          # codspeed-bench pin so the two instruments stay comparable.
+          node-version: '24.20.0'
+      - name: Provide pnpm via Corepack
+        run: |
+          corepack enable pnpm
+          corepack prepare --activate
+          pnpm --version
+      - name: Download all built dists
+        uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          path: tmp/
+          # Cross-run download, new since this job moved out of pr-checks.yml:
+          # the artifacts live on the PR checks run the gate waited for, not on
+          # this run. Same three arguments codspeed-bench uses above.
+          run-id: ${{ needs.gate.outputs.run_id }}
+          github-token: ${{ github.token }}
+      - name: Replay dists into packages/<pkg>/dist
+        run: |
+          set -e
+          for d in tmp/dist-*; do
+            [ -d "$d" ] || continue
+            pkg=$(basename "$d" | sed 's/^dist-//')
+            mkdir -p "packages/$pkg/dist"
+            shopt -s dotglob nullglob
+            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
+          done
+      - name: Restore node_modules cache
+        id: modules-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          # runner.arch matters: this job runs on ARM64 while every other
+          # job is x64; sharing a key would restore x64 native binaries
+          # (esbuild/rollup) and break vitest.
+          # Manifests + workspace config in the key -- see pr-checks.yml's build
+          # job cache step for why the lockfile alone is not enough.
+          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+      - name: Install dependencies
+        if: steps.modules-cache.outputs.cache-hit != 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Log CPU info
+        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
+      - name: Compute bench scope
+        # Reads the gate's scope, as codspeed-bench does, rather than
+        # detect-changes' `bench` output in the other workflow. The two lists
+        # are kept in sync by hand (see the gate job), so taking this one keeps
+        # both instruments measuring exactly the same package set.
+        id: scope
+        env:
+          BENCH: ${{ needs.gate.outputs.bench }}
+        run: |
+          set -euo pipefail
+          flags=""
+          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
+            # Untrusted: fork PRs control this value (it comes from the PR's own
+            # packages/<pkg>/package.json). Validate against npm's name grammar
+            # before it reaches GITHUB_OUTPUT or any command line. Must be a
+            # whole-string check: keep it in node rather than a line-based tool.
+            # Keep in step with the same check in the codspeed-bench job above.
+            name=$(node -e '
+              const pkg = process.argv[1];
+              const { name } = require(`./packages/${pkg}/package.json`);
+              if (typeof name !== "string" ||
+                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
+                console.error(`::error::Rejected package name for ${pkg}`);
+                process.exit(1);
+              }
+              process.stdout.write(name);
+            ' "$pkg")
+            flags="$flags --filter $name"
+          done
+          echo "Bench scope flags:$flags"
+          echo "flags=$flags" >> "$GITHUB_OUTPUT"
+      - name: Run CodSpeed benchmarks (walltime)
+        # Walltime measures actual elapsed time, so parallel benchmark
+        # processes would contend for cores and add noise -- run packages
+        # sequentially (--workspace-concurrency=1). The simulation job above
+        # now does the same: it was left parallel on the premise that
+        # instruction counting is immune to contention, and #76 showed it is
+        # not. See the comment on that job's run step.
+        #
+        # No nashua lock here: this runs on a CodSpeed macro runner, not on the
+        # shared box, so there is nothing to serialise against.
+        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
+        env:
+          # Keep this in env, NOT `${{ }}` in the run: below -- an env value is
+          # expanded by the shell after the command line is parsed, so it stays
+          # data. Unquoted below on purpose: the flags must word-split into
+          # repeated `--filter <name>` pairs.
+          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
+        with:
+          mode: walltime
+          run: pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench
