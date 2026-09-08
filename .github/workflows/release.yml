@@ -5,7 +5,7 @@ name: Release
 # THE FILENAME OF THIS WORKFLOW IS LOAD-BEARING. Each package's npm trusted
 # publisher is registered against `release.yml` in cornerstonejs/codecs, so npm
 # will reject an OIDC publish coming from any other workflow file. Renaming
-# this file means re-running tools/release/setup-trusted-publishing.sh.
+# this file means re-running `npm run release:trust`.
 #
 # This replaces the old CircleCI NPM_PUBLISH job, which needed two long-lived
 # personal credentials: an NPM_TOKEN written to ~/.npmrc, and a maintainer's
@@ -509,24 +509,16 @@ jobs:
             cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
           done
           ls packages/*/dist 2>/dev/null | head
-      - name: Compute publish order
-        # Generated as its own command on purpose. `done < <(cmd)` is process
-        # substitution, whose exit status `set -e` does not see: if
-        # publish-order.mjs refused an empty dist, the loop below would read
-        # nothing and the step would still go green, reporting "Published 0
-        # packages" after the version commit and tags had already landed on
-        # main. Running it here makes that failure fail the job.
-        #
-        # publish-order.mjs emits the packages in dependency order, so
-        # dicom-codec goes out after the six siblings whose ranges it carries —
-        # publishing it alphabetically (third) left a window where those ranges
-        # resolved to versions that did not exist yet. It also refuses to emit a
-        # package that claims to ship dist/ but has an empty one.
-        run: |
-          set -euo pipefail
-          node tools/release/publish-order.mjs > publish-order.txt
-          cat publish-order.txt
       - name: Publish to npm
+        # One node script rather than a bash loop, for a reason the 2026-09-01
+        # release paid for: `@cornerstonejs/codec-libjxl` was new, npm's OIDC
+        # trusted publishing cannot create a package that does not exist yet, so
+        # `npm publish` failed ENEEDAUTH — and `set -e` killed the loop where it
+        # stood, stranding the four already-registered packages queued behind it.
+        # publish.mjs resolves every package's registry state BEFORE it publishes
+        # anything, so a release that cannot fully succeed publishes nothing at
+        # all and says exactly what a human has to do. See its header.
+        #
         # Deliberately NOT gated on the plan. The source of truth is "every
         # workspace package whose current version is not yet on the registry",
         # which covers both the normal path (the versions version.mjs just
@@ -534,30 +526,21 @@ jobs:
         # died partway through publishing, version.mjs correctly finds nothing
         # new to release on the re-run, and this step still finishes the job.
         #
+        # It also emits publish-order.txt for the github-releases job, in
+        # dependency order, so dicom-codec goes out after the six siblings whose
+        # ranges it carries — publishing it alphabetically (third) left a window
+        # where those ranges resolved to versions that did not exist yet — and
+        # refuses a package that claims to ship dist/ but has an empty one.
+        #
         # No .npmrc and no NODE_AUTH_TOKEN: `npm publish` performs the OIDC
         # exchange itself using the id-token permission above. Provenance is
         # generated automatically for trusted publishes, which is why every
         # package's repository.url must point at this repo.
         #
-        # --ignore-scripts: prepublishOnly re-runs `bash build.sh`, and this
-        # runner has no emscripten toolchain. The dist being published is the
-        # artifact the build job produced from this same commit.
-        run: |
-          set -euo pipefail
-          published=0
-          skipped=0
-          while read -r name version dir; do
-            if npm view "$name@$version" version >/dev/null 2>&1; then
-              echo "$name@$version is already on npm; skipping."
-              skipped=$((skipped + 1))
-              continue
-            fi
-
-            echo "Publishing $name@$version"
-            (cd "packages/$dir" && npm publish --ignore-scripts)
-            published=$((published + 1))
-          done < publish-order.txt
-          echo "::notice::Published $published package(s); $skipped already on npm."
+        # `npm run` needs no node_modules — npm ships with node, and publish.mjs
+        # imports nothing but node builtins — so this job still installs no
+        # dependencies and the OIDC token still has no third-party code beside it.
+        run: npm run release:publish -- --out publish-order.txt
       - name: Upload publish order
         # Handed to the github-releases job so it can enumerate the same
         # packages without needing the dists (publish-order.mjs inspects them)

@@ -25,6 +25,10 @@
     "build:publish": "pnpm -r --parallel run build:ci",
     "csp:source": "node tools/csp/check-source-js.js",
     "docker:build": "bash tools/docker/build.sh",
-    "release:plan": "node tools/release/version.mjs --dry-run"
+    "release:plan": "node tools/release/version.mjs --dry-run",
+    "release:order": "node tools/release/publish-order.mjs",
+    "release:preflight": "node tools/release/publish.mjs --preflight",
+    "release:publish": "node tools/release/publish.mjs",
+    "release:trust": "node tools/release/setup-trusted-publishing.mjs"
   }
 }
