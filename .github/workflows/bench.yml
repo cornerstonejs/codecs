@@ -56,8 +56,22 @@ on:
 # push never cancels anything, so `bac71dd` kept its baseline by accident. Fixing
 # the release makes the version commit land reliably, which would have made this
 # fire on most merges from now on.
+#
+# cancel-in-progress: false is NOT sufficient on its own, which is why the group
+# is per-commit off a PR rather than per-branch. A concurrency group holds one
+# running run and at most one PENDING run; queueing a third CANCELS the pending
+# one, whatever cancel-in-progress says. A bench takes eleven minutes, so two
+# merges inside that window would have put the second in the pending slot and
+# let a third evict it -- the same lost baseline this is meant to fix, reached
+# by a different route.
+#
+# Keying non-PR runs by github.sha gives every main commit its own group, so no
+# main bench can ever cancel another. They serialise anyway: the bench box takes
+# a mutex (tools/ci/with-nashua-lock.sh), which queues them without discarding
+# any. PRs keep the branch-level group, where superseding an in-flight bench with
+# a newer push is exactly what is wanted.
 concurrency:
-  group: bench-${{ github.head_ref || github.ref }}
+  group: bench-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:

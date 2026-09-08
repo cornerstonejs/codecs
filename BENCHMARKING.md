@@ -147,7 +147,7 @@ profile the native build with `perf` / Instruments / VTune instead.
 ### "N benchmarks were skipped, so the baseline results were used instead"
 The CodSpeed project holds more benchmark entries than the repo now
 defines — as of 2026-09-04, 133 registered against 67 that actually run.
-The surplus are orphans left by benches that were renamed or deleted
+The surplus entries are orphans left by benches that were renamed or deleted
 (the cold/warm split, the openjph upstream rework), plus
 `libjpeg-turbo-12bit`, whose `bench` script is deliberately a no-op
 (`.51` transfer syntax is disabled) so its 9th bench file never executes.

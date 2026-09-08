@@ -4,8 +4,17 @@
 // publisher for every package in this workspace.
 //
 // After this runs, the release workflow authenticates to npm with a short-lived
-// OIDC token minted per run and scoped to that workflow -- no NPM_TOKEN, and a
-// leaked token from anywhere else cannot publish these packages.
+// OIDC token minted per run and scoped to that workflow, so the release itself
+// needs no NPM_TOKEN.
+//
+// It does NOT make a leaked token harmless. `npm trust github` ADDS an
+// authorized publishing path; it revokes nothing. Every access token that could
+// publish these packages before can still publish them afterwards. Token
+// publishing stops only when each package's Publishing access on npmjs.com is
+// set to "Require two-factor authentication and disallow tokens" -- a manual,
+// per-package step that this script cannot perform and does not verify. It is
+// printed as a next step at the end of a successful run; until it is done for
+// every package, treat the old tokens as live credentials.
 //
 // Usage:
 //   npm run release:trust
@@ -27,9 +36,17 @@
 //          npm login                  #   line from ~/.npmrc by hand if logout fails
 //      Note this replaces whatever token was in ~/.npmrc.
 //
-// Re-running is safe: npm allows exactly one publisher config per package, so a
-// package that already has one is reported and skipped rather than duplicated.
-// To replace an existing config, revoke it first:
+// Re-running is safe. npm allows exactly one publisher config per package, and
+// `npm trust github` fails rather than updating an existing one -- including
+// when the existing config is byte-for-byte what we would have created. So each
+// package's current config is read first, and one that already points at
+// REPO/WORKFLOW is skipped as done rather than retried and counted as a
+// failure. Without that check a fully configured workspace exited 1 on every
+// re-run.
+//
+// A config that exists but points somewhere ELSE is still a failure: that is a
+// real conflict, and resolving it means deciding which one is right. Revoke it
+// first if the answer is ours:
 //   npm trust list <package>
 //   npm trust revoke <package> --id <id>
 //
@@ -113,6 +130,59 @@ function publishablePackages() {
   return packages;
 }
 
+/**
+ * Whether `name` already trusts REPO/WORKFLOW.
+ *
+ * Returns 'match' (ours, nothing to do), 'other' (a config exists but is not
+ * ours) or 'unknown'. 'unknown' covers no config, no permission to read one,
+ * and output this cannot parse.
+ *
+ * Deliberately biased towards 'unknown': the caller attempts the create on
+ * anything that is not a confident 'match', so a shape this does not recognise
+ * costs a redundant `npm trust github` and the error it already handled. The
+ * opposite bias would silently skip a package that has no trusted publisher at
+ * all, and that is not discovered until a release tries to publish it.
+ *
+ * `npm trust list --json` is not covered by npm's documented output contract,
+ * hence the tolerance about field names.
+ */
+function existingTrust(name) {
+  const result = runNpm(['trust', 'list', name, '--json'], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+  if (result.status !== 0) {
+    return 'unknown';
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(`${result.stdout}`);
+  } catch {
+    return 'unknown';
+  }
+
+  // Accept a bare array or any single-key wrapper around one.
+  const entries = Array.isArray(parsed)
+    ? parsed
+    : Object.values(parsed ?? {}).find(Array.isArray) ?? [];
+
+  if (entries.length === 0) {
+    return 'unknown';
+  }
+
+  const matches = entries.some((entry) => {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+
+    const repo = entry.repository ?? entry.repo ?? entry.project;
+    const file = entry.file ?? entry.workflow ?? entry.workflowFilename;
+
+    return repo === REPO && file === WORKFLOW;
+  });
+
+  return matches ? 'match' : 'other';
+}
+
 function main() {
   const npmCurrent = requireNpmVersion();
   const packages = publishablePackages();
@@ -131,6 +201,7 @@ function main() {
 
   const failed = [];
   const unpublished = [];
+  const alreadyConfigured = [];
 
   for (const name of packages) {
     console.log(`==> ${name}`);
@@ -138,6 +209,13 @@ function main() {
     if (!resolvesOnRegistry(name)) {
       console.log('    NOT ON NPM YET — skipping (needs a first manual publish; see README.md)');
       unpublished.push(name);
+      console.log('');
+      continue;
+    }
+
+    if (existingTrust(name) === 'match') {
+      console.log(`    already trusts ${REPO} / ${WORKFLOW} — skipping`);
+      alreadyConfigured.push(name);
       console.log('');
       continue;
     }
@@ -151,7 +229,7 @@ function main() {
     if (result.status === 0) {
       console.log('    ok');
     } else {
-      console.error('    FAILED — see the message above (an existing config must be revoked first)');
+      console.error('    FAILED — see the message above (a conflicting config must be revoked first)');
       failed.push(name);
     }
 
@@ -164,6 +242,14 @@ function main() {
     // A package with no config exits non-zero; that is reported above, and is
     // not worth failing this summary over.
     runNpm(['trust', 'list', name], { stdio: 'inherit' });
+  }
+
+  if (alreadyConfigured.length > 0) {
+    console.log('');
+    console.log(
+      `${alreadyConfigured.length} package(s) already trusted ${REPO} / ${WORKFLOW}: ` +
+        `${alreadyConfigured.join(', ')}`
+    );
   }
 
   if (unpublished.length > 0) {
