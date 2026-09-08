@@ -29,7 +29,9 @@ async function decode(imageFrame, imageInfo) {
     codecWasmModule,
     codecWrapper.decoderName,
     (context) => {
-      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
+      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo, {
+        reuseDecoder: true,
+      });
     }
   );
 }
@@ -64,6 +66,17 @@ function getPixelData(imageFrame, imageInfo) {
   return codecFactory.getPixelData(imageFrame, imageInfo);
 }
 
+/**
+ * Release the decoder kept alive by `reuseDecoder` above, and the WASM heap
+ * sized for the largest frame it has decoded. The next decode builds a new one.
+ *
+ * @returns {boolean} true if a reused decoder was released.
+ */
+function release() {
+  return codecFactory.releaseDecoder(codecWrapper);
+}
+
 exports.decode = decode;
 exports.encode = encode;
 exports.getPixelData = getPixelData;
+exports.release = release;

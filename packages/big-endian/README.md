@@ -1,6 +1,6 @@
 # @cornerstonejs/codec-big-endian
 
-Pure-JS decoder for the DICOM Big-Endian transfer syntax
+Pure JavaScript decoder for the DICOM Big Endian transfer syntax
 (`1.2.840.10008.1.2.2`).
 
 Reinterprets `pixelData` as `Uint16Array` or `Int16Array` (based on
@@ -22,5 +22,5 @@ decode(imageFrame, pixelData)
 ## Testing
 
 ```bash
-yarn run test
+pnpm run test
 ```

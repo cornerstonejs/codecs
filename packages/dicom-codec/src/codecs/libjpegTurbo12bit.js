@@ -1,21 +1,41 @@
+const codecModule = require("@cornerstonejs/codec-libjpeg-turbo-12bit");
+const codecWasmModule = require("@cornerstonejs/codec-libjpeg-turbo-12bit/wasmjs");
+const codecFactory = require("./codecFactory");
+
 /**
  * @type {CodecWrapper}
  */
 const codecWrapper = {
-  // assign it and prevent initialization
   codec: undefined,
   Decoder: undefined,
   Encoder: undefined,
-  decoderName: "codec libjpeg turbo 12bit",
-  encoderName: "codec libjpeg turbo 12bit",
+  encoderName: "JPEGEncoder",
+  decoderName: "JPEGDecoder",
 };
 
+/**
+ * Decode imageFrame using libjpegTurbo 12bit decoder.
+ *
+ * @param {TypedArray} imageFrame to decode.
+ * @param {ExtendedImageInfo} imageInfo image info options.
+ * @returns Object containing decoded image frame and imageInfo (current) data.
+ */
 async function decode(imageFrame, imageInfo) {
-  throw Error("Decoder not found for codec:" + codecWrapper.encoderName);
+  return codecFactory.runProcess(
+    codecWrapper,
+    codecModule,
+    codecWasmModule,
+    codecWrapper.decoderName,
+    (context) => {
+      return codecFactory.decode(context, codecWrapper, imageFrame, imageInfo);
+    }
+  );
 }
 
 /**
- * <<Not available yet>> Encode imageFrame to libjpegTurbo 12bits format.
+ * <<Not available>> The libjpeg-turbo 12bit build does not expose an
+ * encoder (see src/jslib.cpp — the JPEGEncoder bindings are disabled), so
+ * encoding is not supported for this codec.
  *
  * @param {TypedArray} imageFrame to encode.
  * @param {ExtendedImageInfo} imageInfo image info options.
@@ -23,13 +43,11 @@ async function decode(imageFrame, imageInfo) {
  * @returns Object containing encoded image frame and imageInfo (current) data
  */
 async function encode(imageFrame, imageInfo, options = {}) {
-  throw Error("Encoder not found for codec:" + codecWrapper.encoderName);
+  throw Error("Encoder not supported for codec: libjpeg-turbo 12bit");
 }
 
 function getPixelData(imageFrame, imageInfo) {
-  throw Error(
-    "GetPixel not found or not applied for codec:" + codecWrapper.encoderName
-  );
+  return codecFactory.getPixelData(imageFrame, imageInfo);
 }
 
 exports.decode = decode;

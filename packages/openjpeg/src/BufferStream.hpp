@@ -33,43 +33,66 @@ static OPJ_SIZE_T
 opj_write_to_buffer (void* p_buffer, OPJ_SIZE_T p_nb_bytes,
                      opj_buffer_info_t* p_source_buffer)
 {
-    OPJ_BYTE* pbuf = p_source_buffer->buf;
-    OPJ_BYTE* pcur = p_source_buffer->cur;
+    OPJ_SIZE_T remaining = p_source_buffer->buf + p_source_buffer->len - p_source_buffer->cur;
 
-    OPJ_SIZE_T len = p_source_buffer->len;
+    if (remaining == 0)
+        return (OPJ_SIZE_T)-1;
 
-    memcpy (p_source_buffer->cur, p_buffer, p_nb_bytes);
-    p_source_buffer->cur += p_nb_bytes;
+    OPJ_SIZE_T n = p_nb_bytes > remaining ? remaining : p_nb_bytes;
 
-    return p_nb_bytes;
+    memcpy (p_source_buffer->cur, p_buffer, n);
+    p_source_buffer->cur += n;
+
+    return n;
 }
 
-static OPJ_SIZE_T
-opj_skip_from_buffer (OPJ_SIZE_T len, opj_buffer_info_t* psrc)
+/*
+ * Must match opj_stream_skip_fn exactly: OPJ_OFF_T (*)(OPJ_OFF_T, void*).
+ * OPJ_OFF_T is int64_t, so declaring this with OPJ_SIZE_T -- 32-bit under
+ * wasm32 -- made the cast below an (i64,i32)->i64 indirect call landing on an
+ * (i32,i32)->i32 table entry, which traps as "function signature mismatch".
+ *
+ * It only fires when a skip is actually delegated to this callback:
+ * opj_stream_read_skip serves anything within m_bytes_in_buffer straight from
+ * the 1MB chunk it has already read, so small JP2 box skips are invisible and
+ * only a skip past the buffered remainder -- a large tile-part, a large box --
+ * reaches us. Hence a multi-tile image failing where the same image re-tiled
+ * to a single tile decodes fine. Native builds tolerated the mismatched call,
+ * so this only ever showed up in wasm.
+ */
+static OPJ_OFF_T
+opj_skip_from_buffer (OPJ_OFF_T len, opj_buffer_info_t* psrc)
 {
     OPJ_SIZE_T n = psrc->buf + psrc->len - psrc->cur;
 
+    if (len < 0)
+        return (OPJ_OFF_T)-1;
+
     if (n) {
-        if (n > len)
-            n = len;
+        if (n > (OPJ_SIZE_T)len)
+            n = (OPJ_SIZE_T)len;
 
-        psrc->cur += len;
+        psrc->cur += n;
+
+        return (OPJ_OFF_T)n;
     }
-    else
-        n = (OPJ_SIZE_T)-1;
 
-    return n;
+    /* buffer exhausted: cio.c compares the result against (OPJ_OFF_T)-1 */
+    return (OPJ_OFF_T)-1;
 }
 
 static OPJ_BOOL
 opj_seek_from_buffer (OPJ_OFF_T len, opj_buffer_info_t* psrc)
 {
-    OPJ_SIZE_T n = psrc->len;
+    if (len < 0)
+        return OPJ_FALSE;
 
-    if (n > len)
-        n = len;
+    OPJ_SIZE_T off = (OPJ_SIZE_T)len;
 
-    psrc->cur = psrc->buf + n;
+    if (off > psrc->len)
+        off = psrc->len;
+
+    psrc->cur = psrc->buf + off;
 
     return OPJ_TRUE;
 }

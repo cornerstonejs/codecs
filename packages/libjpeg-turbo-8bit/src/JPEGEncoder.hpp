@@ -117,6 +117,15 @@ class JPEGEncoder {
         throw("initializing compressor");
     }
 
+    // The tjCompress2 failure below threw without destroying the compressor,
+    // so every failed encode leaked one; encoded_.resize() after it can throw
+    // std::bad_alloc for the same result. tjInstance has no destructor of its
+    // own, so tie it to the scope.
+    struct HandleGuard {
+      tjhandle& handle;
+      ~HandleGuard() { if (handle) tjDestroy(handle); }
+    } guard{tjInstance};
+
     int pixelFormat = frameInfo_.componentCount == 1 ? TJPF_GRAY : TJPF_RGB;
     int outSubsamp = frameInfo_.componentCount == 1 ? TJSAMP_GRAY : subSampling_;
     int flags = 0;
@@ -137,8 +146,7 @@ class JPEGEncoder {
     }
 
     encoded_.resize(jpegSize);
-
-    tjDestroy(tjInstance);  tjInstance = NULL;
+    // HandleGuard destroys tjInstance as this scope unwinds.
   }
 
   private:

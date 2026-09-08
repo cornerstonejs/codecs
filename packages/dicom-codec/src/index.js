@@ -134,6 +134,34 @@ function hasCodec(transferSyntaxUID) {
 }
 
 /**
+ * Release any per-codec resources held between calls.
+ *
+ * Only codecs that keep a decoder alive across decodes have anything to release
+ * (currently HTJ2K, which reuses one decoder instead of constructing one per
+ * frame). Everything the codec needs is rebuilt on the next decode, so this is
+ * always safe — it is for consumers who are done with a large series and want
+ * the WASM heap back rather than something callers must remember to do.
+ *
+ * @param {string} [transferSyntaxUID] release only this codec; omit to release all.
+ * @returns {boolean} true if anything was released.
+ *
+ * @throws Will throw an error if transferSyntaxUID is given and has no codec.
+ */
+function release(transferSyntaxUID) {
+  const target = transferSyntaxUID
+    ? [codecs.getCodec(transferSyntaxUID)]
+    : codecs.getCodecs()
+
+  // Several transfer syntaxes share one codec module; reduce over all of them
+  // so `release()` with no argument does not stop at the first one that had
+  // nothing to free.
+  return target.reduce(
+    (released, codec) => (codec.release ? codec.release() : false) || released,
+    false
+  )
+}
+
+/**
  * Set codecs general configuration.
  *
  * @param {object} options
@@ -153,6 +181,7 @@ const dicomCodec = {
   encode,
   getPixelData,
   hasCodec,
+  release,
   setConfig,
   transcode,
 }
