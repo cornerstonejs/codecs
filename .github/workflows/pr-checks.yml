@@ -378,14 +378,20 @@ jobs:
         # Exercises the release scripts on every PR. They are otherwise only
         # ever executed by a live release — after the 8-job build matrix, and
         # partway through mutating manifests, which is a poor place to discover
-        # a syntax error or a bad tag walk. Mutates nothing (--dry-run), and
-        # publish-order.mjs additionally re-checks the topological order and
-        # that every package shipping dist/ actually has one.
+        # a syntax error or a bad tag walk. Mutates nothing and publishes
+        # nothing.
+        #
+        # release:preflight re-checks the topological order and that every
+        # package shipping dist/ actually has one, then asks the registry
+        # whether each package can actually be published. A package that is not
+        # on npm at all is only a WARNING here — the PR adding a codec is
+        # exactly when it legitimately does not exist yet — but it is the
+        # warning that was missing when libjxl was merged in #88 and broke the
+        # next four releases. In the release workflow the same finding is fatal.
         run: |
           set -euo pipefail
-          node tools/release/version.mjs --dry-run
-          echo "Publish order:"
-          node tools/release/publish-order.mjs
+          pnpm run release:plan
+          pnpm run release:preflight
 
   dist-size:
     # Binary-size regression gate: compares every shipped dist artifact
