@@ -33,6 +33,38 @@ export function gray16uFromCT2(ct2Buffer) {
   return out;
 }
 
+/**
+ * CT2.RAW (int16le) -> bi-level Uint8Array, ONE BYTE PER SAMPLE, values 0/1:
+ * gray8FromCT2(v) >= 128.
+ *
+ * A threshold of the 8-bit derivation rather than random bits, so the result is
+ * an anatomical silhouette: long runs of a single value broken by an irregular,
+ * high-frequency boundary. That is what makes a 1-bit row-stride or bit-order
+ * mistake visible — uniform or periodic content survives both.
+ *
+ * One byte per sample is the layout the wasm codecs use for every depth up to
+ * 8; use packBitsLsbFirst() to get the DICOM bit-packed form.
+ */
+export function bilevelFromCT2(ct2Buffer) {
+  const gray8 = gray8FromCT2(ct2Buffer);
+  const out = new Uint8Array(gray8.length);
+  for (let i = 0; i < gray8.length; i++) out[i] = gray8[i] >= 128 ? 1 : 0;
+  return out;
+}
+
+/**
+ * One byte per sample (0/1) -> DICOM bit-packed BitsAllocated=1 PixelData:
+ * the first sample occupies the least significant bit of the first byte
+ * (PS3.5 8.1.1). The inverse of dicom-codec's codecFactory.unpackBits.
+ */
+export function packBitsLsbFirst(samples) {
+  const out = new Uint8Array(Math.ceil(samples.length / 8));
+  for (let i = 0; i < samples.length; i++) {
+    if (samples[i]) out[i >> 3] |= 1 << (i & 7);
+  }
+  return out;
+}
+
 /** interleaved RGBRGB... -> [RRR..., GGG..., BBB...] plane buffers */
 export function deinterleavePlanes(buf, samples) {
   const frameSize = buf.length / samples;

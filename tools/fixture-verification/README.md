@@ -74,6 +74,21 @@ Two real bugs were found while creating these:
   RLE plane-sequential path (`decode8Planar`) unreachable via the public
   API.
 
+## JPEG XL fixtures
+
+`gen/generate-jpegxl-fixtures.mjs` produces the JPEG XL fixtures under
+`packages/dicom-codec/test/fixtures/jpeg-xl` — sixteen 16-bit signed CT
+slices and three colour whole-slide microscopy frames. Unlike the
+fixtures above, its sources are not committed here: they come from the
+separate viewer-testdata checkout, so the generator also writes a
+`manifest.json` of per-fixture SHA-256 pixel hashes and the tests assert
+against that. See the fixtures' own README for provenance.
+
+Every fixture is lossless, so its reference is the source buffer itself;
+the generator verifies each encode round-trips before pinning its hash.
+No independent JPEG XL decoder is used, so these are regression goldens
+of libjxl's own output rather than a cross-implementation check.
+
 ## Known limitation of the from-scratch JPEG-LS decoder
 
 `jls.js` disagrees with CharLS/pylibjpeg on `SC1.JLS` (12-bit, run-mode

@@ -1,4 +1,4 @@
-const { isNode, isBrowser } = require("browser-or-node");
+const { isNode } = require("browser-or-node");
 /**
  * Wrapper for process timer to capture process timestamp.
  *
@@ -13,6 +13,12 @@ function processTimer(processName, loggerInstance) {
   let processDurationTime;
   const NS_SEC = 1000000000;
 
+  /**
+   * Captures a timestamp, or the elapsed time since a previous one.
+   *
+   * @param {[number, number]} [previousTime] timestamp previously returned by this function.
+   * @returns {[number, number]} [seconds, nanoseconds] on node, [milliseconds, 0] elsewhere.
+   */
   function hrtime(previousTime) {
     // node
     if (isNode) {
@@ -23,16 +29,19 @@ function processTimer(processName, loggerInstance) {
       }
     }
 
-    // browser
-    if (isBrowser) {
+    // any environment exposing the performance API: browser window, web /
+    // service / shared workers, deno, ...
+    if (typeof globalThis.performance !== "undefined") {
       if (previousTime) {
-        return [Math.abs(window.performance.now() - previousTime[0]), 0];
+        return [Math.abs(globalThis.performance.now() - previousTime[0]), 0];
       } else {
-        return [window.performance.now(), 0];
+        return [globalThis.performance.now(), 0];
       }
     }
 
-    return 0;
+    // no clock available: report a zero duration rather than a value the
+    // callers below would turn into NaN.
+    return [0, 0];
   }
 
   function hrTimeToMS(time) {

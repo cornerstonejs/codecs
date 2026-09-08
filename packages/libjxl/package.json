@@ -1,0 +1,48 @@
+{
+  "name": "@cornerstonejs/codec-libjxl",
+  "version": "1.1.0",
+  "description": "WASM build of libjxl (JPEG XL) for DICOM, with the decoder and encoder as separate modules",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "package.json",
+    "README.md",
+    "dist"
+  ],
+  "exports": {
+    ".": "./dist/jpegxlwasm_decode.js",
+    "./decodewasm": "./dist/jpegxlwasm_decode.wasm",
+    "./decodewasmjs": "./dist/jpegxlwasm_decode.js",
+    "./encodewasm": "./dist/jpegxlwasm_encode.wasm",
+    "./encodewasmjs": "./dist/jpegxlwasm_encode.js",
+    "./dist/*": "./dist/*"
+  },
+  "scripts": {
+    "build": "bash build.sh",
+    "build:ci": "pnpm run build",
+    "docker:build": "bash ../../tools/docker/build.sh libjxl",
+    "prepublishOnly": "pnpm run build",
+    "test": "vitest run",
+    "test:ci": "pnpm run test",
+    "bench": "vitest bench --run",
+    "clean": "rm -rf build dist"
+  },
+  "keywords": [
+    "JPEG XL",
+    "JPEGXL",
+    "JXL",
+    "libjxl",
+    "DICOM",
+    "WASM"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cornerstonejs/codecs.git"
+  }
+}

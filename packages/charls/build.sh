@@ -14,4 +14,7 @@ cp ./build/src/charlswasm_decode.js ./dist
 cp ./build/src/charlswasm_decode.wasm ./dist
 cp ./build/src/charlsjs_decode.js ./dist
 cp ./build/src/charlsjs_decode.js.mem ./dist
-(npm run test:benchmark)
+test_status=0
+(npm run test:benchmark) || test_status=$?
+node ../../tools/csp/check-generated-js.js ./dist || exit $?
+exit "${test_status}"

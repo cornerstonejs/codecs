@@ -42,6 +42,11 @@ endif()
 
 # add the js wrapper
 if(EMSCRIPTEN)
+  # Generate Embind adapters at build time so consumers do not need CSP unsafe-eval.
+  add_link_options(
+    "-sDYNAMIC_EXECUTION=0"
+    "-sEMBIND_AOT=1"
+  )
   add_subdirectory(src)
 endif()
 

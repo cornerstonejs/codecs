@@ -107,6 +107,16 @@ describe.each(buildVariants)("openjpeg J2K decode robustness — $name", ({ path
     if (isBuilt) codec = await loadModule(path)
   })
 
+  it.skipIf(!isBuilt)("throws when the encoded buffer is smaller than 4 bytes", () => {
+    const decoder = new codec.J2KDecoder()
+    const tooShort = new Uint8Array([0x00, 0x01, 0x02])
+    decoder.getEncodedBuffer(tooShort.length).set(tooShort)
+
+    expect(() => decoder.decode()).toThrow()
+
+    decoder.delete()
+  })
+
   it.skipIf(!isBuilt)("does not crash the process on a malformed/garbage buffer", () => {
     const decoder = new codec.J2KDecoder()
     const garbage = new Uint8Array(64)
@@ -139,6 +149,31 @@ describe.each(encoderVariants)(
     beforeAll(async () => {
       if (isBuilt) codec = await loadModule(path)
     })
+
+    it.skipIf(!isBuilt)(
+      "throws when encoder setup fails instead of returning a garbage buffer",
+      () => {
+        const frameInfo = {
+          width: 512,
+          height: 512,
+          bitsPerSample: 16,
+          componentCount: 1,
+          isSigned: true,
+        }
+        const encoder = new codec.J2KEncoder()
+        encoder.getDecodedBuffer(frameInfo).set(ct1Raw)
+        // 40 decompositions -> numresolution 41, beyond OpenJPEG's maximum
+        // (33), so opj_setup_encoder fails. encode() used to swallow this
+        // and leave the full pre-sized allocation in the encoded buffer,
+        // which callers then read back as a "successful" encode.
+        encoder.setDecompositions(40)
+
+        expect(() => encoder.encode()).toThrow()
+        expect(encoder.getEncodedBuffer().length).toBe(0)
+
+        encoder.delete()
+      }
+    )
 
     it.skipIf(!isBuilt)(
       "encodes CT1.RAW losslessly and decodes back to original bytes",
