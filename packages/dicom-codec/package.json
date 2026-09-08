@@ -39,7 +39,6 @@
     "@cornerstonejs/codec-little-endian": "^0.0.9",
     "@cornerstonejs/codec-openjpeg": "^1.3.5",
     "@cornerstonejs/codec-openjph": "^2.4.11",
-    "browser-or-node": "^2.0.0",
-    "jpeg-lossless-decoder-js": "^2.0.4"
+    "browser-or-node": "^2.0.0"
   }
 }

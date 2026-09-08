@@ -64,7 +64,7 @@ Transfer Syntax is the language used in DICOM to describe the DICOM file format 
 - \*\*\* - Unlike all other DICOM transfer syntaxes, the deflate transfer syntaxes compress the whole of the DICOM data (tags, lengths, VR etc.) rather than just the pixel data - this is done using the standard “deflate” mechanism as used in gzip etc.) It is therefore most suitable for non-pixel objects such as structured reports, presentation states etc.
 
 - 5: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeRLE.js)
-- 57 & 70: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/codecs/jpegLossless.js)
+- 57 & 70: [JS Decoder](https://github.com/cornerstonejs/JPEGLosslessDecoderJS) — built from the `main` branch of that fork and vendored into `packages/dicom-codec/src/vendor/`, since the published `jpeg-lossless-decoder-js` predates its end-of-scan fix
 - 1.2 & 2.1 & 99: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeLittleEndian.js)
 - 2.2: [JS Decoder](https://github.com/cornerstonejs/cornerstoneWADOImageLoader/blob/4bfa04759412d58647cc5d6bd0204aa37e4542e3/src/shared/decoders/decodeBigEndian.js)
 

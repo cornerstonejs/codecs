@@ -3,9 +3,9 @@
 Independent, from-scratch decoders used to verify that the `.raw`/`.RAW`
 pixel references committed under `packages/*/test/fixtures` are correct.
 They share **no code** with the codecs under test (the emscripten wasm
-builds, `jpeg-lossless-decoder-js`, or dicom-codec's `rleLossless.js`), so
-byte-exact agreement means two independent implementations produce the
-same pixels from the same codestream.
+builds, the vendored `jpeg-lossless-decoder-js`, or dicom-codec's
+`rleLossless.js`), so byte-exact agreement means two independent
+implementations produce the same pixels from the same codestream.
 
 ```
 node tools/fixture-verification/run-all.js
@@ -98,11 +98,17 @@ context, with CharLS and pylibjpeg agreeing with each other. The bug is in
 remain valid (independently confirmed by DCMTK/RLE cross-checks). Fixing
 the 12-bit run-interruption path here is a TODO.
 
-## Bug found by this verification
+## Bug found by this verification (now fixed)
 
-`jpeg-lossless-decoder-js` (used by dicom-codec for transfer syntaxes
-.57/.70) decodes the final pixel of the SV1 fixture as 0 instead of -2000.
-Four independent decoders agree the fixture is correct: the from-scratch
-`jpll.js` here, DCMTK's `dcmdjpeg`, the RLE decode of the same slice, and
-the library's own Process-14 path. See the pinned `it.fails` test in
-`packages/dicom-codec/test/integration.test.js`.
+Published `jpeg-lossless-decoder-js` 2.1.2 (used by dicom-codec for transfer
+syntaxes .57/.70) decoded the final pixel of the SV1 fixture as 0 instead of
+-2000. Four independent decoders agreed the fixture was correct: the
+from-scratch `jpll.js` here, DCMTK's `dcmdjpeg`, the RLE decode of the same
+slice, and the library's own Process-14 path.
+
+The cause was an off-by-one in the end-of-scan guards, which read the 0xFF
+introducing EOI as entropy coded data whenever the last Huffman code ended
+exactly on a byte boundary. dicom-codec now uses a vendored build carrying the
+fix — see `packages/dicom-codec/src/vendor/jpeg-lossless-decoder-js/README.md`
+— and `packages/dicom-codec/test/integration.test.js` compares both fixtures
+byte-for-byte.

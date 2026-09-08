@@ -88,9 +88,6 @@ importers:
       browser-or-node:
         specifier: ^2.0.0
         version: 2.1.1
-      jpeg-lossless-decoder-js:
-        specifier: ^2.0.4
-        version: 2.1.2
     devDependencies:
       clean-webpack-plugin:
         specifier: ^4.0.0
@@ -1127,12 +1124,6 @@ packages:
     os: [linux]
     libc: [glibc]
 
-  '@rollup/rollup-linux-x64-gnu@4.13.0':
-    resolution: {integrity: sha512-yUD/8wMffnTKuiIsl6xU+4IA8UNhQ/f1sAnQebmE/lyQ8abjsVyDkyRkWop0kdMhKMprpNIhPmYlCxgHrPoXoA==}
-    cpu: [x64]
-    os: [linux]
-    libc: [glibc]
-
   '@rollup/rollup-linux-x64-gnu@4.62.2':
     resolution: {integrity: sha512-5BqxR/pshjey51iliyzTD5Xi3EN0aLmQ2lZ3lvefVV9c82BvrLo2/6OT55iifpWBufs6kdwWbuOKS841DrmK9A==}
     cpu: [x64]
@@ -2119,9 +2110,6 @@ packages:
   jest-worker@27.5.1:
     resolution: {integrity: sha512-7vuh85V5cdDofPyxn58nrPjBktZo0u9x1g8WtjQol+jZDaE+fhN+cIvTj11GndBnMnyfrUOG1sZQxCdjKh+DKg==}
     engines: {node: '>= 10.13.0'}
-
-  jpeg-lossless-decoder-js@2.1.2:
-    resolution: {integrity: sha512-fYf/plymnuKwVw+s8gJ8O/BPw8y8OLaN11MBvEcT05kuy3m45o7BEC4J0JbxMNUYyO+MdK/I/jq0q1gkVYZm2Q==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -3880,9 +3868,6 @@ snapshots:
   '@rollup/rollup-linux-s390x-gnu@4.62.2':
     optional: true
 
-  '@rollup/rollup-linux-x64-gnu@4.13.0':
-    optional: true
-
   '@rollup/rollup-linux-x64-gnu@4.62.2':
     optional: true
 
@@ -5077,10 +5062,6 @@ snapshots:
       '@types/node': 26.2.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
-
-  jpeg-lossless-decoder-js@2.1.2:
-    optionalDependencies:
-      '@rollup/rollup-linux-x64-gnu': 4.13.0
 
   js-tokens@10.0.0: {}
 
