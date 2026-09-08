@@ -67,6 +67,27 @@ function registryState(pkg) {
   return resolvesOnRegistry(pkg.name) ? 'publishable' : 'needs-bootstrap';
 }
 
+/**
+ * The one-line form, for a `::error::`/`::warning::` annotation.
+ *
+ * GitHub renders only the FIRST line of an annotation's message in the Checks
+ * tab, so emitting the multi-line instructions there showed them cut off
+ * mid-sentence ("...and npm's OIDC trusted"). The annotation therefore has to
+ * say the whole thing in one line and point at the log for the commands, which
+ * is why this is separate from bootstrapInstructions rather than its first
+ * line. Naming the packages here matters: the annotation is the part a
+ * maintainer sees without opening the job.
+ */
+function bootstrapSummary(packages) {
+  const names = packages.map((p) => p.name).join(', ');
+
+  return (
+    `${packages.length} package(s) have never been published and need one manual ` +
+    `publish before trusted publishing can release them: ${names}. ` +
+    'Nothing was published; the job log has the exact commands.'
+  );
+}
+
 function bootstrapInstructions(packages) {
   const lines = [
     `${packages.length} package(s) have never been published, and npm's OIDC trusted`,
@@ -122,17 +143,23 @@ function main() {
   const needsBootstrap = ordered.filter((p) => state.get(p.name) === 'needs-bootstrap');
 
   if (needsBootstrap.length > 0) {
-    const message = bootstrapInstructions(needsBootstrap);
+    // One line for the annotation, the instructions as ordinary log lines --
+    // see bootstrapSummary for why they cannot be the same string. Each pair
+    // goes to a single stream so the two stay adjacent in the log.
+    const summary = bootstrapSummary(needsBootstrap);
+    const instructions = bootstrapInstructions(needsBootstrap);
 
     if (!preflightOnly) {
-      console.error(`::error::${message}`);
+      console.error(`::error::${summary}`);
+      console.error(instructions);
       process.exit(1);
     }
 
     // Advisory on a PR: the package really does not exist yet, and the PR that
     // adds a codec should not fail for it. It should say so loudly, though --
     // silence here is what let libjxl reach main and break four releases.
-    console.log(`::warning::${message}`);
+    console.log(`::warning::${summary}`);
+    console.log(instructions);
   }
 
   const toPublish = ordered.filter((p) => state.get(p.name) === 'publishable');
