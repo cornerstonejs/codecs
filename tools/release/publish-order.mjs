@@ -23,11 +23,15 @@
 //      package after it. One stream of complete lines has no such edge.
 //
 // Usage:
-//   node tools/release/publish-order.mjs
+//   node tools/release/publish-order.mjs      (or: npm run release:order)
+//
+// Also imported by publish.mjs, which needs the same order and the same dist
+// check but drives the publishing itself. The CLI behaviour below runs only
+// when this file is executed directly, so importing it has no side effects.
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const PACKAGES_DIR = path.join(ROOT, 'packages');
@@ -116,21 +120,35 @@ function assertShippableContents(pkg) {
   }
 }
 
-function main() {
-  const packages = readWorkspace();
-  const ordered = topologicallySorted(packages);
+/**
+ * The workspace's publishable packages, in dependency order, each verified to
+ * have the dist/ it claims to ship. Throws on a cycle or an empty dist.
+ */
+export function publishOrder() {
+  const ordered = topologicallySorted(readWorkspace());
 
   for (const pkg of ordered) {
     assertShippableContents(pkg);
   }
 
-  process.stdout.write(ordered.map((p) => `${p.name} ${p.version} ${p.dir}`).join('\n'));
-  process.stdout.write('\n');
+  return ordered;
 }
 
-try {
-  main();
-} catch (error) {
-  console.error(`::error::${error.message}`);
-  process.exit(1);
+/** The `<name> <version> <dir>` lines the workflow's publish-order.txt holds. */
+export function formatOrder(ordered) {
+  return `${ordered.map((p) => `${p.name} ${p.version} ${p.dir}`).join('\n')}\n`;
+}
+
+function main() {
+  process.stdout.write(formatOrder(publishOrder()));
+}
+
+// Executed directly, not imported.
+if (process.argv[1] && pathToFileURL(process.argv[1]).href === import.meta.url) {
+  try {
+    main();
+  } catch (error) {
+    console.error(`::error::${error.message}`);
+    process.exit(1);
+  }
 }

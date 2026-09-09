@@ -5,9 +5,9 @@ what the numbers mean, why they don't match real wall-clock time, and how
 to read warnings from the CodSpeed dashboard.
 
 Bench files live under `packages/*/bench/*.bench.js` and are driven by
-`vitest bench` + `@codspeed/vitest-plugin@^5`. The full pipeline is in
-`.github/workflows/pr-checks.yml` (jobs: `codspeed-bench` and
-`codspeed-walltime`).
+`vitest bench` + `@codspeed/vitest-plugin@^5`. Both bench jobs are in
+`.github/workflows/bench.yml` (`codspeed-bench`, then `codspeed-walltime`);
+`.github/workflows/pr-checks.yml` builds the dists they measure.
 
 ## TL;DR
 
@@ -48,11 +48,29 @@ bare-metal machines. It covers simulation's two blind spots: real-time
 effects (branch prediction, actual caches) that instruction counting
 models away, and the pure-JS packages (`little-endian`/`big-endian`)
 where the no-JIT simulation model is furthest from production V8.
-Walltime benches run packages sequentially (`--concurrency 1`) because
-parallel processes contend for cores and add noise; simulation is immune
-to contention so it keeps `--parallel`. Note the macro runners are ARM64:
-walltime numbers are real milliseconds, but on different silicon than
-most x86 production traffic.
+Note the macro runners are ARM64: walltime numbers are real milliseconds,
+but on different silicon than most x86 production traffic.
+
+**Both jobs run packages sequentially** (`--workspace-concurrency=1`).
+Walltime measures elapsed time, so parallel processes contend for cores
+and add noise. Simulation was left parallel on the premise that
+instruction counting is immune to contention, and #76 disproved that: a
+charls bench was reported as a 19.8 ms → 37.9 ms regression on a commit
+whose only change was one vitest file. See the comment on that job's
+`run:` step in `bench.yml`.
+
+**Ordering matters, and it is why both jobs live in `bench.yml`.** The
+CodSpeed app computes its single `CodSpeed Performance Analysis` check
+from the **first** upload a commit produces, and never re-evaluates it.
+While walltime ran beside the bench in `pr-checks.yml` it finished 2–7
+minutes earlier every time, so the advisory instrument decided the check
+on every commit and the gate never spoke. `continue-on-error: true` does
+not help: it sets the job's conclusion, while the app posts an
+independent check run that no job setting can mark advisory.
+`codspeed-walltime` therefore `needs: codspeed-bench`, which also stops
+the two instruments landing in one series — they differ by 5–15x on wasm
+decode, so a commit measured by one and its predecessor by the other
+produces a meaningless delta (see the next section).
 
 ## How the numbers get inflated
 
@@ -143,6 +161,57 @@ graph collapses to one opaque box. You can't drill into "where inside
 decode is the time spent" for wasm code — that's a fundamental
 limitation of wasm-via-V8-via-Cachegrind. For wasm hotspot analysis,
 profile the native build with `perf` / Instruments / VTune instead.
+
+### "N benchmarks were skipped, so the baseline results were used instead"
+The CodSpeed project holds more benchmark entries than the repo now
+defines — as of 2026-09-04, 133 registered against 67 that actually run.
+The surplus entries are orphans left by benches that were renamed or deleted
+(the cold/warm split, the openjph upstream rework), plus
+`libjpeg-turbo-12bit`, whose `bench` script is deliberately a no-op
+(`.51` transfer syntax is disabled) so its 9th bench file never executes.
+
+**What to do**: nothing, for correctness. A skipped benchmark reuses its
+baseline on *both* sides of the comparison, so its delta is zero and it
+can never trigger a regression — the only cost is a misleading total.
+Archiving them is **dashboard-only** (Settings → the benchmark → Archive);
+there is no repo config, config file or code annotation that clears them,
+so this cannot be fixed in a commit.
+
+### A regression on a diff that changes no runtime code
+Almost always a stale baseline rather than a real change. The usual cause
+was a main baseline that never got measured: until 2026-09-04 the release
+workflow's version commit shared `bench.yml`'s push concurrency group with
+the merge commit it followed, so it cancelled that bench and then skipped
+its own — see the comment on `concurrency:` in
+[.github/workflows/bench.yml](.github/workflows/bench.yml). Merges of #70
+and #73 produced no baseline at all.
+
+There was a second cause, fixed at the same time as this note was written.
+`pr-checks.yml` kept a branch-level push concurrency group after `bench.yml`
+got a per-commit one, so the release commit still cancelled the merge
+commit's **`pr-checks`** run — which is where `codspeed-walltime` used to
+live. On `c9ffa62` that killed walltime with every other job already green,
+simulation won the first-upload race by default, and the check compared
+`bac71dd`'s walltime number against `c9ffa62`'s simulation number:
+`JPEG XL Lossless (.110)` 158.5 ms → 991.8 ms. That 6.3x ratio is not a
+regression, it is the 5–15x simulation-inflation band in the table above.
+Two symptoms identify this case: the ratio sits near that band, and the
+commit's `codspeed-walltime` job is `cancelled` rather than `success`.
+
+Drift also plays a part that a fresh baseline does not remove. `JPEG XL
+Lossless colour (.110)` read 182.1 ms, then 193.4 ms, then 298.5 ms across
+three commits whose `libjxl` was byte-identical, with a good walltime
+baseline on both sides of each comparison. That is well outside the 1–3%
+figure in the table, so treat walltime deltas on the `dicom-codec` dispatch
+benches as advisory even when the baseline is sound.
+
+**What to do**: confirm the diff cannot affect the measured path, then let
+the next successful **push to main** re-seed the baseline for all live
+benchmarks — that happens on its own and needs no dashboard access.
+Acknowledging a regression directly *is* dashboard-only and admin-only, but
+it is not required to merge: main's ruleset lists no required status checks
+(only 1 approving review and code-owner review), so a red CodSpeed check
+never blocks a pull request.
 
 ### Tier-related regression in `instantiate+destroy X`
 The instantiation bench measures whatever V8 tier the embind helpers

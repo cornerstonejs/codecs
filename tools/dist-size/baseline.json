@@ -97,28 +97,28 @@
   },
   "openjpeg": {
     "openjpegjs.js": {
-      "raw": 755496,
-      "gzip": 199652
+      "raw": 764376,
+      "gzip": 202645
     },
     "openjpegjs_decode.js": {
-      "raw": 541662,
-      "gzip": 139653
+      "raw": 550410,
+      "gzip": 142608
     },
     "openjpegwasm.js": {
       "raw": 57685,
-      "gzip": 15161
+      "gzip": 15160
     },
     "openjpegwasm.wasm": {
-      "raw": 368497,
-      "gzip": 127454
+      "raw": 372915,
+      "gzip": 129534
     },
     "openjpegwasm_decode.js": {
       "raw": 55759,
-      "gzip": 14970
+      "gzip": 14968
     },
     "openjpegwasm_decode.wasm": {
-      "raw": 255890,
-      "gzip": 84256
+      "raw": 260334,
+      "gzip": 86295
     }
   },
   "openjphjs": {
