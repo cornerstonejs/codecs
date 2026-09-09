@@ -65,7 +65,7 @@ importers:
         specifier: ^0.1.3
         version: link:../big-endian
       '@cornerstonejs/codec-charls':
-        specifier: ^1.2.6
+        specifier: ^1.2.7
         version: link:../charls
       '@cornerstonejs/codec-libjpeg-turbo-12bit':
         specifier: ^0.4.5
