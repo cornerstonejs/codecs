@@ -230,9 +230,20 @@ jobs:
     # whole run, and every job downstream of it, pending until GitHub's 6-hour
     # default fires.
     #
-    # 20 is ~5x the slowest observed leg (libjxl, 239s) and leaves room for a
-    # cold emsdk image pull.
-    timeout-minutes: 20
+    # 50, not the 20 this started at. That 20 was set as ~5x the slowest leg
+    # then observed (libjxl, 239s), but libjxl is far more variable than one
+    # observation suggested: on #79 its Build step ran 18m42s on an ordinary
+    # hosted runner — 4.5x that figure, and a cache hit on dependencies, so the
+    # time went into the compile itself — and the job was cancelled at the
+    # 20-minute bound despite the PR changing nothing under packages/libjxl.
+    # The same leg had taken 4m18s on #93 twenty minutes earlier.
+    #
+    # A bound calibrated to a fast observation converts ordinary runner
+    # variance into a red check, and a cancelled leg costs a full CI cycle to
+    # tell apart from a real failure. 50 still catches the wedge this exists
+    # for (the unbounded leg above ran 80+ minutes) and leaves room for both a
+    # slow libjxl compile and a cold emsdk image pull.
+    timeout-minutes: 50
     runs-on: ubuntu-latest
     container:
       image: emscripten/emsdk:3.1.74

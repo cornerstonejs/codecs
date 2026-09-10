@@ -31,11 +31,13 @@ if(NOT EXISTS "${PROJECT_SOURCE_DIR}/extern/libjpeg-turbo/CMakeLists.txt")
     message(FATAL_ERROR "The submodules were not downloaded! GIT_SUBMODULE was turned off or failed. Please update submodules and try again.")
 endif()
 
-option(ENABLE_SHARED "" OFF)
-option(ENABLE_STATIC "" ON)
-
-# add the external library
-add_subdirectory(extern/libjpeg-turbo EXCLUDE_FROM_ALL)
+# NOTE: libjpeg-turbo 3.x refuses add_subdirectory() integration (it asserts it
+# is the top-level project and errors out). It is now built as a separate
+# project by build.sh, which passes its build dir in LIBJPEG_TURBO_BUILD_DIR;
+# src/CMakeLists.txt links the produced libturbojpeg.a as an IMPORTED target.
+if(EMSCRIPTEN AND NOT DEFINED LIBJPEG_TURBO_BUILD_DIR)
+  message(FATAL_ERROR "LIBJPEG_TURBO_BUILD_DIR not set — run build.sh, which builds libjpeg-turbo first and passes its build dir.")
+endif()
 
 # add the js wrapper
 if(EMSCRIPTEN)
