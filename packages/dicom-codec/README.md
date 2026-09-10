@@ -1,3 +1,4 @@
+<!-- Control experiment for the CodSpeed baseline test. Do not merge this branch. -->
 # dicom-codec
 
 DICOM codecs for JavaScript, with browser and Node.js support.
