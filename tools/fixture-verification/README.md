@@ -3,7 +3,7 @@
 Independent, from-scratch decoders used to verify that the `.raw`/`.RAW`
 pixel references committed under `packages/*/test/fixtures` are correct.
 They share **no code** with the codecs under test (the emscripten wasm
-builds, the vendored `jpeg-lossless-decoder-js`, or dicom-codec's
+builds, `@cornerstonejs/jpeg-lossless-decoder-js`, or dicom-codec's
 `rleLossless.js`), so byte-exact agreement means two independent
 implementations produce the same pixels from the same codestream.
 
@@ -108,7 +108,7 @@ slice, and the library's own Process-14 path.
 
 The cause was an off-by-one in the end-of-scan guards, which read the 0xFF
 introducing EOI as entropy coded data whenever the last Huffman code ended
-exactly on a byte boundary. dicom-codec now uses a vendored build carrying the
-fix — see `packages/dicom-codec/src/vendor/jpeg-lossless-decoder-js/README.md`
-— and `packages/dicom-codec/test/integration.test.js` compares both fixtures
-byte-for-byte.
+exactly on a byte boundary. dicom-codec now depends on
+`@cornerstonejs/jpeg-lossless-decoder-js`, a fork of the library that carries
+the fix, and `packages/dicom-codec/test/integration.test.js` compares both
+fixtures byte-for-byte.

@@ -217,8 +217,8 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
   })
 
   describe("JPEG Lossless (1.2.840.10008.1.2.4.57 / .70)", () => {
-    // These go through dicom-codec's internal jpegLosslessCodec (the vendored
-    // jpeg-lossless-decoder-js build, pure JS — no separate wasm package).
+    // These go through dicom-codec's internal jpegLosslessCodec
+    // (@cornerstonejs/jpeg-lossless-decoder-js, pure JS — no wasm package).
     // Both fixtures encode the same 512x512x16 CT slice; the reference
     // fixtures/raw/CT-512x512.raw was cross-validated three ways: the RLE
     // decoder, the Process 14 path of jpeg-lossless-decoder-js and DCMTK's
@@ -258,7 +258,7 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
       expect(frameBytes(result.imageFrame).equals(ctRaw)).toBe(true)
     })
 
-    // This fixture is the regression case for the vendored decoder: its scan
+    // This fixture is the regression case for the forked decoder: its scan
     // ends in a long run of the image minimum whose zero-difference codes tile
     // the final byte exactly, and published jpeg-lossless-decoder-js 2.1.2
     // decoded that last sample as 0 instead of -2000 (it read the 0xFF

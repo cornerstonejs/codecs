@@ -1,8 +1,7 @@
-// Vendored build of the cornerstonejs fork of jpeg-lossless-decoder-js rather
-// than the published 2.1.2: that release loses the last sample of any frame
-// whose final Huffman code ends on a byte boundary. See
-// ../vendor/jpeg-lossless-decoder-js/README.md.
-const codecModule = require("../vendor/jpeg-lossless-decoder-js/lossless.cjs");
+// @cornerstonejs/jpeg-lossless-decoder-js, not the unscoped
+// jpeg-lossless-decoder-js: the published 2.1.2 of that package loses the last
+// sample of any frame whose final Huffman code ends on a byte boundary.
+const codecModule = require("@cornerstonejs/jpeg-lossless-decoder-js");
 const codecFactory = require("./codecFactory");
 
 /**
