@@ -1,4 +1,7 @@
-const codecModule = require("jpeg-lossless-decoder-js");
+// @cornerstonejs/jpeg-lossless-decoder-js, not the unscoped
+// jpeg-lossless-decoder-js: the published 2.1.2 of that package loses the last
+// sample of any frame whose final Huffman code ends on a byte boundary.
+const codecModule = require("@cornerstonejs/jpeg-lossless-decoder-js");
 const codecFactory = require("./codecFactory");
 
 /**

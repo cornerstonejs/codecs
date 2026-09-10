@@ -62,3 +62,20 @@ frozenLockfile: true
 # local decision.
 allowBuilds:
   esbuild: true
+
+# pnpm refuses a dependency version that the registry published very recently,
+# which is a supply-chain measure: it buys time for a compromised release to be
+# found and unpublished before this repo installs it. That measure is aimed at
+# third-party code, and it cannot judge our own.
+#
+# @cornerstonejs/jpeg-lossless-decoder-js is published by this organisation from
+# cornerstonejs/JPEGLosslessDecoderJS, and dicom-codec needs it for transfer
+# syntaxes 1.2.840.10008.1.2.4.57 and .70. Waiting out the age window on our own
+# release would block a decode fix behind a delay that protects nothing here.
+#
+# The entry names the package and no version on purpose. pnpm writes a
+# version-pinned entry when it adds one itself, and that entry goes stale at
+# every release of the package, which turns a routine version bump into an
+# install failure. Keep this list to packages that this organisation publishes.
+minimumReleaseAgeExclude:
+  - '@cornerstonejs/jpeg-lossless-decoder-js'

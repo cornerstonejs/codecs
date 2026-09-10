@@ -85,12 +85,12 @@ importers:
       '@cornerstonejs/codec-openjph':
         specifier: ^2.4.11
         version: link:../openjphjs
+      '@cornerstonejs/jpeg-lossless-decoder-js':
+        specifier: ^2.2.0
+        version: 2.2.0
       browser-or-node:
         specifier: ^2.0.0
         version: 2.1.1
-      jpeg-lossless-decoder-js:
-        specifier: ^2.0.4
-        version: 2.1.2
     devDependencies:
       clean-webpack-plugin:
         specifier: ^4.0.0
@@ -684,6 +684,9 @@ packages:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
       vitest: ^3.2 || ^4
 
+  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.0':
+    resolution: {integrity: sha512-41y2/PDEsH8FGr6zZZ58TFSak8DLtEEInCuIGJb/sQ3aAPHx7dmZZEtyPamRS6eW3jp9hWiA59KziPiyXSSXSg==}
+
   '@discoveryjs/json-ext@0.5.7':
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
     engines: {node: '>=10.0.0'}
@@ -1124,12 +1127,6 @@ packages:
   '@rollup/rollup-linux-s390x-gnu@4.62.2':
     resolution: {integrity: sha512-E9/ll019jhPIJgpzfZoIkBGhcz+kKNgVWYRY0zr9srBdPPFVpvOKW8VaJKUbeK+eZXyQF9ltME+Kk6affeaPgg==}
     cpu: [s390x]
-    os: [linux]
-    libc: [glibc]
-
-  '@rollup/rollup-linux-x64-gnu@4.13.0':
-    resolution: {integrity: sha512-yUD/8wMffnTKuiIsl6xU+4IA8UNhQ/f1sAnQebmE/lyQ8abjsVyDkyRkWop0kdMhKMprpNIhPmYlCxgHrPoXoA==}
-    cpu: [x64]
     os: [linux]
     libc: [glibc]
 
@@ -2119,9 +2116,6 @@ packages:
   jest-worker@27.5.1:
     resolution: {integrity: sha512-7vuh85V5cdDofPyxn58nrPjBktZo0u9x1g8WtjQol+jZDaE+fhN+cIvTj11GndBnMnyfrUOG1sZQxCdjKh+DKg==}
     engines: {node: '>= 10.13.0'}
-
-  jpeg-lossless-decoder-js@2.1.2:
-    resolution: {integrity: sha512-fYf/plymnuKwVw+s8gJ8O/BPw8y8OLaN11MBvEcT05kuy3m45o7BEC4J0JbxMNUYyO+MdK/I/jq0q1gkVYZm2Q==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -3633,6 +3627,8 @@ snapshots:
       - debug
       - supports-color
 
+  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.0': {}
+
   '@discoveryjs/json-ext@0.5.7': {}
 
   '@esbuild/aix-ppc64@0.28.1':
@@ -3878,9 +3874,6 @@ snapshots:
     optional: true
 
   '@rollup/rollup-linux-s390x-gnu@4.62.2':
-    optional: true
-
-  '@rollup/rollup-linux-x64-gnu@4.13.0':
     optional: true
 
   '@rollup/rollup-linux-x64-gnu@4.62.2':
@@ -5077,10 +5070,6 @@ snapshots:
       '@types/node': 26.2.0
       merge-stream: 2.0.0
       supports-color: 8.1.1
-
-  jpeg-lossless-decoder-js@2.1.2:
-    optionalDependencies:
-      '@rollup/rollup-linux-x64-gnu': 4.13.0
 
   js-tokens@10.0.0: {}
 

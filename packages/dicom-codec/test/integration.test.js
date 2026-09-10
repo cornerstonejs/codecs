@@ -218,8 +218,8 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
 
   describe("JPEG Lossless (1.2.840.10008.1.2.4.57 / .70)", () => {
     // These go through dicom-codec's internal jpegLosslessCodec
-    // (jpeg-lossless-decoder-js, pure JS — no separate wasm package). Both
-    // fixtures encode the same 512x512x16 CT slice; the reference
+    // (@cornerstonejs/jpeg-lossless-decoder-js, pure JS — no wasm package).
+    // Both fixtures encode the same 512x512x16 CT slice; the reference
     // fixtures/raw/CT-512x512.raw was cross-validated three ways: the RLE
     // decoder, the Process 14 path of jpeg-lossless-decoder-js and DCMTK's
     // dcmdjpeg all produce these exact bytes.
@@ -258,33 +258,21 @@ describe.skipIf(!ALL_BUILT)("dicom-codec integration", () => {
       expect(frameBytes(result.imageFrame).equals(ctRaw)).toBe(true)
     })
 
-    // KNOWN UPSTREAM BUG (jpeg-lossless-decoder-js): the SV1 path decodes
-    // the final pixel of this fixture as 0 instead of -2000. DCMTK's
-    // dcmdjpeg confirms the fixture itself is correct (its decode matches
-    // CT-512x512.raw exactly, last pixel included), so the defect is in the
-    // JS decoder. The test below pins today's behavior: every sample except
-    // the last matches the reference. When the upstream bug is fixed, the
-    // paired `it.fails` test starts passing and vitest will flag it — then
-    // fold these two tests into a single exact comparison.
-    it("decodes Process 14 SV1 through the dispatcher (.70) — all but the last pixel match", async () => {
+    // This fixture is the regression case for the forked decoder: its scan
+    // ends in a long run of the image minimum whose zero-difference codes tile
+    // the final byte exactly, and published jpeg-lossless-decoder-js 2.1.2
+    // decoded that last sample as 0 instead of -2000 (it read the 0xFF
+    // introducing EOI as entropy coded data and stopped one sample early).
+    // DCMTK's dcmdjpeg always decoded this fixture to CT-512x512.raw exactly,
+    // last pixel included. An exact comparison here fails on any decoder
+    // without the fix.
+    it("decodes Process 14 SV1 through the dispatcher (.70) to the exact reference pixels", async () => {
       const result = await dicomCodec.decode(
         jpllProcess14Sv1,
         ctImageInfo,
         "1.2.840.10008.1.2.4.70"
       )
       expect(result.imageFrame.byteLength).toBe(ctRaw.length)
-
-      const actual = frameBytes(result.imageFrame)
-      // Everything up to the final 16-bit sample must match exactly.
-      expect(actual.subarray(0, ctRaw.length - 2).equals(ctRaw.subarray(0, ctRaw.length - 2))).toBe(true)
-    })
-
-    it.fails("decodes Process 14 SV1 (.70) to the exact reference pixels (known upstream last-pixel bug)", async () => {
-      const result = await dicomCodec.decode(
-        jpllProcess14Sv1,
-        ctImageInfo,
-        "1.2.840.10008.1.2.4.70"
-      )
       expect(frameBytes(result.imageFrame).equals(ctRaw)).toBe(true)
     })
   })
