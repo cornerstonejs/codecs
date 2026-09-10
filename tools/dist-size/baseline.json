@@ -33,42 +33,42 @@
   },
   "libjpeg-turbo-12bit": {
     "libjpegturbo12js.js": {
-      "raw": 2553272,
-      "gzip": 266948
+      "raw": 599145,
+      "gzip": 146341
     },
     "libjpegturbo12wasm.js": {
-      "raw": 112153,
-      "gzip": 28570
+      "raw": 55354,
+      "gzip": 15020
     },
     "libjpegturbo12wasm.wasm": {
-      "raw": 2238031,
-      "gzip": 760773
+      "raw": 278203,
+      "gzip": 93433
     }
   },
   "libjpeg-turbo-8bit": {
     "libjpegturbojs.js": {
-      "raw": 838153,
-      "gzip": 160171
+      "raw": 1076703,
+      "gzip": 212348
     },
     "libjpegturbojs_decode.js": {
-      "raw": 418292,
-      "gzip": 118256
+      "raw": 639223,
+      "gzip": 157179
     },
     "libjpegturbowasm.js": {
-      "raw": 57440,
-      "gzip": 15274
+      "raw": 57640,
+      "gzip": 15292
     },
     "libjpegturbowasm.wasm": {
-      "raw": 448955,
-      "gzip": 96494
+      "raw": 555769,
+      "gzip": 136985
     },
     "libjpegturbowasm_decode.js": {
-      "raw": 56350,
-      "gzip": 15191
+      "raw": 56736,
+      "gzip": 15229
     },
     "libjpegturbowasm_decode.wasm": {
-      "raw": 180512,
-      "gzip": 70074
+      "raw": 299002,
+      "gzip": 99458
     }
   },
   "libjxl": {
@@ -97,28 +97,28 @@
   },
   "openjpeg": {
     "openjpegjs.js": {
-      "raw": 755496,
-      "gzip": 199652
+      "raw": 764376,
+      "gzip": 202645
     },
     "openjpegjs_decode.js": {
-      "raw": 541662,
-      "gzip": 139653
+      "raw": 550410,
+      "gzip": 142608
     },
     "openjpegwasm.js": {
       "raw": 57685,
-      "gzip": 15161
+      "gzip": 15160
     },
     "openjpegwasm.wasm": {
-      "raw": 368497,
-      "gzip": 127454
+      "raw": 372915,
+      "gzip": 129534
     },
     "openjpegwasm_decode.js": {
       "raw": 55759,
-      "gzip": 14970
+      "gzip": 14968
     },
     "openjpegwasm_decode.wasm": {
-      "raw": 255890,
-      "gzip": 84256
+      "raw": 260334,
+      "gzip": 86295
     }
   },
   "openjphjs": {

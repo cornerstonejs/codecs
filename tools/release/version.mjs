@@ -118,7 +118,7 @@ const RECORD_SEP = String.fromCharCode(0x1e); // git emits it as %x1e
 // Carried over verbatim from lerna.json's command.publish.ignoreChanges. That
 // key looked like it applied only to `lerna publish`, but VersionCommand
 // declares publish as an "other command config" and read it too — so this is
-// what stopped a docs-only commit from releasing all eight packages. A commit
+// what stopped a docs-only commit from releasing every package. A commit
 // counts as releasable only if it touches at least one path these globs do
 // NOT match.
 const IGNORE_CHANGES = ['*.md', '*.yml', '*.spec.js', '*.test.js'];

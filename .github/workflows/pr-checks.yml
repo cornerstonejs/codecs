@@ -2,10 +2,10 @@ name: PR checks
 
 # Pipeline: builds run as a per-package parallel matrix (wasm compiles are
 # the slow part), then a single test job runs the whole vitest workspace
-# against the built dists. The CodSpeed simulation bench lives in bench.yml,
+# against the built dists. BOTH CodSpeed instruments now live in bench.yml,
 # which waits for THIS workflow's dist artifacts and benches the packages
-# the PR touched; the advisory walltime bench stays here (codspeed-walltime
-# below).
+# the PR touched: the simulation gate first, then the advisory walltime job
+# after it.
 #
 # Toolchain bumps (emsdk image tag below, root package.json/pnpm-lock.yaml,
 # this workflow itself) force the FULL pipeline including a full bench sweep.
@@ -39,12 +39,49 @@ on:
   # dashboard (to seed initial perf data after the repo is connected).
   workflow_dispatch:
 
-# Cancel in-flight runs when a new push lands on the same PR / branch.
+# Cancel in-flight runs when a new push lands on the same PR.
+#
+# Keyed per-commit off a PR, the same way bench.yml is, and because of the same
+# incident. On a push `head_ref` is empty, so `github.head_ref || github.ref`
+# put every main push into the single group
+# `pr-checks-PR checks-refs/heads/main` with cancel-in-progress: true. The
+# release workflow's version commit -- pushed about five minutes after the
+# merge that triggered it -- entered that group and CANCELLED the merge
+# commit's run, then skipped its own jobs through the detect-changes guard
+# below. GitHub applies concurrency when a run is QUEUED, before it evaluates
+# any `if:`, so a run that goes on to do nothing still cancels its
+# predecessor:
+#
+#   18:33  c9ffa62  fix(release): preflight the registry...  cancelled
+#   18:39  c44693e  chore(release): publish                  skipped
+#
+# On c9ffa62 that killed `codspeed-walltime` at 18:39:11 with every other job
+# already green. The cost is not one lost job: the CodSpeed check is computed
+# from the FIRST upload a commit produces and is never re-evaluated, so
+# cancelling walltime hands the check to the simulation bench instead. The two
+# instruments differ by 5-15x on wasm decode (see BENCHMARKING.md), so
+# c9ffa62 stored a simulation-sourced number for a benchmark whose predecessor
+# had stored a walltime-sourced one, and the check reported `JPEG XL Lossless
+# (.110)` as 158.5 ms -> 991.8 ms on a diff that touches only tools/release/
+# and workflows.
+#
+# c9ffa62 fixed this in bench.yml but not here, and the bench.yml fix is not
+# sufficient on its own: bench.yml's gate waits on THIS workflow's build
+# artifacts, so a run cancelled here starves the bench there.
+#
+# Keying non-PR runs by github.sha gives every main commit its own group, so no
+# main push can cancel another. cancel-in-progress stays true for
+# pull_request, where superseding an in-flight run with a newer push is
+# exactly what is wanted. See bench.yml's concurrency comment for why
+# per-commit keying is needed rather than cancel-in-progress: false alone -- a
+# group holds one running run and at most one PENDING run, and queueing a
+# third evicts the pending one whatever cancel-in-progress says.
 concurrency:
-  group: pr-checks-${{ github.workflow }}-${{ github.head_ref || github.ref }}
-  cancel-in-progress: true
+  group: pr-checks-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-# Job-level permissions where a job needs more (codspeed-walltime).
+# Job-level permissions where a job needs more (detect-changes reads the PR's
+# changed files).
 permissions:
   contents: read
 
@@ -74,10 +111,12 @@ jobs:
     #   bench — only the packages that actually changed. CodSpeed benches
     #     run under valgrind (the slowest thing in CI), and a PR only needs
     #     deltas for what it touched; main re-benches everything to keep
-    #     full baselines. Consumed by codspeed-walltime below; the
-    #     simulation bench in bench.yml computes the same scope from the
-    #     PR's changed-file list — keep TOOLCHAIN_PATHS below in sync with
-    #     the path lists in bench.yml's gate job.
+    #     full baselines. No job in THIS workflow consumes it any more —
+    #     both bench jobs live in bench.yml, whose gate job computes the
+    #     same scope from the PR's changed-file list. It is kept because
+    #     the two lists must agree: keep TOOLCHAIN_PATHS below in sync with
+    #     the path lists in bench.yml's gate job, and this output is what
+    #     makes a divergence visible in this run's own log.
     #
     # Bounded like every other job here: without an explicit timeout a job that
     # wedges runs to GitHub's 6-hour default. 13s typical, so 10 is ~45x
@@ -191,9 +230,20 @@ jobs:
     # whole run, and every job downstream of it, pending until GitHub's 6-hour
     # default fires.
     #
-    # 20 is ~5x the slowest observed leg (libjxl, 239s) and leaves room for a
-    # cold emsdk image pull.
-    timeout-minutes: 20
+    # 50, not the 20 this started at. That 20 was set as ~5x the slowest leg
+    # then observed (libjxl, 239s), but libjxl is far more variable than one
+    # observation suggested: on #79 its Build step ran 18m42s on an ordinary
+    # hosted runner — 4.5x that figure, and a cache hit on dependencies, so the
+    # time went into the compile itself — and the job was cancelled at the
+    # 20-minute bound despite the PR changing nothing under packages/libjxl.
+    # The same leg had taken 4m18s on #93 twenty minutes earlier.
+    #
+    # A bound calibrated to a fast observation converts ordinary runner
+    # variance into a red check, and a cancelled leg costs a full CI cycle to
+    # tell apart from a real failure. 50 still catches the wedge this exists
+    # for (the unbounded leg above ran 80+ minutes) and leaves room for both a
+    # slow libjxl compile and a cold emsdk image pull.
+    timeout-minutes: 50
     runs-on: ubuntu-latest
     container:
       image: emscripten/emsdk:3.1.74
@@ -378,14 +428,20 @@ jobs:
         # Exercises the release scripts on every PR. They are otherwise only
         # ever executed by a live release — after the 8-job build matrix, and
         # partway through mutating manifests, which is a poor place to discover
-        # a syntax error or a bad tag walk. Mutates nothing (--dry-run), and
-        # publish-order.mjs additionally re-checks the topological order and
-        # that every package shipping dist/ actually has one.
+        # a syntax error or a bad tag walk. Mutates nothing and publishes
+        # nothing.
+        #
+        # release:preflight re-checks the topological order and that every
+        # package shipping dist/ actually has one, then asks the registry
+        # whether each package can actually be published. A package that is not
+        # on npm at all is only a WARNING here — the PR adding a codec is
+        # exactly when it legitimately does not exist yet — but it is the
+        # warning that was missing when libjxl was merged in #88 and broke the
+        # next four releases. In the release workflow the same finding is fatal.
         run: |
           set -euo pipefail
-          node tools/release/version.mjs --dry-run
-          echo "Publish order:"
-          node tools/release/publish-order.mjs
+          pnpm run release:plan
+          pnpm run release:preflight
 
   dist-size:
     # Binary-size regression gate: compares every shipped dist artifact
@@ -476,120 +532,6 @@ jobs:
       - name: Browser smoke decode
         run: node tools/browser-smoke/run.js
 
-  codspeed-walltime:
-    needs: [detect-changes, build]
-    # Gated behind a repository variable: a `runs-on: codspeed-macro` job
-    # queues forever (up to 24h) when macro runners aren't provisioned for
-    # the org, and GitHub's job timeout only covers execution, not queue
-    # time. Enable macro runners for the org on app.codspeed.io first
-    # (the repo is public — also make sure the runner group allows public
-    # repositories), then: gh variable set CODSPEED_MACRO_ENABLED --body true
-    if: needs.detect-changes.outputs.any == 'true' && vars.CODSPEED_MACRO_ENABLED == 'true'
-    # Advisory instrument: real wall-clock numbers (V8 JIT active, real
-    # cache/branch behavior) that complement the simulation gate (bench.yml) —
-    # simulation catches small algorithmic slips deterministically,
-    # walltime keeps the numbers honest on real hardware and covers the
-    # pure-JS packages where the no-JIT simulation model is furthest from
-    # production. Failures here must not block the PR while this beds in.
-    continue-on-error: true
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write  # CodSpeed action posts a sticky PR comment
-      id-token: write       # OIDC token used by CodSpeedHQ/action for auth
-    # CodSpeed-managed 16-core ARM64 bare-metal machine, tuned for
-    # low-noise walltime measurement. Requires the CodSpeed GitHub app on
-    # an organization account. NOTE: ARM64 — anything cached must be
-    # arch-qualified (see the cache key below).
-    runs-on: codspeed-macro
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          # Pinned for the same reason as the simulation job above: V8 changes
-          # between patch releases move the numbers, and walltime is if anything
-          # more sensitive than instruction counts. Keep this in step with the
-          # codspeed-bench pin so the two instruments stay comparable.
-          node-version: '24.20.0'
-      - name: Provide pnpm via Corepack
-        run: |
-          corepack enable pnpm
-          corepack prepare --activate
-          pnpm --version
-      - name: Download all built dists
-        uses: actions/download-artifact@v4
-        with:
-          pattern: dist-*
-          path: tmp/
-      - name: Replay dists into packages/<pkg>/dist
-        run: |
-          set -e
-          for d in tmp/dist-*; do
-            [ -d "$d" ] || continue
-            pkg=$(basename "$d" | sed 's/^dist-//')
-            mkdir -p "packages/$pkg/dist"
-            shopt -s dotglob nullglob
-            cp -r "$d"/* "packages/$pkg/dist/" 2>/dev/null || true
-          done
-      - name: Restore node_modules cache
-        id: modules-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          # runner.arch matters: this job runs on ARM64 while every other
-          # job is x64; sharing a key would restore x64 native binaries
-          # (esbuild/rollup) and break vitest.
-          # Manifests + workspace config in the key — see the build job's cache
-          # step for why the lockfile alone is not enough.
-          key: pnpm-modules-node24-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('package.json', 'packages/*/package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
-      - name: Install dependencies
-        if: steps.modules-cache.outputs.cache-hit != 'true'
-        run: pnpm install --frozen-lockfile
-      - name: Log CPU info
-        run: lscpu | grep -E "Model name|Cache|Flags" | head -5 || true
-      - name: Compute bench scope
-        id: scope
-        env:
-          BENCH: ${{ needs.detect-changes.outputs.bench }}
-        run: |
-          set -euo pipefail
-          flags=""
-          for pkg in $(echo "$BENCH" | jq -r '.[]'); do
-            # Untrusted: fork PRs control this value (it comes from the PR's own
-            # packages/<pkg>/package.json). Validate against npm's name grammar
-            # before it reaches GITHUB_OUTPUT or any command line. Must be a
-            # whole-string check: keep it in node rather than a line-based tool.
-            # Keep in step with the same check in bench.yml.
-            name=$(node -e '
-              const pkg = process.argv[1];
-              const { name } = require(`./packages/${pkg}/package.json`);
-              if (typeof name !== "string" ||
-                  !/^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/.test(name)) {
-                console.error(`::error::Rejected package name for ${pkg}`);
-                process.exit(1);
-              }
-              process.stdout.write(name);
-            ' "$pkg")
-            flags="$flags --filter $name"
-          done
-          echo "Bench scope flags:$flags"
-          echo "flags=$flags" >> "$GITHUB_OUTPUT"
-      - name: Run CodSpeed benchmarks (walltime)
-        # Walltime measures actual elapsed time, so parallel benchmark
-        # processes would contend for cores and add noise — run packages
-        # sequentially (--workspace-concurrency=1). The simulation job in
-        # bench.yml now does the same: it was left parallel on the premise that
-        # instruction counting is immune to contention, and #76 showed it is
-        # not. See the comment on that job's run step.
-        uses: CodSpeedHQ/action@4e969336ab9acd4f6f8d025fdd793292b0835df0 # v4.18.2
-        env:
-          # Keep this in env, NOT `${{ }}` in the run: below — an env value is
-          # expanded by the shell after the command line is parsed, so it stays
-          # data. Unquoted below on purpose: the flags must word-split into
-          # repeated `--filter <name>` pairs.
-          SCOPE_FLAGS: ${{ steps.scope.outputs.flags }}
-        with:
-          mode: walltime
-          run: pnpm --workspace-concurrency=1 $SCOPE_FLAGS run bench
+  # codspeed-walltime lived here until it was moved to bench.yml, so that it
+  # runs AFTER the simulation bench rather than beside it. See that job's
+  # comment for why the ordering decides which instrument GitHub reports.
