@@ -18,6 +18,7 @@ const distDir = resolve(__dirname, "../dist")
 const decodeDist = resolve(distDir, "jpegxlwasm_decode.js")
 const encodeDist = resolve(distDir, "jpegxlwasm_encode.js")
 const BUILT = existsSync(decodeDist) && existsSync(encodeDist)
+const jpegFixtures = resolve(__dirname, "../../libjpeg-turbo-8bit/test/fixtures/jpeg")
 
 // The modules are built with -sENVIRONMENT=web,worker: nothing in the glue
 // reads the .wasm off disk, so wasmBinary is what makes them load under Node.
@@ -114,6 +115,66 @@ describe.skipIf(!BUILT)("libjxl wasm modules", () => {
     const garbage = new Uint8Array(64).fill(0x5a)
     decoder.getEncodedBuffer(garbage.length).set(garbage)
     expect(() => decoder.decode()).toThrow()
+    decoder.delete()
+  })
+
+  // DICOM 1.2.840.10008.1.2.4.111: the JPEG must come back byte for byte.
+  it.each([
+    { file: "US1-color-420.jpg", componentCount: 3 },
+    { file: "jpeg400jfif.jpg", componentCount: 1 },
+  ])("recompresses $file and reconstructs the same JPEG", ({ file, componentCount }) => {
+    const jpeg = readFileSync(resolve(jpegFixtures, file))
+
+    const encoder = new encodeCodec.JpegXLEncoder()
+    encoder.getJpegBuffer(jpeg.length).set(jpeg)
+    encoder.encodeJpeg()
+    const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    encoder.delete()
+    expect(jxl.length).toBeLessThan(jpeg.length)
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    decoder.decodeToJpeg()
+    expect(Buffer.from(decoder.getJpegBuffer()).equals(jpeg)).toBe(true)
+
+    // The same stream also decodes to pixels.
+    decoder.decode()
+    expect(decoder.getFrameInfo().componentCount).toBe(componentCount)
+    decoder.delete()
+  })
+
+  it("refuses decodeToJpeg on a stream without reconstruction data", () => {
+    const frameInfo = { width: 16, height: 16, bitsPerSample: 8, componentCount: 1, isSigned: false }
+    const encoder = new encodeCodec.JpegXLEncoder()
+    encoder.getDecodedBuffer(frameInfo).fill(7)
+    encoder.encode()
+    const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    encoder.delete()
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    expect(() => decoder.decodeToJpeg()).toThrow()
+    decoder.delete()
+  })
+
+  it("encodes a progressive lossy frame that decodes at full size", () => {
+    const frameInfo = { width: 256, height: 256, bitsPerSample: 8, componentCount: 3, isSigned: false }
+    const encoder = new encodeCodec.JpegXLEncoder()
+    const source = encoder.getDecodedBuffer(frameInfo)
+    for (let i = 0; i < source.length; i++) {
+      source[i] = (i * 31) & 0xff
+    }
+    encoder.setLossless(false)
+    encoder.setDistance(2)
+    encoder.setProgressive(true)
+    encoder.encode()
+    const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    encoder.delete()
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    decoder.decode()
+    expect(decoder.getFrameInfo().width).toBe(256)
     decoder.delete()
   })
 })

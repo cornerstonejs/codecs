@@ -109,12 +109,54 @@ class JpegXLEncoder {
     decodingSpeed_ = tier;
   }
 
-  /// Hands both buffers back to the allocator; they are otherwise kept at
+  /// Progressive output: a truncated stream still decodes to a lower
+  /// resolution/quality preview. Lossy frames get progressive DC and
+  /// quantised progressive AC; lossless (modular) frames get responsive
+  /// mode. The same settings as `cjxl -p`. Off by default.
+  void setProgressive(bool progressive) { progressive_ = progressive; }
+
+  /// Sizes the input buffer for a JPEG (ISO 10918-1) bitstream and returns a
+  /// view of it for the caller to copy the bitstream into. Used by
+  /// encodeJpeg(); independent of getDecodedBuffer().
+  val getJpegBuffer(size_t jpegSize) {
+    jpeg_.resize(jpegSize);
+    return val(typed_memory_view(jpeg_.size(), jpeg_.data()));
+  }
+
+  /// Hands the buffers back to the allocator; they are otherwise kept at
   /// their high water mark so that encoding a series does not reallocate.
   void releaseBuffers() {
     decoded_.release();
     encoded_.release();
+    jpeg_.release();
     frameInfo_ = {};
+  }
+
+  /// Losslessly recompresses the JPEG in getJpegBuffer() (JPEG XL JPEG
+  /// Recompression, DICOM 1.2.840.10008.1.2.4.111). The DCT coefficients are
+  /// kept as-is and a jbrd box is stored, so JpegXLDecoder::decodeToJpeg()
+  /// gives back the original JPEG bytes exactly. Effort and decoding speed
+  /// apply; lossless, distance and progressive do not.
+  void encodeJpeg() {
+    if (jpeg_.size() == 0) {
+      throw std::runtime_error(
+          "JpegXLEncoder: call getJpegBuffer() before encodeJpeg()");
+    }
+
+    JxlEncoder* enc = handle_.get();
+    JxlEncoderReset(enc);
+    check(enc, JxlEncoderUseContainer(enc, JXL_TRUE),
+          "JxlEncoderUseContainer");
+    check(enc, JxlEncoderStoreJPEGMetadata(enc, JXL_TRUE),
+          "JxlEncoderStoreJPEGMetadata");
+
+    JxlEncoderFrameSettings* settings = createFrameSettings(enc);
+    check(enc, JxlEncoderAddJPEGFrame(settings, jpeg_.data(), jpeg_.size()),
+          "JxlEncoderAddJPEGFrame");
+    JxlEncoderCloseInput(enc);
+
+    // Recompression saves about 20%, so the JPEG size is a close first guess.
+    processOutput(enc, std::max<size_t>(64u * 1024u, jpeg_.size()));
   }
 
   void encode() {
@@ -171,22 +213,19 @@ class JpegXLEncoder {
     check(enc, JxlEncoderSetColorEncoding(enc, &colorEncoding),
           "JxlEncoderSetColorEncoding");
 
-    JxlEncoderFrameSettings* settings =
-        JxlEncoderFrameSettingsCreate(enc, nullptr);
-    if (!settings) {
-      throw std::runtime_error("JpegXLEncoder: failed to create frame settings");
-    }
+    JxlEncoderFrameSettings* settings = createFrameSettings(enc);
 
-    check(enc,
-          JxlEncoderFrameSettingsSetOption(settings,
-                                           JXL_ENC_FRAME_SETTING_EFFORT,
-                                           effort_),
-          "setting effort");
-    check(enc,
-          JxlEncoderFrameSettingsSetOption(settings,
-                                           JXL_ENC_FRAME_SETTING_DECODING_SPEED,
-                                           decodingSpeed_),
-          "setting decoding speed");
+    if (progressive_) {
+      if (lossless_) {
+        setOption(enc, settings, JXL_ENC_FRAME_SETTING_RESPONSIVE, 1,
+                  "setting responsive");
+      } else {
+        setOption(enc, settings, JXL_ENC_FRAME_SETTING_PROGRESSIVE_DC, 1,
+                  "setting progressive DC");
+        setOption(enc, settings, JXL_ENC_FRAME_SETTING_QPROGRESSIVE_AC, 1,
+                  "setting quantised progressive AC");
+      }
+    }
 
     if (lossless_) {
       // Modular is what makes lossless integer coding cheap; VarDCT at
@@ -233,7 +272,33 @@ class JpegXLEncoder {
     // Start at an eighth of the source, which comfortably covers a losslessly
     // compressed frame, and double from there. The capacity survives across
     // calls, so a series pays this at most once.
-    encoded_.grow(std::max<size_t>(64u * 1024u, sourceSize / 8));
+    processOutput(enc, std::max<size_t>(64u * 1024u, sourceSize / 8));
+  }
+
+ private:
+  JxlEncoderFrameSettings* createFrameSettings(JxlEncoder* enc) {
+    JxlEncoderFrameSettings* settings =
+        JxlEncoderFrameSettingsCreate(enc, nullptr);
+    if (!settings) {
+      throw std::runtime_error("JpegXLEncoder: failed to create frame settings");
+    }
+    setOption(enc, settings, JXL_ENC_FRAME_SETTING_EFFORT, effort_,
+              "setting effort");
+    setOption(enc, settings, JXL_ENC_FRAME_SETTING_DECODING_SPEED,
+              decodingSpeed_, "setting decoding speed");
+    return settings;
+  }
+
+  static void setOption(JxlEncoder* enc, JxlEncoderFrameSettings* settings,
+                        JxlEncoderFrameSettingId id, int64_t value,
+                        const char* what) {
+    check(enc, JxlEncoderFrameSettingsSetOption(settings, id, value), what);
+  }
+
+  /// Drains the closed encoder into encoded_, growing it from
+  /// `initialCapacity` as needed.
+  void processOutput(JxlEncoder* enc, size_t initialCapacity) {
+    encoded_.grow(initialCapacity);
 
     size_t written = 0;
     for (;;) {
@@ -257,7 +322,6 @@ class JpegXLEncoder {
     encoded_.grow(written);
   }
 
- private:
   static uint32_t bytesPerSample(const FrameInfo& info) {
     return info.bitsPerSample <= 8 ? 1 : 2;
   }
@@ -283,8 +347,10 @@ class JpegXLEncoder {
   EncoderHandle handle_;
   RawBuffer decoded_;
   RawBuffer encoded_;
+  RawBuffer jpeg_;
   FrameInfo frameInfo_;
   bool lossless_ = true;
+  bool progressive_ = false;
   float distance_ = 0.0f;
   int effort_ = 7;
   int decodingSpeed_ = 0;
@@ -300,6 +366,9 @@ EMSCRIPTEN_BINDINGS(JpegXLEncoderBindings) {
       .function("setDistance", &JpegXLEncoder::setDistance)
       .function("setEffort", &JpegXLEncoder::setEffort)
       .function("setDecodingSpeed", &JpegXLEncoder::setDecodingSpeed)
+      .function("setProgressive", &JpegXLEncoder::setProgressive)
+      .function("getJpegBuffer", &JpegXLEncoder::getJpegBuffer)
       .function("releaseBuffers", &JpegXLEncoder::releaseBuffers)
-      .function("encode", &JpegXLEncoder::encode);
+      .function("encode", &JpegXLEncoder::encode)
+      .function("encodeJpeg", &JpegXLEncoder::encodeJpeg);
 }
