@@ -1,6 +1,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -78,14 +79,93 @@ class JpegXLDecoder {
 
   const FrameInfo& getFrameInfo() const { return frameInfo_; }
 
-  /// Hands both buffers back to the allocator. Both are otherwise kept at
+  /// A view of the JPEG bitstream that decodeToJpeg() reconstructed.
+  val getJpegBuffer() {
+    return val(typed_memory_view(jpeg_.size(), jpeg_.data()));
+  }
+
+  /// Hands the buffers back to the allocator. They are otherwise kept at
   /// their high water mark so that decoding a series does not reallocate; call
   /// this when a worker is going idle. Any view returned earlier by
-  /// getEncodedBuffer()/getDecodedBuffer() dangles afterwards.
+  /// getEncodedBuffer()/getDecodedBuffer()/getJpegBuffer() dangles afterwards.
   void releaseBuffers() {
     encoded_.release();
     decoded_.release();
+    jpeg_.release();
     frameInfo_ = {};
+  }
+
+  /// Reconstructs the original JPEG bitstream from a stream written by JPEG
+  /// recompression (DICOM 1.2.840.10008.1.2.4.111, a stream with a jbrd box),
+  /// byte for byte, without decoding pixels. Throws when the stream has no
+  /// reconstruction data; use decode() for such a stream.
+  void decodeToJpeg() {
+    JxlDecoder* dec = handle_.get();
+    JxlDecoderReset(dec);
+
+    check(JxlDecoderSubscribeEvents(
+              dec, JXL_DEC_JPEG_RECONSTRUCTION | JXL_DEC_FULL_IMAGE),
+          "JxlDecoderSubscribeEvents");
+    check(JxlDecoderSetInput(dec, encoded_.data(), encoded_.size()),
+          "JxlDecoderSetInput");
+    JxlDecoderCloseInput(dec);
+
+    bool reconstructing = false;
+    frameInfo_ = {};
+
+    for (;;) {
+      const JxlDecoderStatus status = JxlDecoderProcessInput(dec);
+
+      switch (status) {
+        case JXL_DEC_JPEG_RECONSTRUCTION:
+          reconstructing = true;
+          // The recompressed stream is about 80% of the JPEG.
+          jpeg_.grow(std::max<size_t>(64u * 1024u, encoded_.size() * 2));
+          check(JxlDecoderSetJPEGBuffer(dec, jpeg_.data(), jpeg_.size()),
+                "JxlDecoderSetJPEGBuffer");
+          break;
+
+        case JXL_DEC_JPEG_NEED_MORE_OUTPUT: {
+          const size_t written = jpeg_.size() - JxlDecoderReleaseJPEGBuffer(dec);
+          jpeg_.grow(jpeg_.size() * 2);
+          check(JxlDecoderSetJPEGBuffer(dec, jpeg_.data() + written,
+                                        jpeg_.size() - written),
+                "JxlDecoderSetJPEGBuffer");
+          break;
+        }
+
+        case JXL_DEC_FULL_IMAGE: {
+          if (!reconstructing) {
+            throw std::runtime_error(
+                "JpegXLDecoder: the stream has no JPEG reconstruction data");
+          }
+          const size_t written = jpeg_.size() - JxlDecoderReleaseJPEGBuffer(dec);
+          jpeg_.grow(written);
+          JxlDecoderReleaseInput(dec);
+          return;
+        }
+
+        case JXL_DEC_NEED_IMAGE_OUT_BUFFER:
+          // Only reached when no JPEG buffer was set, that is, when the
+          // stream has no jbrd box.
+          throw std::runtime_error(
+              "JpegXLDecoder: the stream has no JPEG reconstruction data");
+
+        case JXL_DEC_SUCCESS:
+          throw std::runtime_error("JpegXLDecoder: no image in the bitstream");
+
+        case JXL_DEC_ERROR:
+          throw std::runtime_error("JpegXLDecoder: decoding failed");
+
+        case JXL_DEC_NEED_MORE_INPUT:
+          throw std::runtime_error("JpegXLDecoder: unexpected end of input");
+
+        default:
+          throw std::runtime_error(
+              "JpegXLDecoder: unexpected decoder status " +
+              std::to_string(static_cast<int>(status)));
+      }
+    }
   }
 
   void decode() {
@@ -249,6 +329,7 @@ class JpegXLDecoder {
   DecoderHandle handle_;
   RawBuffer encoded_;
   RawBuffer decoded_;
+  RawBuffer jpeg_;
   FrameInfo frameInfo_;
 };
 
@@ -258,6 +339,8 @@ EMSCRIPTEN_BINDINGS(JpegXLDecoderBindings) {
       .function("getEncodedBuffer", &JpegXLDecoder::getEncodedBuffer)
       .function("getDecodedBuffer", &JpegXLDecoder::getDecodedBuffer)
       .function("getFrameInfo", &JpegXLDecoder::getFrameInfo)
+      .function("getJpegBuffer", &JpegXLDecoder::getJpegBuffer)
       .function("releaseBuffers", &JpegXLDecoder::releaseBuffers)
-      .function("decode", &JpegXLDecoder::decode);
+      .function("decode", &JpegXLDecoder::decode)
+      .function("decodeToJpeg", &JpegXLDecoder::decodeToJpeg);
 }

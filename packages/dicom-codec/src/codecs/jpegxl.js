@@ -217,9 +217,18 @@ function createJpegXLCodec(signedSamples) {
       encoderWrapper.encoderName,
       (context) => {
         function beforeEncode(encoderInstance) {
-          const { lossless = true, distance, effort, decodingSpeed } = options;
+          const {
+            lossless = true,
+            distance,
+            effort,
+            decodingSpeed,
+            progressive,
+          } = options;
 
           encoderInstance.setLossless(lossless);
+          if (progressive !== undefined) {
+            encoderInstance.setProgressive(Boolean(progressive));
+          }
           if (distance !== undefined) {
             encoderInstance.setDistance(distance);
           } else if (!lossless) {
@@ -273,7 +282,97 @@ function createJpegXLCodec(signedSamples) {
 
 async function encodeJpegRecompression() {
   throw new Error(
-    "JPEG XL JPEG Recompression encoding is not supported by the pixel encoder"
+    "JPEG XL JPEG Recompression encoding is not supported by the pixel " +
+      "encoder: it takes a JPEG bitstream, so use transcode() from " +
+      "1.2.840.10008.1.2.4.50, or recompressJpeg()"
+  );
+}
+
+const recompressWrapper = {
+  codec: undefined,
+  Decoder: undefined,
+  Encoder: undefined,
+  encoderName: "JpegXLEncoder",
+  decoderName: "",
+};
+
+const reconstructWrapper = {
+  codec: undefined,
+  Decoder: undefined,
+  Encoder: undefined,
+  encoderName: "",
+  decoderName: "JpegXLDecoder",
+};
+
+/**
+ * Losslessly recompresses a JPEG bitstream (ISO 10918-1, Huffman coded,
+ * 8 bit) as JPEG XL with JPEG reconstruction data, for transfer syntax
+ * 1.2.840.10008.1.2.4.111. No pixels are decoded, and reconstructJpeg()
+ * gives back the input bytes exactly.
+ *
+ * @param {Uint8Array} jpegFrame the JPEG bitstream of one frame.
+ * @param {object} [options] `effort` (1..9) and `decodingSpeed` (0..4).
+ * @returns {Promise<{imageFrame: Uint8Array, processInfo: object}>}
+ */
+async function recompressJpeg(jpegFrame, options = {}) {
+  return codecFactory.runProcess(
+    recompressWrapper,
+    loadEncoder,
+    null,
+    "JpegXLEncoder.encodeJpeg",
+    (context) => {
+      const encoder = new recompressWrapper.Encoder();
+      try {
+        if (options.effort !== undefined) {
+          encoder.setEffort(options.effort);
+        }
+        if (options.decodingSpeed !== undefined) {
+          encoder.setDecodingSpeed(options.decodingSpeed);
+        }
+        encoder.getJpegBuffer(jpegFrame.length).set(asBytes(jpegFrame));
+        context.timer.init("To recompress length: " + jpegFrame.length);
+        encoder.encodeJpeg();
+        context.timer.end();
+        return {
+          imageFrame: encoder.getEncodedBuffer().slice(),
+          processInfo: { duration: context.timer.getDuration() },
+        };
+      } finally {
+        encoder.delete();
+      }
+    }
+  );
+}
+
+/**
+ * Inverse of recompressJpeg(): rebuilds the original JPEG bitstream from a
+ * 1.2.840.10008.1.2.4.111 frame, byte for byte.
+ *
+ * @param {Uint8Array} jxlFrame a JPEG XL stream with reconstruction data.
+ * @returns {Promise<{imageFrame: Uint8Array, processInfo: object}>}
+ * @throws when the stream has no JPEG reconstruction data.
+ */
+async function reconstructJpeg(jxlFrame) {
+  return codecFactory.runProcess(
+    reconstructWrapper,
+    loadDecoder,
+    null,
+    "JpegXLDecoder.decodeToJpeg",
+    (context) => {
+      const decoder = new reconstructWrapper.Decoder();
+      try {
+        decoder.getEncodedBuffer(jxlFrame.length).set(asBytes(jxlFrame));
+        context.timer.init("To reconstruct length: " + jxlFrame.length);
+        decoder.decodeToJpeg();
+        context.timer.end();
+        return {
+          imageFrame: decoder.getJpegBuffer().slice(),
+          processInfo: { duration: context.timer.getDuration() },
+        };
+      } finally {
+        decoder.delete();
+      }
+    }
   );
 }
 
@@ -285,9 +384,14 @@ exports.lossless = Object.assign({}, passthrough, {
   encode: passthrough.encodeLossless,
 });
 
-/** 1.2.840.10008.1.2.4.111 — JPEG XL JPEG Recompression (decode only here). */
+/**
+ * 1.2.840.10008.1.2.4.111 — JPEG XL JPEG Recompression. decode() gives pixels;
+ * recompressJpeg()/reconstructJpeg() convert to and from the JPEG bitstream.
+ */
 exports.jpegRecompression = Object.assign({}, passthrough, {
   encode: encodeJpegRecompression,
+  recompressJpeg,
+  reconstructJpeg,
 });
 
 /** 1.2.840.10008.1.2.4.112 — JPEG XL, potentially lossy. */

@@ -10,6 +10,8 @@ const fixturesDir = resolve(__dirname, "fixtures/jpeg-xl")
 
 const JPEG_XL_LOSSLESS = "1.2.840.10008.1.2.4.110"
 const JPEG_XL = "1.2.840.10008.1.2.4.112"
+const JPEG_BASELINE = "1.2.840.10008.1.2.4.50"
+const JPEG_XL_JPEG_RECOMPRESSION = "1.2.840.10008.1.2.4.111"
 
 const REQUIRED = [
   "libjxl/dist/jpegxlwasm_decode.js",
@@ -379,5 +381,16 @@ describe.skipIf(!ALL_BUILT)("JPEG XL fixtures", () => {
       const lossy = await dicomCodec.encode(new Uint8Array(source), imageInfo, JPEG_XL)
       expect(frameBytes(lossless.imageFrame).equals(frameBytes(lossy.imageFrame))).toBe(true)
     })
+  })
+
+  it("transcodes JPEG Baseline to JPEG XL JPEG Recompression and back, byte for byte", async () => {
+    const jpeg = readFileSync(resolve(packagesRoot, "libjpeg-turbo-8bit/test/fixtures/jpeg/US1-color-420.jpg"))
+    const imageInfo = { rows: 480, columns: 640, bitsAllocated: 8, samplesPerPixel: 3, signed: false }
+
+    const jxl = await dicomCodec.transcode(new Uint8Array(jpeg), imageInfo, JPEG_BASELINE, JPEG_XL_JPEG_RECOMPRESSION)
+    expect(jxl.imageFrame.length).toBeLessThan(jpeg.length)
+
+    const back = await dicomCodec.transcode(jxl.imageFrame, imageInfo, JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect(frameBytes(back.imageFrame).equals(jpeg)).toBe(true)
   })
 })
