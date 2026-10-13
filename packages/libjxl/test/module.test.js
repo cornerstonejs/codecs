@@ -129,6 +129,8 @@ describe.skipIf(!BUILT)("libjxl wasm modules", () => {
     encoder.getJpegBuffer(jpeg.length).set(jpeg)
     encoder.encodeJpeg()
     const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    // The JPEG buffer is consumed: a second call needs a new getJpegBuffer().
+    expect(() => encoder.encodeJpeg()).toThrow()
     encoder.delete()
     expect(jxl.length).toBeLessThan(jpeg.length)
 
@@ -151,28 +153,51 @@ describe.skipIf(!BUILT)("libjxl wasm modules", () => {
     const jxl = new Uint8Array(encoder.getEncodedBuffer())
     encoder.delete()
 
+    // A reused decoder: a refused stream must not leave the previous JPEG.
+    const jpeg = readFileSync(resolve(jpegFixtures, "jpeg400jfif.jpg"))
+    const jpegEncoder = new encodeCodec.JpegXLEncoder()
+    jpegEncoder.getJpegBuffer(jpeg.length).set(jpeg)
+    jpegEncoder.encodeJpeg()
+    const recompressed = new Uint8Array(jpegEncoder.getEncodedBuffer())
+    jpegEncoder.delete()
+
     const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(recompressed.length).set(recompressed)
+    decoder.decodeToJpeg()
     decoder.getEncodedBuffer(jxl.length).set(jxl)
     expect(() => decoder.decodeToJpeg()).toThrow()
+    expect(decoder.getJpegBuffer().length).toBe(0)
     decoder.delete()
   })
 
-  it("encodes a progressive lossy frame that decodes at full size", () => {
-    const frameInfo = { width: 256, height: 256, bitsPerSample: 8, componentCount: 3, isSigned: false }
-    const encoder = new encodeCodec.JpegXLEncoder()
-    const source = encoder.getDecodedBuffer(frameInfo)
-    for (let i = 0; i < source.length; i++) {
-      source[i] = (i * 31) & 0xff
+  it.each([
+    { lossless: false, componentCount: 3 },
+    { lossless: true, componentCount: 1 },
+  ])("setProgressive changes the stream (lossless: $lossless), which still decodes", ({ lossless, componentCount }) => {
+    const frameInfo = { width: 256, height: 256, bitsPerSample: 8, componentCount, isSigned: false }
+    const encodeWith = (progressive) => {
+      const encoder = new encodeCodec.JpegXLEncoder()
+      const source = encoder.getDecodedBuffer(frameInfo)
+      for (let i = 0; i < source.length; i++) {
+        source[i] = (i * 31) & 0xff
+      }
+      encoder.setLossless(lossless)
+      if (!lossless) {
+        encoder.setDistance(2)
+      }
+      encoder.setProgressive(progressive)
+      encoder.encode()
+      const jxl = new Uint8Array(encoder.getEncodedBuffer())
+      encoder.delete()
+      return jxl
     }
-    encoder.setLossless(false)
-    encoder.setDistance(2)
-    encoder.setProgressive(true)
-    encoder.encode()
-    const jxl = new Uint8Array(encoder.getEncodedBuffer())
-    encoder.delete()
+
+    const plain = encodeWith(false)
+    const progressive = encodeWith(true)
+    expect(Buffer.from(progressive).equals(Buffer.from(plain))).toBe(false)
 
     const decoder = new decodeCodec.JpegXLDecoder()
-    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    decoder.getEncodedBuffer(progressive.length).set(progressive)
     decoder.decode()
     expect(decoder.getFrameInfo().width).toBe(256)
     decoder.delete()

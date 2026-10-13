@@ -389,8 +389,38 @@ describe.skipIf(!ALL_BUILT)("JPEG XL fixtures", () => {
 
     const jxl = await dicomCodec.transcode(new Uint8Array(jpeg), imageInfo, JPEG_BASELINE, JPEG_XL_JPEG_RECOMPRESSION)
     expect(jxl.imageFrame.length).toBeLessThan(jpeg.length)
+    // The same imageInfo shape as the pixel path.
+    expect(jxl.imageInfo).toMatchObject({ width: 640, height: 480, bitsPerSample: 8, componentCount: 3 })
 
     const back = await dicomCodec.transcode(jxl.imageFrame, imageInfo, JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
     expect(frameBytes(back.imageFrame).equals(jpeg)).toBe(true)
+  })
+
+  it("recompresses a JPEG held in a 16-bit typed-array view", async () => {
+    const jpeg = readFileSync(resolve(packagesRoot, "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg"))
+    const bytes = new Uint8Array(jpeg)
+    const imageInfo = { rows: 800, columns: 600, bitsAllocated: 8, samplesPerPixel: 1, signed: false }
+
+    const wide = new Uint16Array(bytes.buffer, 0, bytes.byteLength / 2)
+    const jxl = await dicomCodec.transcode(wide, imageInfo, JPEG_BASELINE, JPEG_XL_JPEG_RECOMPRESSION)
+    const back = await dicomCodec.transcode(jxl.imageFrame, imageInfo, JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect(frameBytes(back.imageFrame).equals(jpeg)).toBe(true)
+  })
+
+  it("transcodes a .111 stream without reconstruction data to JPEG Baseline through the pixels", async () => {
+    const entry = wsiFixtures[0]
+    const jxl = readFileSync(resolve(fixturesDir, entry.file))
+
+    const jpeg = await dicomCodec.transcode(new Uint8Array(jxl), imageInfoOf(entry), JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect([jpeg.imageFrame[0], jpeg.imageFrame[1]]).toEqual([0xff, 0xd8])
+  })
+
+  it("forwards the progressive option to the encoder", async () => {
+    const entry = wsiFixtures[0]
+    const source = new Uint8Array(readFileSync(resolve(fixturesDir, "wsi-1frame-512x512-f00.raw")))
+
+    const plain = await dicomCodec.encode(source, imageInfoOf(entry), JPEG_XL, { lossless: false })
+    const progressive = await dicomCodec.encode(source, imageInfoOf(entry), JPEG_XL, { lossless: false, progressive: true })
+    expect(frameBytes(progressive.imageFrame).equals(frameBytes(plain.imageFrame))).toBe(false)
   })
 })

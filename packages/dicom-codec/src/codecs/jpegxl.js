@@ -156,28 +156,30 @@ function getModuleOptions(wasmModule) {
   };
 }
 
+// Shared by every JPEG XL transfer syntax, so that each WASM module is
+// instantiated once.
+const decoderWrapper = {
+  codec: undefined,
+  Decoder: undefined,
+  Encoder: undefined,
+  encoderName: null,
+  decoderName: "JpegXLDecoder",
+};
+
+const encoderWrapper = {
+  codec: undefined,
+  Decoder: undefined,
+  Encoder: undefined,
+  encoderName: "JpegXLEncoder",
+  decoderName: null,
+};
+
 /**
  * Builds the codec module for one JPEG XL transfer syntax.
  *
  * @param {string} signedSamples PASSTHROUGH or OFFSET_BINARY, see above.
  */
 function createJpegXLCodec(signedSamples) {
-  const decoderWrapper = {
-    codec: undefined,
-    Decoder: undefined,
-    Encoder: undefined,
-    encoderName: "",
-    decoderName: "JpegXLDecoder",
-  };
-
-  const encoderWrapper = {
-    codec: undefined,
-    Decoder: undefined,
-    Encoder: undefined,
-    encoderName: "JpegXLEncoder",
-    decoderName: "",
-  };
-
   const shiftsSigned = (imageInfo) =>
     signedSamples === OFFSET_BINARY && Boolean(imageInfo.isSigned);
 
@@ -288,21 +290,11 @@ async function encodeJpegRecompression() {
   );
 }
 
-const recompressWrapper = {
-  codec: undefined,
-  Decoder: undefined,
-  Encoder: undefined,
-  encoderName: "JpegXLEncoder",
-  decoderName: "",
-};
-
-const reconstructWrapper = {
-  codec: undefined,
-  Decoder: undefined,
-  Encoder: undefined,
-  encoderName: "",
-  decoderName: "JpegXLDecoder",
-};
+function assertFrame(frame, operation) {
+  if (!frame?.byteLength) {
+    throw new Error("Image frame not defined for " + operation);
+  }
+}
 
 /**
  * Losslessly recompresses a JPEG bitstream (ISO 10918-1, Huffman coded,
@@ -310,18 +302,20 @@ const reconstructWrapper = {
  * 1.2.840.10008.1.2.4.111. No pixels are decoded, and reconstructJpeg()
  * gives back the input bytes exactly.
  *
- * @param {Uint8Array} jpegFrame the JPEG bitstream of one frame.
+ * @param {TypedArray} jpegFrame the JPEG bitstream of one frame, in any view.
  * @param {object} [options] `effort` (1..9) and `decodingSpeed` (0..4).
  * @returns {Promise<{imageFrame: Uint8Array, processInfo: object}>}
  */
 async function recompressJpeg(jpegFrame, options = {}) {
+  assertFrame(jpegFrame, "JPEG recompression");
+  const jpegBytes = asBytes(jpegFrame);
   return codecFactory.runProcess(
-    recompressWrapper,
+    encoderWrapper,
     loadEncoder,
     null,
     "JpegXLEncoder.encodeJpeg",
     (context) => {
-      const encoder = new recompressWrapper.Encoder();
+      const encoder = new encoderWrapper.Encoder();
       try {
         if (options.effort !== undefined) {
           encoder.setEffort(options.effort);
@@ -329,12 +323,12 @@ async function recompressJpeg(jpegFrame, options = {}) {
         if (options.decodingSpeed !== undefined) {
           encoder.setDecodingSpeed(options.decodingSpeed);
         }
-        encoder.getJpegBuffer(jpegFrame.length).set(asBytes(jpegFrame));
-        context.timer.init("To recompress length: " + jpegFrame.length);
+        encoder.getJpegBuffer(jpegBytes.length).set(jpegBytes);
+        context.timer.init("To recompress length: " + jpegBytes.length);
         encoder.encodeJpeg();
         context.timer.end();
         return {
-          imageFrame: encoder.getEncodedBuffer().slice(),
+          imageFrame: codecFactory.copyFromWasm(encoder.getEncodedBuffer()),
           processInfo: { duration: context.timer.getDuration() },
         };
       } finally {
@@ -348,25 +342,27 @@ async function recompressJpeg(jpegFrame, options = {}) {
  * Inverse of recompressJpeg(): rebuilds the original JPEG bitstream from a
  * 1.2.840.10008.1.2.4.111 frame, byte for byte.
  *
- * @param {Uint8Array} jxlFrame a JPEG XL stream with reconstruction data.
+ * @param {TypedArray} jxlFrame a JPEG XL stream with reconstruction data.
  * @returns {Promise<{imageFrame: Uint8Array, processInfo: object}>}
  * @throws when the stream has no JPEG reconstruction data.
  */
 async function reconstructJpeg(jxlFrame) {
+  assertFrame(jxlFrame, "JPEG reconstruction");
+  const jxlBytes = asBytes(jxlFrame);
   return codecFactory.runProcess(
-    reconstructWrapper,
+    decoderWrapper,
     loadDecoder,
     null,
     "JpegXLDecoder.decodeToJpeg",
     (context) => {
-      const decoder = new reconstructWrapper.Decoder();
+      const decoder = new decoderWrapper.Decoder();
       try {
-        decoder.getEncodedBuffer(jxlFrame.length).set(asBytes(jxlFrame));
-        context.timer.init("To reconstruct length: " + jxlFrame.length);
+        decoder.getEncodedBuffer(jxlBytes.length).set(jxlBytes);
+        context.timer.init("To reconstruct length: " + jxlBytes.length);
         decoder.decodeToJpeg();
         context.timer.end();
         return {
-          imageFrame: decoder.getJpegBuffer().slice(),
+          imageFrame: codecFactory.copyFromWasm(decoder.getJpegBuffer()),
           processInfo: { duration: context.timer.getDuration() },
         };
       } finally {

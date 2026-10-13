@@ -76,6 +76,8 @@ class JpegXLEncoder {
     return val(typed_memory_view(encoded_.size(), encoded_.data()));
   }
 
+  /// The frame info of the last getDecodedBuffer(), that is, of the pixel
+  /// input to encode(). encodeJpeg() neither reads nor sets it.
   const FrameInfo& getFrameInfo() const { return frameInfo_; }
 
   /// Mathematically lossless encoding (the default). Turning it off makes
@@ -110,16 +112,20 @@ class JpegXLEncoder {
   }
 
   /// Progressive output: a truncated stream still decodes to a lower
-  /// resolution/quality preview. Lossy frames get progressive DC and
-  /// quantised progressive AC; lossless (modular) frames get responsive
-  /// mode. The same settings as `cjxl -p`. Off by default.
+  /// resolution/quality preview. Sets responsive mode and quantised
+  /// progressive AC, the same settings as `cjxl -p`; each applies to the
+  /// frame types that use it. Off by default.
   void setProgressive(bool progressive) { progressive_ = progressive; }
 
   /// Sizes the input buffer for a JPEG (ISO 10918-1) bitstream and returns a
-  /// view of it for the caller to copy the bitstream into. Used by
-  /// encodeJpeg(); independent of getDecodedBuffer().
+  /// view of it for the caller to copy the bitstream into. Must be called
+  /// before each encodeJpeg(); independent of getDecodedBuffer().
   val getJpegBuffer(size_t jpegSize) {
+    if (jpegSize == 0) {
+      throw std::runtime_error("JpegXLEncoder: the JPEG bitstream is empty");
+    }
     jpeg_.resize(jpegSize);
+    jpegPending_ = true;
     return val(typed_memory_view(jpeg_.size(), jpeg_.data()));
   }
 
@@ -129,6 +135,7 @@ class JpegXLEncoder {
     decoded_.release();
     encoded_.release();
     jpeg_.release();
+    jpegPending_ = false;
     frameInfo_ = {};
   }
 
@@ -136,12 +143,16 @@ class JpegXLEncoder {
   /// Recompression, DICOM 1.2.840.10008.1.2.4.111). The DCT coefficients are
   /// kept as-is and a jbrd box is stored, so JpegXLDecoder::decodeToJpeg()
   /// gives back the original JPEG bytes exactly. Effort and decoding speed
-  /// apply; lossless, distance and progressive do not.
+  /// apply; lossless, distance and progressive do not. getFrameInfo() does
+  /// not describe the result.
   void encodeJpeg() {
-    if (jpeg_.size() == 0) {
+    // Each call consumes the buffer, so a reused encoder cannot silently
+    // recompress the previous frame.
+    if (!jpegPending_) {
       throw std::runtime_error(
           "JpegXLEncoder: call getJpegBuffer() before encodeJpeg()");
     }
+    jpegPending_ = false;
 
     JxlEncoder* enc = handle_.get();
     JxlEncoderReset(enc);
@@ -216,15 +227,12 @@ class JpegXLEncoder {
     JxlEncoderFrameSettings* settings = createFrameSettings(enc);
 
     if (progressive_) {
-      if (lossless_) {
-        setOption(enc, settings, JXL_ENC_FRAME_SETTING_RESPONSIVE, 1,
-                  "setting responsive");
-      } else {
-        setOption(enc, settings, JXL_ENC_FRAME_SETTING_PROGRESSIVE_DC, 1,
-                  "setting progressive DC");
-        setOption(enc, settings, JXL_ENC_FRAME_SETTING_QPROGRESSIVE_AC, 1,
-                  "setting quantised progressive AC");
-      }
+      // As cjxl -p (tools/cjxl_main.cc): VarDCT uses the AC setting, modular
+      // uses responsive.
+      setOption(enc, settings, JXL_ENC_FRAME_SETTING_RESPONSIVE, 1,
+                "setting responsive");
+      setOption(enc, settings, JXL_ENC_FRAME_SETTING_QPROGRESSIVE_AC, 1,
+                "setting quantised progressive AC");
     }
 
     if (lossless_) {
@@ -349,6 +357,7 @@ class JpegXLEncoder {
   RawBuffer encoded_;
   RawBuffer jpeg_;
   FrameInfo frameInfo_;
+  bool jpegPending_ = false;
   bool lossless_ = true;
   bool progressive_ = false;
   float distance_ = 0.0f;

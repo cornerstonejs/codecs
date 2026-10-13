@@ -112,6 +112,8 @@ class JpegXLDecoder {
 
     bool reconstructing = false;
     frameInfo_ = {};
+    // A failed call must not leave the previous frame's JPEG readable.
+    jpeg_.resize(0);
 
     for (;;) {
       const JxlDecoderStatus status = JxlDecoderProcessInput(dec);
@@ -135,6 +137,7 @@ class JpegXLDecoder {
         }
 
         case JXL_DEC_FULL_IMAGE: {
+          // Defensive: without a jbrd box, NEED_IMAGE_OUT_BUFFER throws first.
           if (!reconstructing) {
             throw std::runtime_error(
                 "JpegXLDecoder: the stream has no JPEG reconstruction data");
