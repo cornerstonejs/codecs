@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.1.6...@cornerstonejs/dicom-codec@1.2.0) (2026-10-14)
+
+
+### Features
+
+* **libjxl:** JPEG recompression and progressive encoding (#97) ([9a07471](https://github.com/cornerstonejs/codecs/commit/9a07471b34b13cc36c931565bcc82089222298eb))
+
+### Bug Fixes
+
+* **dicom-codec:** decode the last pixel of byte-aligned JPEG Lossless scans (#94) ([acc43f1](https://github.com/cornerstonejs/codecs/commit/acc43f1c95ef7b0a3c878e4aeedf91cefc649bad))
+
+
+
+
 ## [1.1.6](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/dicom-codec@1.1.5...@cornerstonejs/dicom-codec@1.1.6) (2026-09-10)
 
 **Note:** Version bump only for package @cornerstonejs/dicom-codec

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.2.0](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjxl@1.1.1...@cornerstonejs/codec-libjxl@1.2.0) (2026-10-14)
+
+
+### Features
+
+* **libjxl:** JPEG recompression and progressive encoding (#97) ([9a07471](https://github.com/cornerstonejs/codecs/commit/9a07471b34b13cc36c931565bcc82089222298eb))
+
+
+
+
 ## [1.1.1](https://github.com/cornerstonejs/codecs/compare/@cornerstonejs/codec-libjxl@1.1.0...@cornerstonejs/codec-libjxl@1.1.1) (2026-09-08)
 
 
