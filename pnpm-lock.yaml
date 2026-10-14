@@ -86,8 +86,8 @@ importers:
         specifier: ^2.4.11
         version: link:../openjphjs
       '@cornerstonejs/jpeg-lossless-decoder-js':
-        specifier: ^2.2.0
-        version: 2.2.0
+        specifier: ^2.2.1
+        version: 2.2.1
       browser-or-node:
         specifier: ^2.0.0
         version: 2.1.1
@@ -684,8 +684,8 @@ packages:
       vite: ^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0
       vitest: ^3.2 || ^4
 
-  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.0':
-    resolution: {integrity: sha512-41y2/PDEsH8FGr6zZZ58TFSak8DLtEEInCuIGJb/sQ3aAPHx7dmZZEtyPamRS6eW3jp9hWiA59KziPiyXSSXSg==}
+  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.1':
+    resolution: {integrity: sha512-cDCv7dm3qw9kbxCydvj0UGbNQcsPmTwcyd9SQXkBt34CDgSBeb8Xvj0Gz9HlJ+7DIKOFMTazF1oDJSu0pcCKmg==}
 
   '@discoveryjs/json-ext@0.5.7':
     resolution: {integrity: sha512-dBVuXR082gk3jsFp7Rd/JI4kytwGHecnCoTtXFb7DB6CNHp4rg5k1bhg0nWdLGLnOV71lmDzGQaLMy8iPLY0pw==}
@@ -3627,7 +3627,7 @@ snapshots:
       - debug
       - supports-color
 
-  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.0': {}
+  '@cornerstonejs/jpeg-lossless-decoder-js@2.2.1': {}
 
   '@discoveryjs/json-ext@0.5.7': {}
 
