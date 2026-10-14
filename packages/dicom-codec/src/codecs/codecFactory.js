@@ -576,6 +576,7 @@ exports.decode = decode;
 exports.initialize = initialize;
 exports.getPixelData = getPixelData;
 exports.getTargetImageInfo = getTargetImageInfo;
+exports.copyFromWasm = copyFromWasm;
 exports.releaseDecoder = releaseDecoder;
 exports.unpackBits = unpackBits;
 exports.toEncoderLayout = toEncoderLayout;

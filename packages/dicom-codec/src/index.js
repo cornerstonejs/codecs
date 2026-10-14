@@ -1,6 +1,15 @@
 const codecs = require("./codecs")
 const logger = require("./utils/logger")
 
+const JPEG_BASELINE = "1.2.840.10008.1.2.4.50"
+const JPEG_XL_JPEG_RECOMPRESSION = "1.2.840.10008.1.2.4.111"
+
+function withImageInfo(result, imageInfo) {
+  return Object.assign({}, result, {
+    imageInfo: codecs.adaptImageInfo(imageInfo),
+  })
+}
+
 function assertCodec(codec, transferSyntaxUID) {
   if (!codec) {
     throw Error("Codec not found:" + transferSyntaxUID)
@@ -96,6 +105,37 @@ async function transcode(
   targetTransferSyntaxUID,
   encodeOptions
 ) {
+  // JPEG XL JPEG Recompression stores the JPEG bitstream itself, so the two
+  // directions between it and JPEG Baseline skip the pixels and are lossless.
+  // A .111 stream without reconstruction data falls back to the pixel path.
+  if (
+    sourceTransferSyntaxUID === JPEG_BASELINE &&
+    targetTransferSyntaxUID === JPEG_XL_JPEG_RECOMPRESSION
+  ) {
+    return withImageInfo(
+      await codecs.getCodec(JPEG_XL_JPEG_RECOMPRESSION).recompressJpeg(
+        imageFrame,
+        encodeOptions
+      ),
+      imageInfo
+    )
+  }
+  if (
+    sourceTransferSyntaxUID === JPEG_XL_JPEG_RECOMPRESSION &&
+    targetTransferSyntaxUID === JPEG_BASELINE
+  ) {
+    try {
+      return withImageInfo(
+        await codecs
+          .getCodec(JPEG_XL_JPEG_RECOMPRESSION)
+          .reconstructJpeg(imageFrame),
+        imageInfo
+      )
+    } catch (e) {
+      logger.log("JPEG reconstruction failed, decoding to pixels: " + e)
+    }
+  }
+
   const decoded = await decode(imageFrame, imageInfo, sourceTransferSyntaxUID)
   return encode(
     decoded.imageFrame,
