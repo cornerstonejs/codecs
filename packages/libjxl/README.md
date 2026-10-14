@@ -68,6 +68,32 @@ The encoder accepts greyscale samples with one channel or RGB samples with
 three channels at bit depths from 1 to 16. Copy returned buffer views before
 the next operation or before calling `releaseBuffers()`.
 
+`setProgressive(true)` writes a progressive stream: a decoder can show a
+preview from the first part of the stream. The encoder uses the same settings
+as `cjxl -p` (responsive mode and quantised progressive AC).
+
+### JPEG recompression
+
+The DICOM transfer syntax JPEG XL JPEG Recompression
+(`1.2.840.10008.1.2.4.111`) stores a JPEG bitstream without loss. The encoder
+reads the JPEG bytes, not pixels, and the decoder gives back the same JPEG
+bytes:
+
+```js
+encoder.getJpegBuffer(jpeg.length).set(jpeg);
+encoder.encodeJpeg();
+const jxl = encoder.getEncodedBuffer().slice();
+
+decoder.getEncodedBuffer(jxl.length).set(jxl);
+decoder.decodeToJpeg(); // throws if the stream has no JPEG reconstruction data
+const sameJpeg = decoder.getJpegBuffer().slice();
+```
+
+Each `encodeJpeg()` consumes the JPEG buffer, so call `getJpegBuffer()` again
+before the next frame.
+
+`decode()` also decodes such a stream to pixels.
+
 ## Building
 
 This project uses a Git submodule for libjxl. Initialize the submodules from

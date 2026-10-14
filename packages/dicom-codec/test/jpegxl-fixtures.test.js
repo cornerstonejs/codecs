@@ -10,6 +10,8 @@ const fixturesDir = resolve(__dirname, "fixtures/jpeg-xl")
 
 const JPEG_XL_LOSSLESS = "1.2.840.10008.1.2.4.110"
 const JPEG_XL = "1.2.840.10008.1.2.4.112"
+const JPEG_BASELINE = "1.2.840.10008.1.2.4.50"
+const JPEG_XL_JPEG_RECOMPRESSION = "1.2.840.10008.1.2.4.111"
 
 const REQUIRED = [
   "libjxl/dist/jpegxlwasm_decode.js",
@@ -379,5 +381,46 @@ describe.skipIf(!ALL_BUILT)("JPEG XL fixtures", () => {
       const lossy = await dicomCodec.encode(new Uint8Array(source), imageInfo, JPEG_XL)
       expect(frameBytes(lossless.imageFrame).equals(frameBytes(lossy.imageFrame))).toBe(true)
     })
+  })
+
+  it("transcodes JPEG Baseline to JPEG XL JPEG Recompression and back, byte for byte", async () => {
+    const jpeg = readFileSync(resolve(packagesRoot, "libjpeg-turbo-8bit/test/fixtures/jpeg/US1-color-420.jpg"))
+    const imageInfo = { rows: 480, columns: 640, bitsAllocated: 8, samplesPerPixel: 3, signed: false }
+
+    const jxl = await dicomCodec.transcode(new Uint8Array(jpeg), imageInfo, JPEG_BASELINE, JPEG_XL_JPEG_RECOMPRESSION)
+    expect(jxl.imageFrame.length).toBeLessThan(jpeg.length)
+    // The same imageInfo shape as the pixel path.
+    expect(jxl.imageInfo).toMatchObject({ width: 640, height: 480, bitsPerSample: 8, componentCount: 3 })
+
+    const back = await dicomCodec.transcode(jxl.imageFrame, imageInfo, JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect(frameBytes(back.imageFrame).equals(jpeg)).toBe(true)
+  })
+
+  it("recompresses a JPEG held in a 16-bit typed-array view", async () => {
+    const jpeg = readFileSync(resolve(packagesRoot, "libjpeg-turbo-8bit/test/fixtures/jpeg/jpeg400jfif.jpg"))
+    const bytes = new Uint8Array(jpeg)
+    const imageInfo = { rows: 800, columns: 600, bitsAllocated: 8, samplesPerPixel: 1, signed: false }
+
+    const wide = new Uint16Array(bytes.buffer, 0, bytes.byteLength / 2)
+    const jxl = await dicomCodec.transcode(wide, imageInfo, JPEG_BASELINE, JPEG_XL_JPEG_RECOMPRESSION)
+    const back = await dicomCodec.transcode(jxl.imageFrame, imageInfo, JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect(frameBytes(back.imageFrame).equals(jpeg)).toBe(true)
+  })
+
+  it("transcodes a .111 stream without reconstruction data to JPEG Baseline through the pixels", async () => {
+    const entry = wsiFixtures[0]
+    const jxl = readFileSync(resolve(fixturesDir, entry.file))
+
+    const jpeg = await dicomCodec.transcode(new Uint8Array(jxl), imageInfoOf(entry), JPEG_XL_JPEG_RECOMPRESSION, JPEG_BASELINE)
+    expect([jpeg.imageFrame[0], jpeg.imageFrame[1]]).toEqual([0xff, 0xd8])
+  })
+
+  it("forwards the progressive option to the encoder", async () => {
+    const entry = wsiFixtures[0]
+    const source = new Uint8Array(readFileSync(resolve(fixturesDir, "wsi-1frame-512x512-f00.raw")))
+
+    const plain = await dicomCodec.encode(source, imageInfoOf(entry), JPEG_XL, { lossless: false })
+    const progressive = await dicomCodec.encode(source, imageInfoOf(entry), JPEG_XL, { lossless: false, progressive: true })
+    expect(frameBytes(progressive.imageFrame).equals(frameBytes(plain.imageFrame))).toBe(false)
   })
 })

@@ -18,6 +18,7 @@ const distDir = resolve(__dirname, "../dist")
 const decodeDist = resolve(distDir, "jpegxlwasm_decode.js")
 const encodeDist = resolve(distDir, "jpegxlwasm_encode.js")
 const BUILT = existsSync(decodeDist) && existsSync(encodeDist)
+const jpegFixtures = resolve(__dirname, "../../libjpeg-turbo-8bit/test/fixtures/jpeg")
 
 // The modules are built with -sENVIRONMENT=web,worker: nothing in the glue
 // reads the .wasm off disk, so wasmBinary is what makes them load under Node.
@@ -114,6 +115,91 @@ describe.skipIf(!BUILT)("libjxl wasm modules", () => {
     const garbage = new Uint8Array(64).fill(0x5a)
     decoder.getEncodedBuffer(garbage.length).set(garbage)
     expect(() => decoder.decode()).toThrow()
+    decoder.delete()
+  })
+
+  // DICOM 1.2.840.10008.1.2.4.111: the JPEG must come back byte for byte.
+  it.each([
+    { file: "US1-color-420.jpg", componentCount: 3 },
+    { file: "jpeg400jfif.jpg", componentCount: 1 },
+  ])("recompresses $file and reconstructs the same JPEG", ({ file, componentCount }) => {
+    const jpeg = readFileSync(resolve(jpegFixtures, file))
+
+    const encoder = new encodeCodec.JpegXLEncoder()
+    encoder.getJpegBuffer(jpeg.length).set(jpeg)
+    encoder.encodeJpeg()
+    const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    // The JPEG buffer is consumed: a second call needs a new getJpegBuffer().
+    expect(() => encoder.encodeJpeg()).toThrow()
+    encoder.delete()
+    expect(jxl.length).toBeLessThan(jpeg.length)
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    decoder.decodeToJpeg()
+    expect(Buffer.from(decoder.getJpegBuffer()).equals(jpeg)).toBe(true)
+
+    // The same stream also decodes to pixels.
+    decoder.decode()
+    expect(decoder.getFrameInfo().componentCount).toBe(componentCount)
+    decoder.delete()
+  })
+
+  it("refuses decodeToJpeg on a stream without reconstruction data", () => {
+    const frameInfo = { width: 16, height: 16, bitsPerSample: 8, componentCount: 1, isSigned: false }
+    const encoder = new encodeCodec.JpegXLEncoder()
+    encoder.getDecodedBuffer(frameInfo).fill(7)
+    encoder.encode()
+    const jxl = new Uint8Array(encoder.getEncodedBuffer())
+    encoder.delete()
+
+    // A reused decoder: a refused stream must not leave the previous JPEG.
+    const jpeg = readFileSync(resolve(jpegFixtures, "jpeg400jfif.jpg"))
+    const jpegEncoder = new encodeCodec.JpegXLEncoder()
+    jpegEncoder.getJpegBuffer(jpeg.length).set(jpeg)
+    jpegEncoder.encodeJpeg()
+    const recompressed = new Uint8Array(jpegEncoder.getEncodedBuffer())
+    jpegEncoder.delete()
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(recompressed.length).set(recompressed)
+    decoder.decodeToJpeg()
+    decoder.getEncodedBuffer(jxl.length).set(jxl)
+    expect(() => decoder.decodeToJpeg()).toThrow()
+    expect(decoder.getJpegBuffer().length).toBe(0)
+    decoder.delete()
+  })
+
+  it.each([
+    { lossless: false, componentCount: 3 },
+    { lossless: true, componentCount: 1 },
+  ])("setProgressive changes the stream (lossless: $lossless), which still decodes", ({ lossless, componentCount }) => {
+    const frameInfo = { width: 256, height: 256, bitsPerSample: 8, componentCount, isSigned: false }
+    const encodeWith = (progressive) => {
+      const encoder = new encodeCodec.JpegXLEncoder()
+      const source = encoder.getDecodedBuffer(frameInfo)
+      for (let i = 0; i < source.length; i++) {
+        source[i] = (i * 31) & 0xff
+      }
+      encoder.setLossless(lossless)
+      if (!lossless) {
+        encoder.setDistance(2)
+      }
+      encoder.setProgressive(progressive)
+      encoder.encode()
+      const jxl = new Uint8Array(encoder.getEncodedBuffer())
+      encoder.delete()
+      return jxl
+    }
+
+    const plain = encodeWith(false)
+    const progressive = encodeWith(true)
+    expect(Buffer.from(progressive).equals(Buffer.from(plain))).toBe(false)
+
+    const decoder = new decodeCodec.JpegXLDecoder()
+    decoder.getEncodedBuffer(progressive.length).set(progressive)
+    decoder.decode()
+    expect(decoder.getFrameInfo().width).toBe(256)
     decoder.delete()
   })
 })
